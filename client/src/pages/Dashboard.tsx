@@ -89,7 +89,7 @@ export default function Dashboard() {
         const checkClosed = setInterval(() => {
           if (popup.closed) {
             clearInterval(checkClosed);
-            window.removeEventListener('message', handleMessage);
+            clearInterval(checkForCompletion);
           }
         }, 1000);
       } else {
