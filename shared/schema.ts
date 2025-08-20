@@ -63,11 +63,11 @@ export const campaigns = pgTable("campaigns", {
   status: varchar("status").notNull().default('active'), // 'active', 'paused', 'removed'
   dailyBudget: decimal("daily_budget", { precision: 10, scale: 2 }).notNull(),
   targetCpa: decimal("target_cpa", { precision: 10, scale: 2 }),
-  targetRoas: decimal("target_roas", { precision: 4, scale: 2 }),
+  targetRoas: decimal("target_roas", { precision: 8, scale: 2 }),
   spend7d: decimal("spend_7d", { precision: 10, scale: 2 }).default('0'),
   conversions7d: integer("conversions_7d").default(0),
   actualCpa: decimal("actual_cpa", { precision: 10, scale: 2 }),
-  actualRoas: decimal("actual_roas", { precision: 4, scale: 2 }),
+  actualRoas: decimal("actual_roas", { precision: 8, scale: 2 }),
   lastModified: timestamp("last_modified").defaultNow(),
   burnInUntil: timestamp("burn_in_until"),
   goalDescription: text("goal_description"),
