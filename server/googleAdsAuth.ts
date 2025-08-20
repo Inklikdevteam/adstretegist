@@ -67,12 +67,42 @@ export async function setupGoogleAdsAuth(app: Express) {
       // Store the tokens and account info
       const userId = state as string;
       
-      // For now, we'll create a placeholder Google Ads account
-      // In a real implementation, you'd query the Google Ads API to get customer info
+      // Get real customer info from Google Ads API
+      const oauth2Client = getOAuth2Client();
+      oauth2Client.setCredentials(tokens);
+      
+      let customerId = 'no-customer-found';
+      let customerName = 'Google Ads Account';
+      
+      try {
+        // Use Google Ads API to get real customer information
+        const { GoogleAdsApi } = await import('google-ads-api');
+        const client = new GoogleAdsApi({
+          client_id: process.env.GOOGLE_OAUTH_CLIENT_ID!,
+          client_secret: process.env.GOOGLE_OAUTH_CLIENT_SECRET!,
+          developer_token: process.env.GOOGLE_ADS_DEVELOPER_TOKEN!,
+        });
+
+        // Get accessible customers
+        const customers = await client.listAccessibleCustomers(tokens.refresh_token!);
+        
+        if (customers.length > 0) {
+          // Use the first accessible customer
+          customerId = customers[0].id.replace(/\D/g, ''); // Remove non-digits
+          customerName = customers[0].descriptive_name || 'Google Ads Account';
+          console.log('Found Google Ads customer:', customerId, customerName);
+        } else {
+          console.warn('No accessible Google Ads customers found');
+        }
+      } catch (apiError) {
+        console.error('Error fetching Google Ads customer info:', apiError);
+        // Continue with placeholder - better than failing the auth
+      }
+
       await storage.createGoogleAdsAccount({
         userId,
-        customerId: 'placeholder-customer-id', // This would come from Google Ads API
-        customerName: 'Google Ads Account',
+        customerId,
+        customerName,
         refreshToken: tokens.refresh_token,
         accessToken: tokens.access_token || null,
         tokenExpiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
