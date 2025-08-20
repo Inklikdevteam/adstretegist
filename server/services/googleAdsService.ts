@@ -88,6 +88,7 @@ export class GoogleAdsService {
             const clientCustomer = this.client.Customer({
               customer_id: clientAccount.id,
               refresh_token: this.customer.credentials.refresh_token,
+              login_customer_id: this.customer.credentials.customer_id,
             });
             
             const campaigns = await clientCustomer.query(`
