@@ -37,9 +37,27 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Google Ads account connections
+export const googleAdsAccounts = pgTable("google_ads_accounts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  customerId: varchar("customer_id").notNull(),
+  customerName: varchar("customer_name").notNull(),
+  refreshToken: text("refresh_token").notNull(),
+  accessToken: text("access_token"),
+  tokenExpiresAt: timestamp("token_expires_at"),
+  isActive: boolean("is_active").default(true),
+  isPrimary: boolean("is_primary").default(false), // For MCC support
+  parentCustomerId: varchar("parent_customer_id"), // For MCC child accounts
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const campaigns = pgTable("campaigns", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id),
+  googleAdsAccountId: varchar("google_ads_account_id").references(() => googleAdsAccounts.id),
+  googleAdsCampaignId: varchar("google_ads_campaign_id"), // The actual Google Ads campaign ID
   name: varchar("name").notNull(),
   type: varchar("type").notNull(), // 'search', 'display', 'shopping'
   status: varchar("status").notNull().default('active'), // 'active', 'paused', 'removed'
@@ -88,6 +106,9 @@ export const auditLogs = pgTable("audit_logs", {
 
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
+
+export type InsertGoogleAdsAccount = typeof googleAdsAccounts.$inferInsert;
+export type GoogleAdsAccount = typeof googleAdsAccounts.$inferSelect;
 
 export type InsertCampaign = typeof campaigns.$inferInsert;
 export type Campaign = typeof campaigns.$inferSelect;

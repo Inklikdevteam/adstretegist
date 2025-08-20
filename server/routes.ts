@@ -2,13 +2,18 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupGoogleAdsAuth } from "./googleAdsAuth";
 import { AIRecommendationService } from "./services/aiRecommendationService";
 import { CampaignService } from "./services/campaignService";
+import { multiAIService } from "./services/multiAiService";
 import { insertCampaignSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
+  
+  // Google Ads OAuth setup
+  await setupGoogleAdsAuth(app);
 
   const aiService = new AIRecommendationService();
   const campaignService = new CampaignService();
@@ -165,6 +170,130 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error dismissing recommendation:", error);
       res.status(500).json({ message: "Failed to dismiss recommendation" });
+    }
+  });
+
+  // Enhanced 1-click apply with real campaign changes
+  app.post('/api/recommendations/:id/apply-live', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const recommendation = await storage.getRecommendations(req.params.id);
+      
+      if (!recommendation.length) {
+        return res.status(404).json({ message: "Recommendation not found" });
+      }
+
+      // Apply the recommendation and make real changes
+      const result = await aiService.applyRecommendationLive(req.params.id, userId);
+      
+      res.json({
+        message: "Recommendation applied with live changes",
+        appliedChanges: result.changes,
+        status: result.success ? 'applied' : 'failed'
+      });
+    } catch (error) {
+      console.error("Error applying live recommendation:", error);
+      res.status(500).json({ message: "Failed to apply live recommendation" });
+    }
+  });
+
+  // Multi-AI consensus recommendations
+  app.post('/api/recommendations/generate-consensus', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { campaignId, prompt } = req.body;
+      
+      if (!multiAIService.isAvailable()) {
+        return res.status(503).json({ message: "Multi-AI service not available" });
+      }
+
+      // Get campaign context
+      const campaigns = await storage.getCampaigns(userId);
+      const campaign = campaigns.find(c => c.id === campaignId);
+      
+      if (!campaign) {
+        return res.status(404).json({ message: "Campaign not found" });
+      }
+
+      const consensus = await multiAIService.generateWithConsensus(
+        prompt || `Analyze this campaign performance and provide optimization recommendations`,
+        campaign
+      );
+      
+      res.json({
+        consensus,
+        availableModels: multiAIService.getAvailableProviders()
+      });
+    } catch (error) {
+      console.error("Error generating AI consensus:", error);
+      res.status(500).json({ message: "Failed to generate AI consensus" });
+    }
+  });
+
+  // Get available AI providers
+  app.get('/api/ai/providers', isAuthenticated, async (req: any, res) => {
+    try {
+      res.json({
+        available: multiAIService.getAvailableProviders(),
+        isReady: multiAIService.isAvailable()
+      });
+    } catch (error) {
+      console.error("Error fetching AI providers:", error);
+      res.status(500).json({ message: "Failed to fetch AI providers" });
+    }
+  });
+
+  // Generate recommendations with specific AI provider
+  app.post('/api/recommendations/generate-with-provider', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { campaignId, provider, prompt } = req.body;
+      
+      const campaigns = await storage.getCampaigns(userId);
+      const campaign = campaigns.find(c => c.id === campaignId);
+      
+      if (!campaign) {
+        return res.status(404).json({ message: "Campaign not found" });
+      }
+
+      const response = await multiAIService.generateSingle(
+        prompt || `Analyze this campaign and provide specific optimization recommendations`,
+        provider,
+        campaign
+      );
+      
+      res.json(response);
+    } catch (error) {
+      console.error("Error generating provider-specific recommendation:", error);
+      res.status(500).json({ message: "Failed to generate recommendation" });
+    }
+  });
+
+  // Real-time campaign monitoring endpoint
+  app.get('/api/campaigns/:id/monitor', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const campaignId = req.params.id;
+      
+      // This would integrate with real-time Google Ads data
+      const monitoringData = {
+        campaignId,
+        lastUpdated: new Date().toISOString(),
+        alerts: [],
+        liveMetrics: {
+          impressions: Math.floor(Math.random() * 1000),
+          clicks: Math.floor(Math.random() * 100),
+          spend: Math.floor(Math.random() * 500),
+          conversions: Math.floor(Math.random() * 10)
+        },
+        status: 'monitoring',
+        nextCheckIn: new Date(Date.now() + 300000).toISOString() // 5 minutes
+      };
+      
+      res.json(monitoringData);
+    } catch (error) {
+      console.error("Error fetching campaign monitoring data:", error);
+      res.status(500).json({ message: "Failed to fetch monitoring data" });
     }
   });
 

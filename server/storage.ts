@@ -3,6 +3,7 @@ import {
   campaigns,
   recommendations,
   auditLogs,
+  googleAdsAccounts,
   type User,
   type UpsertUser,
   type Campaign,
@@ -11,6 +12,8 @@ import {
   type InsertRecommendation,
   type AuditLog,
   type InsertAuditLog,
+  type GoogleAdsAccount,
+  type InsertGoogleAdsAccount,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
@@ -21,6 +24,12 @@ export interface IStorage {
   // (IMPORTANT) these user operations are mandatory for Replit Auth.
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
+  
+  // Google Ads account operations
+  createGoogleAdsAccount(account: InsertGoogleAdsAccount): Promise<GoogleAdsAccount>;
+  getGoogleAdsAccounts(userId: string): Promise<GoogleAdsAccount[]>;
+  updateGoogleAdsAccount(id: string, updates: Partial<GoogleAdsAccount>): Promise<GoogleAdsAccount | undefined>;
+  deleteGoogleAdsAccount(id: string, userId: string): Promise<boolean>;
   
   // Campaign operations
   getCampaigns(userId: string): Promise<Campaign[]>;
@@ -59,6 +68,33 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     return user;
+  }
+
+  // Google Ads account operations
+  async createGoogleAdsAccount(account: InsertGoogleAdsAccount): Promise<GoogleAdsAccount> {
+    const [created] = await db.insert(googleAdsAccounts).values(account).returning();
+    return created;
+  }
+
+  async getGoogleAdsAccounts(userId: string): Promise<GoogleAdsAccount[]> {
+    return await db.select().from(googleAdsAccounts).where(eq(googleAdsAccounts.userId, userId));
+  }
+
+  async updateGoogleAdsAccount(id: string, updates: Partial<GoogleAdsAccount>): Promise<GoogleAdsAccount | undefined> {
+    const [updated] = await db
+      .update(googleAdsAccounts)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(googleAdsAccounts.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteGoogleAdsAccount(id: string, userId: string): Promise<boolean> {
+    const result = await db
+      .delete(googleAdsAccounts)
+      .where(eq(googleAdsAccounts.id, id))
+      .returning();
+    return result.length > 0;
   }
 
   // Campaign operations

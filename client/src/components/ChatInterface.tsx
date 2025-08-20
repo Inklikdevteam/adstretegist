@@ -1,0 +1,315 @@
+import { useState, useRef, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Send, Bot, User, Zap, TrendingUp, Sparkles } from "lucide-react";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+
+interface ChatMessage {
+  id: string;
+  type: 'user' | 'ai' | 'system';
+  content: string;
+  timestamp: Date;
+  provider?: string;
+  confidence?: number;
+  context?: any;
+}
+
+interface ChatInterfaceProps {
+  campaigns: any[];
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export default function ChatInterface({ campaigns, isOpen, onClose }: ChatInterfaceProps) {
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    {
+      id: '1',
+      type: 'system',
+      content: 'Welcome to your AI Campaign Assistant! Ask me anything about your campaigns, performance, or optimization strategies. I can analyze your data and provide personalized recommendations.',
+      timestamp: new Date(),
+    }
+  ]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [selectedProvider, setSelectedProvider] = useState<string>('OpenAI');
+  const [availableProviders, setAvailableProviders] = useState<string[]>(['OpenAI']);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  useEffect(() => {
+    // Fetch available AI providers
+    const fetchProviders = async () => {
+      try {
+        const response = await apiRequest("GET", "/api/ai/providers");
+        setAvailableProviders(response.available);
+      } catch (error) {
+        console.error('Error fetching AI providers:', error);
+      }
+    };
+
+    if (isOpen) {
+      fetchProviders();
+    }
+  }, [isOpen]);
+
+  const handleSendMessage = async () => {
+    if (!input.trim() || isLoading) return;
+
+    const userMessage: ChatMessage = {
+      id: Date.now().toString(),
+      type: 'user',
+      content: input.trim(),
+      timestamp: new Date(),
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    setInput('');
+    setIsLoading(true);
+
+    try {
+      // Determine if this is a specific campaign query
+      const campaignMatch = input.toLowerCase().match(/campaign (\w+)|(\w+) campaign/);
+      let targetCampaign = null;
+      
+      if (campaignMatch) {
+        const campaignName = campaignMatch[1] || campaignMatch[2];
+        targetCampaign = campaigns.find(c => 
+          c.name.toLowerCase().includes(campaignName.toLowerCase())
+        );
+      }
+
+      // Generate AI response based on query type
+      let response;
+      if (input.toLowerCase().includes('consensus') || input.toLowerCase().includes('compare')) {
+        // Use consensus generation for comparison queries
+        response = await apiRequest("POST", "/api/recommendations/generate-consensus", {
+          campaignId: targetCampaign?.id || campaigns[0]?.id,
+          prompt: input
+        });
+        
+        const aiMessage: ChatMessage = {
+          id: Date.now().toString() + '_ai',
+          type: 'ai',
+          content: response.consensus.finalRecommendation,
+          timestamp: new Date(),
+          provider: response.consensus.models.join(', '),
+          confidence: response.consensus.confidence,
+          context: {
+            agreementLevel: response.consensus.agreementLevel,
+            modelsUsed: response.consensus.models.length
+          }
+        };
+        
+        setMessages(prev => [...prev, aiMessage]);
+      } else {
+        // Use single provider for specific queries
+        response = await apiRequest("POST", "/api/recommendations/generate-with-provider", {
+          campaignId: targetCampaign?.id || campaigns[0]?.id,
+          provider: selectedProvider,
+          prompt: input
+        });
+        
+        const aiMessage: ChatMessage = {
+          id: Date.now().toString() + '_ai',
+          type: 'ai',
+          content: response.content,
+          timestamp: new Date(),
+          provider: response.provider,
+          confidence: response.confidence,
+          context: {
+            model: response.model,
+            reasoning: response.reasoning
+          }
+        };
+        
+        setMessages(prev => [...prev, aiMessage]);
+      }
+
+    } catch (error) {
+      console.error('Error sending message:', error);
+      
+      const errorMessage: ChatMessage = {
+        id: Date.now().toString() + '_error',
+        type: 'system',
+        content: 'Sorry, I encountered an error processing your request. Please try again.',
+        timestamp: new Date(),
+      };
+      
+      setMessages(prev => [...prev, errorMessage]);
+      
+      toast({
+        title: "Error",
+        description: "Failed to get AI response. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
+  const suggestedQueries = [
+    "How are my campaigns performing this week?",
+    "Which campaign needs the most attention?",
+    "Generate consensus recommendations for optimization",
+    "What's the best strategy to improve my ROAS?",
+    "Compare performance across all my campaigns",
+    "Should I increase or decrease my budgets?"
+  ];
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <Card className="w-full max-w-4xl h-[80vh] flex flex-col">
+        <div className="flex items-center justify-between p-4 border-b">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
+              <Bot className="w-4 h-4 text-primary" />
+            </div>
+            <div>
+              <h3 className="font-semibold">AI Campaign Assistant</h3>
+              <p className="text-sm text-gray-500">Natural language campaign analysis</p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-2">
+            <select 
+              value={selectedProvider} 
+              onChange={(e) => setSelectedProvider(e.target.value)}
+              className="text-xs border rounded px-2 py-1"
+            >
+              {availableProviders.map(provider => (
+                <option key={provider} value={provider}>{provider}</option>
+              ))}
+            </select>
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              ×
+            </Button>
+          </div>
+        </div>
+
+        <CardContent className="flex-1 overflow-y-auto p-4 space-y-4">
+          {messages.map((message) => (
+            <div key={message.id} className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-[80%] ${
+                message.type === 'user' 
+                  ? 'bg-primary text-primary-foreground' 
+                  : message.type === 'system'
+                  ? 'bg-gray-100 text-gray-700'
+                  : 'bg-white border'
+              } rounded-lg p-3`}>
+                <div className="flex items-start space-x-2">
+                  {message.type === 'user' ? (
+                    <User className="w-4 h-4 mt-1 flex-shrink-0" />
+                  ) : message.type === 'ai' ? (
+                    <Sparkles className="w-4 h-4 mt-1 flex-shrink-0 text-primary" />
+                  ) : (
+                    <Zap className="w-4 h-4 mt-1 flex-shrink-0 text-gray-500" />
+                  )}
+                  <div className="flex-1">
+                    <p className="text-sm leading-relaxed">{message.content}</p>
+                    
+                    {message.provider && (
+                      <div className="flex items-center space-x-2 mt-2">
+                        <Badge variant="outline" className="text-xs">
+                          {message.provider}
+                        </Badge>
+                        {message.confidence && (
+                          <Badge variant={message.confidence > 80 ? "default" : "secondary"} className="text-xs">
+                            {message.confidence}% confidence
+                          </Badge>
+                        )}
+                        {message.context?.agreementLevel && (
+                          <Badge variant="outline" className="text-xs">
+                            {message.context.agreementLevel}% agreement
+                          </Badge>
+                        )}
+                      </div>
+                    )}
+                    
+                    <p className="text-xs opacity-70 mt-1">
+                      {message.timestamp.toLocaleTimeString()}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+          
+          {isLoading && (
+            <div className="flex justify-start">
+              <div className="bg-white border rounded-lg p-3 max-w-[80%]">
+                <div className="flex items-center space-x-2">
+                  <Sparkles className="w-4 h-4 text-primary animate-pulse" />
+                  <span className="text-sm text-gray-500">AI is analyzing...</span>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          <div ref={messagesEndRef} />
+        </CardContent>
+
+        {/* Suggested queries */}
+        {messages.length <= 1 && (
+          <div className="px-4 pb-2">
+            <p className="text-xs text-gray-500 mb-2">Try asking:</p>
+            <div className="flex flex-wrap gap-2">
+              {suggestedQueries.map((query, index) => (
+                <Button
+                  key={index}
+                  variant="outline"
+                  size="sm"
+                  className="text-xs h-auto py-1 px-2"
+                  onClick={() => setInput(query)}
+                >
+                  {query}
+                </Button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="p-4 border-t">
+          <div className="flex space-x-2">
+            <Input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="Ask me anything about your campaigns..."
+              disabled={isLoading}
+              className="flex-1"
+            />
+            <Button 
+              onClick={handleSendMessage}
+              disabled={!input.trim() || isLoading}
+              size="sm"
+            >
+              <Send className="w-4 h-4" />
+            </Button>
+          </div>
+          <p className="text-xs text-gray-500 mt-1">
+            Press Enter to send • Current campaigns: {campaigns.length}
+          </p>
+        </div>
+      </Card>
+    </div>
+  );
+}

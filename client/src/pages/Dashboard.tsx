@@ -9,7 +9,8 @@ import RecommendationCard from "@/components/RecommendationCard";
 import CampaignCard from "@/components/CampaignCard";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { RefreshCw, TrendingUp, Target, DollarSign, BarChart3, Activity } from "lucide-react";
+import { RefreshCw, TrendingUp, Target, DollarSign, BarChart3, Activity, MessageSquare } from "lucide-react";
+import ChatInterface from "@/components/ChatInterface";
 import { queryClient } from "@/lib/queryClient";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -17,6 +18,7 @@ export default function Dashboard() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
   const [showAuditModal, setShowAuditModal] = useState(false);
+  const [showChatInterface, setShowChatInterface] = useState(false);
 
   // Redirect to home if not authenticated
   useEffect(() => {
@@ -213,7 +215,17 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Priority Recommendations */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900">Priority Recommendations</h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-gray-900">Priority Recommendations</h3>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => setShowChatInterface(true)}
+                >
+                  <MessageSquare className="w-4 h-4 mr-1" />
+                  Chat with AI
+                </Button>
+              </div>
               {recommendationsLoading ? (
                 <div className="space-y-4">
                   {[1, 2, 3].map((i) => (
@@ -379,6 +391,13 @@ export default function Dashboard() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Chat Interface */}
+      <ChatInterface
+        campaigns={campaigns}
+        isOpen={showChatInterface}
+        onClose={() => setShowChatInterface(false)}
+      />
     </div>
   );
 }
