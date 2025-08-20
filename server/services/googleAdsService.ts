@@ -75,45 +75,111 @@ export class GoogleAdsService {
 
   async getCampaigns(): Promise<GoogleAdsCampaign[]> {
     try {
-      const campaigns = await this.customer.query(`
-        SELECT 
-          campaign.id,
-          campaign.name,
-          campaign.status,
-          campaign.advertising_channel_type,
-          campaign_budget.amount_micros,
-          campaign.bidding_strategy_type,
-          campaign.target_cpa.target_cpa_micros,
-          campaign.target_roas.target_roas,
-          metrics.impressions,
-          metrics.clicks,
-          metrics.conversions,
-          metrics.cost_micros,
-          metrics.ctr,
-          metrics.average_cpc,
-          metrics.conversions_from_interactions_rate
-        FROM campaign 
-        WHERE campaign.status != 'REMOVED'
-        AND segments.date DURING LAST_7_DAYS
-      `);
+      // First check if this is a manager account
+      const clientAccounts = await this.getClientAccounts();
+      
+      if (clientAccounts.length > 0) {
+        // This is a manager account - get campaigns from all client accounts
+        console.log(`Manager account detected. Fetching campaigns from ${clientAccounts.length} client accounts...`);
+        const allCampaigns: GoogleAdsCampaign[] = [];
+        
+        for (const clientAccount of clientAccounts) {
+          try {
+            const clientCustomer = this.client.Customer({
+              customer_id: clientAccount.id,
+              refresh_token: this.customer.credentials.refresh_token,
+            });
+            
+            const campaigns = await clientCustomer.query(`
+              SELECT 
+                campaign.id,
+                campaign.name,
+                campaign.status,
+                campaign.advertising_channel_type,
+                campaign_budget.amount_micros,
+                campaign.bidding_strategy_type,
+                campaign.target_cpa.target_cpa_micros,
+                campaign.target_roas.target_roas,
+                metrics.impressions,
+                metrics.clicks,
+                metrics.conversions,
+                metrics.cost_micros,
+                metrics.ctr,
+                metrics.average_cpc,
+                metrics.conversions_from_interactions_rate
+              FROM campaign 
+              WHERE campaign.status != 'REMOVED'
+              AND segments.date DURING LAST_7_DAYS
+            `);
 
-      return campaigns.map((row: any) => ({
-        id: row.campaign.id.toString(),
-        name: row.campaign.name,
-        status: row.campaign.status,
-        type: this.mapChannelType(row.campaign.advertising_channel_type),
-        budget: row.campaign_budget.amount_micros / 1000000, // Convert from micros
-        bidStrategy: row.campaign.bidding_strategy_type,
-        targetCpa: row.campaign.target_cpa?.target_cpa_micros / 1000000,
-        targetRoas: row.campaign.target_roas?.target_roas,
-        impressions: row.metrics.impressions || 0,
-        clicks: row.metrics.clicks || 0,
-        conversions: row.metrics.conversions || 0,
-        cost: row.metrics.cost_micros / 1000000,
-        ctr: row.metrics.ctr || 0,
-        avgCpc: row.metrics.average_cpc || 0,
-        conversionRate: row.metrics.conversions_from_interactions_rate || 0,
-      }));
+            const clientCampaigns = campaigns.map((row: any) => ({
+              id: row.campaign.id.toString(),
+              name: `${clientAccount.name} - ${row.campaign.name}`,
+              status: row.campaign.status,
+              type: this.mapChannelType(row.campaign.advertising_channel_type),
+              budget: row.campaign_budget.amount_micros / 1000000,
+              bidStrategy: row.campaign.bidding_strategy_type,
+              targetCpa: row.campaign.target_cpa?.target_cpa_micros / 1000000,
+              targetRoas: row.campaign.target_roas?.target_roas,
+              impressions: row.metrics.impressions || 0,
+              clicks: row.metrics.clicks || 0,
+              conversions: row.metrics.conversions || 0,
+              cost: row.metrics.cost_micros / 1000000,
+              ctr: row.metrics.ctr || 0,
+              avgCpc: row.metrics.average_cpc || 0,
+              conversionRate: row.metrics.conversions_from_interactions_rate || 0,
+            }));
+            
+            allCampaigns.push(...clientCampaigns);
+            console.log(`Found ${clientCampaigns.length} campaigns from client account: ${clientAccount.name}`);
+          } catch (clientError) {
+            console.warn(`Error fetching campaigns from client account ${clientAccount.name}:`, clientError);
+          }
+        }
+        
+        return allCampaigns;
+      } else {
+        // Regular account - fetch campaigns directly
+        const campaigns = await this.customer.query(`
+          SELECT 
+            campaign.id,
+            campaign.name,
+            campaign.status,
+            campaign.advertising_channel_type,
+            campaign_budget.amount_micros,
+            campaign.bidding_strategy_type,
+            campaign.target_cpa.target_cpa_micros,
+            campaign.target_roas.target_roas,
+            metrics.impressions,
+            metrics.clicks,
+            metrics.conversions,
+            metrics.cost_micros,
+            metrics.ctr,
+            metrics.average_cpc,
+            metrics.conversions_from_interactions_rate
+          FROM campaign 
+          WHERE campaign.status != 'REMOVED'
+          AND segments.date DURING LAST_7_DAYS
+        `);
+
+        return campaigns.map((row: any) => ({
+          id: row.campaign.id.toString(),
+          name: row.campaign.name,
+          status: row.campaign.status,
+          type: this.mapChannelType(row.campaign.advertising_channel_type),
+          budget: row.campaign_budget.amount_micros / 1000000,
+          bidStrategy: row.campaign.bidding_strategy_type,
+          targetCpa: row.campaign.target_cpa?.target_cpa_micros / 1000000,
+          targetRoas: row.campaign.target_roas?.target_roas,
+          impressions: row.metrics.impressions || 0,
+          clicks: row.metrics.clicks || 0,
+          conversions: row.metrics.conversions || 0,
+          cost: row.metrics.cost_micros / 1000000,
+          ctr: row.metrics.ctr || 0,
+          avgCpc: row.metrics.average_cpc || 0,
+          conversionRate: row.metrics.conversions_from_interactions_rate || 0,
+        }));
+      }
     } catch (error) {
       console.error('Error fetching campaigns from Google Ads:', error);
       throw new Error('Failed to fetch campaigns from Google Ads API');
@@ -260,6 +326,30 @@ export class GoogleAdsService {
         return 'multi_channel';
       default:
         return 'unknown';
+    }
+  }
+
+  async getClientAccounts(): Promise<Array<{id: string, name: string}>> {
+    try {
+      const accounts = await this.customer.query(`
+        SELECT 
+          customer_client.id,
+          customer_client.descriptive_name,
+          customer_client.manager,
+          customer_client.test_account
+        FROM customer_client
+        WHERE customer_client.status = 'ENABLED'
+        AND customer_client.manager = false
+        AND customer_client.test_account = false
+      `);
+      
+      return accounts.map((row: any) => ({
+        id: row.customer_client.id.toString(),
+        name: row.customer_client.descriptive_name || `Account ${row.customer_client.id}`
+      }));
+    } catch (error) {
+      console.log('No client accounts found or not a manager account');
+      return [];
     }
   }
 
