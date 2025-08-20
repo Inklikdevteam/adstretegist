@@ -101,13 +101,13 @@ export default function ChatInterface({ campaigns = [], isOpen, onClose }: ChatI
         const aiMessage: ChatMessage = {
           id: Date.now().toString() + '_ai',
           type: 'ai',
-          content: response.consensus.finalRecommendation,
+          content: response.consensus?.finalRecommendation || 'No recommendation received',
           timestamp: new Date(),
-          provider: response.consensus.models.join(', '),
-          confidence: response.consensus.confidence,
+          provider: response.consensus?.models?.join(', ') || 'Unknown',
+          confidence: response.consensus?.confidence || 0,
           context: {
-            agreementLevel: response.consensus.agreementLevel,
-            modelsUsed: response.consensus.models.length
+            agreementLevel: response.consensus?.agreementLevel || 0,
+            modelsUsed: response.consensus?.models?.length || 0
           }
         };
         
@@ -123,13 +123,13 @@ export default function ChatInterface({ campaigns = [], isOpen, onClose }: ChatI
         const aiMessage: ChatMessage = {
           id: Date.now().toString() + '_ai',
           type: 'ai',
-          content: response.content,
+          content: response?.content || 'No response received',
           timestamp: new Date(),
-          provider: response.provider,
-          confidence: response.confidence,
+          provider: response?.provider || 'Unknown',
+          confidence: response?.confidence || 0,
           context: {
-            model: response.model,
-            reasoning: response.reasoning
+            model: response?.model || 'Unknown',
+            reasoning: response?.reasoning || 'No reasoning provided'
           }
         };
         
@@ -195,7 +195,7 @@ export default function ChatInterface({ campaigns = [], isOpen, onClose }: ChatI
               onChange={(e) => setSelectedProvider(e.target.value)}
               className="text-xs border rounded px-2 py-1"
             >
-              {availableProviders.map(provider => (
+              {(availableProviders || ['OpenAI']).map(provider => (
                 <option key={provider} value={provider}>{provider}</option>
               ))}
             </select>
@@ -206,7 +206,7 @@ export default function ChatInterface({ campaigns = [], isOpen, onClose }: ChatI
         </div>
 
         <CardContent className="flex-1 overflow-y-auto p-4 space-y-4">
-          {messages.map((message) => (
+          {(messages || []).map((message) => (
             <div key={message.id} className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}>
               <div className={`max-w-[80%] ${
                 message.type === 'user' 
@@ -272,7 +272,7 @@ export default function ChatInterface({ campaigns = [], isOpen, onClose }: ChatI
           <div className="px-4 pb-2">
             <p className="text-xs text-gray-500 mb-2">Try asking:</p>
             <div className="flex flex-wrap gap-2">
-              {suggestedQueries.map((query, index) => (
+              {(suggestedQueries || []).map((query, index) => (
                 <Button
                   key={index}
                   variant="outline"
@@ -306,7 +306,7 @@ export default function ChatInterface({ campaigns = [], isOpen, onClose }: ChatI
             </Button>
           </div>
           <p className="text-xs text-gray-500 mt-1">
-            Press Enter to send • Current campaigns: {campaigns.length}
+            Press Enter to send • Current campaigns: {campaigns?.length || 0}
           </p>
         </div>
       </Card>
