@@ -15,7 +15,7 @@ function getOAuth2Client() {
     throw new Error('Google OAuth credentials not configured');
   }
 
-  const redirectUri = `${process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}` : 'http://localhost:5000'}/api/google-ads/callback`;
+  const redirectUri = `${process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}` : 'http://localhost:5000'}/api/auth/google-ads-callback`;
   
   return new OAuth2Client(
     process.env.GOOGLE_OAUTH_CLIENT_ID,
@@ -49,7 +49,7 @@ export async function setupGoogleAdsAuth(app: Express) {
   });
 
   // Handle OAuth callback
-  app.get('/api/google-ads/callback', async (req, res) => {
+  app.get('/api/auth/google-ads-callback', async (req, res) => {
     try {
       const { code, state } = req.query;
       
