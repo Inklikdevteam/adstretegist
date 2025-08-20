@@ -136,6 +136,14 @@ export default function ChatInterface({ campaigns = [], isOpen, onClose }: ChatI
         setMessages(prev => [...prev, aiMessage]);
       }
 
+      // Update available providers after each interaction
+      try {
+        const providersResponse = await apiRequest("GET", "/api/ai/providers");
+        setAvailableProviders(providersResponse.available || ['OpenAI']);
+      } catch (providerError) {
+        console.error('Error fetching providers:', providerError);
+      }
+
     } catch (error) {
       console.error('Error sending message:', error);
       

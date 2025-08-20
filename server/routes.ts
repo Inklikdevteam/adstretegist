@@ -5,7 +5,7 @@ import { setupAuth, isAuthenticated } from "./replitAuth";
 import { setupGoogleAdsAuth } from "./googleAdsAuth";
 import { AIRecommendationService } from "./services/aiRecommendationService";
 import { CampaignService } from "./services/campaignService";
-import { multiAIService } from "./services/multiAiService";
+import { MultiAIService } from "./services/multiAIService";
 import { insertCampaignSchema, campaigns, googleAdsAccounts } from "@shared/schema";
 import { eq, and } from "drizzle-orm";
 import { db } from "./db";
@@ -19,6 +19,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const aiService = new AIRecommendationService();
   const campaignService = new CampaignService();
+  const multiAIService = new MultiAIService();
 
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
