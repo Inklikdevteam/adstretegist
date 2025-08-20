@@ -251,8 +251,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const { campaignId, provider, prompt } = req.body;
       
-      const campaigns = await storage.getCampaigns(userId);
-      const campaign = campaigns.find(c => c.id === campaignId);
+      // Get campaign using campaign service
+      const campaign = await campaignService.getCampaignById(campaignId, userId);
       
       if (!campaign) {
         return res.status(404).json({ message: "Campaign not found" });
@@ -260,7 +260,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const response = await multiAIService.generateSingle(
         prompt || `Analyze this campaign and provide specific optimization recommendations`,
-        provider,
+        provider || 'OpenAI',
         campaign
       );
       
