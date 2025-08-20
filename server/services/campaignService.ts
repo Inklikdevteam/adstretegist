@@ -51,17 +51,17 @@ export class CampaignService {
       
       const campaignsToInsert: InsertCampaign[] = realCampaigns.map(campaign => ({
         userId,
-        name: campaign.name,
+        name: campaign.name || 'Unnamed Campaign',
         type: this.mapCampaignType(campaign.type),
-        status: campaign.status.toLowerCase(),
+        status: (campaign.status || 'ACTIVE').toString().toLowerCase(),
         dailyBudget: (campaign.budget / 100).toFixed(2), // Convert from micros
         spend7d: (campaign.cost / 100).toFixed(2), // Convert from micros
-        conversions7d: campaign.conversions,
+        conversions7d: campaign.conversions || 0,
         actualCpa: campaign.conversions > 0 ? ((campaign.cost / 100) / campaign.conversions).toFixed(2) : null,
         actualRoas: campaign.cost > 0 ? (campaign.conversions * 500 / (campaign.cost / 100)).toFixed(2) : null, // Assuming ₹500 per conversion
         targetCpa: campaign.targetCpa ? (campaign.targetCpa / 100).toFixed(2) : null,
         targetRoas: campaign.targetRoas ? campaign.targetRoas.toFixed(2) : null,
-        goalDescription: `Real Google Ads campaign - ${campaign.bidStrategy}`
+        goalDescription: `Real Google Ads campaign - ${campaign.bidStrategy || 'Auto bidding'}`
       }));
 
       if (campaignsToInsert.length > 0) {
