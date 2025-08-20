@@ -54,12 +54,12 @@ export class CampaignService {
         name: campaign.name || 'Unnamed Campaign',
         type: this.mapCampaignType(campaign.type),
         status: (campaign.status || 'ACTIVE').toString().toLowerCase(),
-        dailyBudget: (campaign.budget / 100).toFixed(2), // Convert from micros
-        spend7d: (campaign.cost / 100).toFixed(2), // Convert from micros
+        dailyBudget: campaign.budget.toFixed(2), // Already converted from micros in GoogleAdsService
+        spend7d: campaign.cost.toFixed(2), // Already converted from micros in GoogleAdsService
         conversions7d: Math.round(campaign.conversions || 0),
-        actualCpa: campaign.conversions > 0 ? ((campaign.cost / 100) / campaign.conversions).toFixed(2) : null,
-        actualRoas: campaign.cost > 0 ? (campaign.conversions * 500 / (campaign.cost / 100)).toFixed(2) : null, // Assuming ₹500 per conversion
-        targetCpa: campaign.targetCpa ? (campaign.targetCpa / 100).toFixed(2) : null,
+        actualCpa: campaign.conversions > 0 ? (campaign.cost / campaign.conversions).toFixed(2) : null,
+        actualRoas: campaign.conversions > 0 && campaign.cost > 0 ? (campaign.conversions / campaign.cost).toFixed(2) : null, // Proper ROAS calculation
+        targetCpa: campaign.targetCpa ? campaign.targetCpa.toFixed(2) : null,
         targetRoas: campaign.targetRoas ? campaign.targetRoas.toFixed(2) : null,
         goalDescription: `Real Google Ads campaign - ${campaign.bidStrategy || 'Auto bidding'}`
       }));
