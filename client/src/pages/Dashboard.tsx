@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -8,13 +8,15 @@ import MetricsCard from "@/components/MetricsCard";
 import RecommendationCard from "@/components/RecommendationCard";
 import CampaignCard from "@/components/CampaignCard";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, TrendingUp, Target, DollarSign, BarChart3 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { RefreshCw, TrendingUp, Target, DollarSign, BarChart3, Activity } from "lucide-react";
 import { queryClient } from "@/lib/queryClient";
 import { apiRequest } from "@/lib/queryClient";
 
 export default function Dashboard() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
+  const [showAuditModal, setShowAuditModal] = useState(false);
 
   // Redirect to home if not authenticated
   useEffect(() => {
@@ -276,7 +278,7 @@ export default function Dashboard() {
             <div className="px-6 py-4 border-b border-gray-200">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-gray-900">Recent Activity & Audit Trail</h3>
-                <Button variant="ghost" size="sm">
+                <Button variant="ghost" size="sm" onClick={() => setShowAuditModal(true)}>
                   View All →
                 </Button>
               </div>
@@ -326,6 +328,57 @@ export default function Dashboard() {
           </div>
         </div>
       </main>
+
+      {/* Audit Trail Modal */}
+      <Dialog open={showAuditModal} onOpenChange={setShowAuditModal}>
+        <DialogContent className="max-w-4xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2">
+              <Activity className="w-5 h-5" />
+              <span>Complete Activity & Audit Trail</span>
+            </DialogTitle>
+            <DialogDescription>
+              View all system activities, AI decisions, and user actions with detailed timestamps.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 max-h-96 overflow-y-auto">
+            {auditTrail.length > 0 ? (
+              auditTrail.map((entry: any) => (
+                <div key={entry.id} className="flex items-start space-x-4 p-4 bg-gray-50 rounded-lg">
+                  <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <div className="w-3 h-3 bg-green-600 rounded-full"></div>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900">{entry.action}</p>
+                    <p className="text-sm text-gray-600 mt-1">{entry.details}</p>
+                    <div className="flex items-center space-x-4 mt-3">
+                      <span className="text-xs text-gray-500">
+                        {new Date(entry.createdAt).toLocaleString()}
+                      </span>
+                      <span className="text-xs text-gray-500">by {entry.performedBy}</span>
+                      {entry.aiModel && (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-700">
+                          {entry.aiModel}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center text-gray-500 py-12">
+                <Activity className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                <p>No activity recorded yet.</p>
+              </div>
+            )}
+          </div>
+          
+          <div className="flex justify-end">
+            <Button variant="outline" onClick={() => setShowAuditModal(false)}>Close</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

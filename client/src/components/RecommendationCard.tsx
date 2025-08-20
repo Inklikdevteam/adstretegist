@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -164,6 +164,9 @@ export default function RecommendationCard({
             <span className="text-2xl">{getRecommendationEmoji(recommendation.type)}</span>
             <span>{recommendation.title}</span>
           </DialogTitle>
+          <DialogDescription>
+            Detailed AI analysis and recommendations for campaign optimization.
+          </DialogDescription>
         </DialogHeader>
         
         <div className="space-y-6">

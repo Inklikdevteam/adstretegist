@@ -1,7 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ShoppingCart, Megaphone, RotateCcw, Calendar, TrendingUp } from "lucide-react";
 import GoalSettingModal from "./GoalSettingModal";
 import { useState } from "react";
@@ -142,6 +142,9 @@ export default function CampaignCard({ campaign, onUpdate }: CampaignCardProps) 
               </div>
               <span>{campaign.name}</span>
             </DialogTitle>
+            <DialogDescription>
+              Detailed campaign performance metrics, goals, and optimization insights.
+            </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-6">
