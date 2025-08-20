@@ -6,7 +6,9 @@ import { setupGoogleAdsAuth } from "./googleAdsAuth";
 import { AIRecommendationService } from "./services/aiRecommendationService";
 import { CampaignService } from "./services/campaignService";
 import { multiAIService } from "./services/multiAiService";
-import { insertCampaignSchema } from "@shared/schema";
+import { insertCampaignSchema, campaigns, googleAdsAccounts } from "@shared/schema";
+import { eq, and } from "drizzle-orm";
+import { db } from "./db";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
@@ -306,6 +308,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching audit trail:", error);
       res.status(500).json({ message: "Failed to fetch audit trail" });
+    }
+  });
+
+  // Google Ads data refresh endpoint
+  app.post('/api/google-ads/refresh', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      // Clear existing data to force refresh
+      await db.delete(campaigns).where(eq(campaigns.userId, userId));
+      
+      // Get fresh campaigns (this will trigger real data fetch)
+      const freshCampaigns = await campaignService.getUserCampaigns(userId);
+      
+      res.json({ 
+        message: `Refreshed ${freshCampaigns.length} campaigns from Google Ads`,
+        campaigns: freshCampaigns
+      });
+    } catch (error) {
+      console.error("Error refreshing Google Ads data:", error);
+      res.status(500).json({ message: "Failed to refresh Google Ads data", error: error.message });
+    }
+  });
+
+  // Update Google Ads customer ID endpoint
+  app.post('/api/google-ads/update-customer-id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { customerId, customerName } = req.body;
+      
+      if (!customerId) {
+        return res.status(400).json({ message: 'Customer ID is required' });
+      }
+      
+      // Update the existing Google Ads account with real customer ID
+      const [updatedAccount] = await db
+        .update(googleAdsAccounts)
+        .set({ 
+          customerId: customerId.replace(/\D/g, ''), // Remove non-digits
+          customerName: customerName || 'Google Ads Account',
+          updatedAt: new Date()
+        })
+        .where(and(eq(googleAdsAccounts.userId, userId), eq(googleAdsAccounts.isActive, true)))
+        .returning();
+      
+      if (!updatedAccount) {
+        return res.status(404).json({ message: 'No active Google Ads account found' });
+      }
+      
+      res.json({ 
+        message: 'Customer ID updated successfully',
+        account: updatedAccount
+      });
+    } catch (error) {
+      console.error("Error updating customer ID:", error);
+      res.status(500).json({ message: "Failed to update customer ID", error: error.message });
     }
   });
 

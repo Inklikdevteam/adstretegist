@@ -125,6 +125,36 @@ export default function Dashboard() {
     }
   };
 
+  const handleRefreshGoogleAds = async () => {
+    try {
+      const response = await apiRequest("POST", "/api/google-ads/refresh");
+      await queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/dashboard/summary"] });
+      
+      toast({
+        title: "Success",
+        description: response.message || "Google Ads data refreshed successfully!",
+      });
+    } catch (error) {
+      if (isUnauthorizedError(error as Error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to refresh Google Ads data. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleRunEvaluation = async () => {
     try {
       await apiRequest("POST", "/api/recommendations/generate");
@@ -189,6 +219,10 @@ export default function Dashboard() {
               <Button onClick={handleConnectGoogleAds} variant="outline" className="border-green-500 text-green-600 hover:bg-green-50">
                 <Target className="w-4 h-4 mr-2" />
                 Connect Google Ads
+              </Button>
+              <Button onClick={handleRefreshGoogleAds} variant="outline" className="border-blue-500 text-blue-600 hover:bg-blue-50">
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Refresh Real Data
               </Button>
               <Button onClick={handleRunEvaluation} className="bg-primary hover:bg-blue-600">
                 <RefreshCw className="w-4 h-4 mr-2" />

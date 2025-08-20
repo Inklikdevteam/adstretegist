@@ -68,8 +68,8 @@ export async function setupGoogleAdsAuth(app: Express) {
       const userId = state as string;
       
       // Get real customer info from Google Ads API
-      const oauth2Client = getOAuth2Client();
-      oauth2Client.setCredentials(tokens);
+      const adsOAuth2Client = getOAuth2Client();
+      adsOAuth2Client.setCredentials(tokens);
       
       let customerId = 'no-customer-found';
       let customerName = 'Google Ads Account';
