@@ -23,7 +23,7 @@ interface ChatInterfaceProps {
   onClose: () => void;
 }
 
-export default function ChatInterface({ campaigns, isOpen, onClose }: ChatInterfaceProps) {
+export default function ChatInterface({ campaigns = [], isOpen, onClose }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: '1',
