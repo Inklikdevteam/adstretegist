@@ -7,6 +7,10 @@ import { useAuth } from "@/hooks/useAuth";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/Landing";
 import Dashboard from "@/pages/Dashboard";
+import Campaigns from "@/pages/Campaigns";
+import Recommendations from "@/pages/Recommendations";
+import Performance from "@/pages/Performance";
+import Settings from "@/pages/Settings";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -18,6 +22,10 @@ function Router() {
       ) : (
         <>
           <Route path="/" component={Dashboard} />
+          <Route path="/campaigns" component={Campaigns} />
+          <Route path="/recommendations" component={Recommendations} />
+          <Route path="/performance" component={Performance} />
+          <Route path="/settings" component={Settings} />
         </>
       )}
       <Route component={NotFound} />

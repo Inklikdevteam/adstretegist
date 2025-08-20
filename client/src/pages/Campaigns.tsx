@@ -1,0 +1,87 @@
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
+import { useQuery } from "@tanstack/react-query";
+import { isUnauthorizedError } from "@/lib/authUtils";
+import { useEffect } from "react";
+import Sidebar from "@/components/Sidebar";
+import CampaignCard from "@/components/CampaignCard";
+import { queryClient } from "@/lib/queryClient";
+
+export default function Campaigns() {
+  const { toast } = useToast();
+  const { isAuthenticated, isLoading } = useAuth();
+
+  // Redirect to home if not authenticated
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      toast({
+        title: "Unauthorized",
+        description: "You are logged out. Logging in again...",
+        variant: "destructive",
+      });
+      setTimeout(() => {
+        window.location.href = "/api/login";
+      }, 500);
+      return;
+    }
+  }, [isAuthenticated, isLoading, toast]);
+
+  const { data: campaigns = [], isLoading: campaignsLoading } = useQuery<any[]>({
+    queryKey: ["/api/campaigns"],
+    enabled: isAuthenticated,
+  });
+
+  if (isLoading || !isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen flex bg-gray-50">
+      <Sidebar />
+      
+      <main className="flex-1 overflow-auto">
+        <header className="bg-white shadow-sm border-b border-gray-200 px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-semibold text-gray-900">All Campaigns</h2>
+              <p className="text-gray-600 mt-1">Manage and monitor your Google Ads campaigns</p>
+            </div>
+          </div>
+        </header>
+
+        <div className="p-6">
+          {campaignsLoading ? (
+            <div className="grid gap-6">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="bg-white rounded-lg p-6 animate-pulse">
+                  <div className="h-4 bg-gray-200 rounded mb-4 w-1/3"></div>
+                  <div className="h-3 bg-gray-200 rounded mb-2 w-1/2"></div>
+                  <div className="h-3 bg-gray-200 rounded w-2/3"></div>
+                </div>
+              ))}
+            </div>
+          ) : campaigns.length > 0 ? (
+            <div className="grid gap-6">
+              {campaigns.map((campaign: any) => (
+                <CampaignCard
+                  key={campaign.id}
+                  campaign={campaign}
+                  onUpdate={() => queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] })}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="bg-white rounded-lg p-12 text-center text-gray-500">
+              <p className="text-lg">No campaigns found</p>
+              <p className="text-sm mt-2">Create your first campaign to get started</p>
+            </div>
+          )}
+        </div>
+      </main>
+    </div>
+  );
+}

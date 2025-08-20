@@ -11,7 +11,13 @@ export class AIRecommendationService {
     const campaigns = await this.campaignService.getUserCampaigns(userId);
     const newRecommendations: Recommendation[] = [];
 
-    // Clear old pending recommendations
+    // Clear old pending recommendations safely by first deleting audit logs
+    const pendingRecommendations = await db.select({ id: recommendations.id }).from(recommendations).where(eq(recommendations.status, 'pending'));
+    
+    for (const rec of pendingRecommendations) {
+      await db.delete(auditLogs).where(eq(auditLogs.recommendationId, rec.id));
+    }
+    
     await db.delete(recommendations).where(eq(recommendations.status, 'pending'));
 
     for (const campaign of campaigns) {

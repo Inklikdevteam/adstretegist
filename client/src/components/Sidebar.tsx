@@ -1,16 +1,18 @@
 import { useAuth } from "@/hooks/useAuth";
 import { Brain, BarChart3, Target, Settings, TrendingUp, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Link, useLocation } from "wouter";
 
 export default function Sidebar() {
   const { user } = useAuth() as { user: any };
+  const [location] = useLocation();
 
   const navigationItems = [
-    { icon: BarChart3, label: "Dashboard", href: "#", active: true },
-    { icon: Target, label: "Campaigns", href: "#", active: false },
-    { icon: Brain, label: "AI Recommendations", href: "#", active: false },
-    { icon: TrendingUp, label: "Performance", href: "#", active: false },
-    { icon: Settings, label: "Settings", href: "#", active: false },
+    { icon: BarChart3, label: "Dashboard", href: "/", active: location === "/" },
+    { icon: Target, label: "Campaigns", href: "/campaigns", active: location === "/campaigns" },
+    { icon: Brain, label: "AI Recommendations", href: "/recommendations", active: location === "/recommendations" },
+    { icon: TrendingUp, label: "Performance", href: "/performance", active: location === "/performance" },
+    { icon: Settings, label: "Settings", href: "/settings", active: location === "/settings" },
   ];
 
   return (
@@ -31,7 +33,7 @@ export default function Sidebar() {
         {navigationItems.map((item) => {
           const Icon = item.icon;
           return (
-            <a
+            <Link
               key={item.label}
               href={item.href}
               className={`flex items-center space-x-3 px-4 py-3 rounded-lg font-medium transition-colors ${
@@ -42,7 +44,7 @@ export default function Sidebar() {
             >
               <Icon className="w-5 h-5" />
               <span>{item.label}</span>
-            </a>
+            </Link>
           );
         })}
       </nav>
