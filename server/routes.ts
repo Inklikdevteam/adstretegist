@@ -210,9 +210,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(503).json({ message: "Multi-AI service not available" });
       }
 
-      // Get campaign context
-      const campaigns = await storage.getCampaigns(userId);
-      const campaign = campaigns.find(c => c.id === campaignId);
+      // Get campaign context using campaign service
+      const campaign = await campaignService.getCampaignById(campaignId, userId);
       
       if (!campaign) {
         return res.status(404).json({ message: "Campaign not found" });
