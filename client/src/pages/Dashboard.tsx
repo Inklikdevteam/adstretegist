@@ -59,6 +59,12 @@ export default function Dashboard() {
     try {
       const response = await apiRequest("GET", "/api/google-ads/auth");
       
+      console.log('Google Ads auth response:', response);
+      
+      if (!response.authUrl) {
+        throw new Error('No auth URL received from server');
+      }
+      
       // Open the Google OAuth flow in a new window
       const popup = window.open('', 'google_auth', 'width=600,height=700,scrollbars=yes,resizable=yes');
       
