@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -17,6 +19,7 @@ export default function RecommendationCard({
   onDismiss 
 }: RecommendationCardProps) {
   const { toast } = useToast();
+  const [showDetails, setShowDetails] = useState(false);
 
   const getRecommendationEmoji = (type: string) => {
     switch (type) {
@@ -90,6 +93,7 @@ export default function RecommendationCard({
   };
 
   return (
+    <>
     <Card>
       <CardContent className="p-6">
         <div className="flex items-start justify-between mb-4">
@@ -139,12 +143,12 @@ export default function RecommendationCard({
               </Button>
             )}
             {recommendation.type === 'clarification' && (
-              <Button size="sm">
+              <Button size="sm" onClick={() => setShowDetails(true)}>
                 Provide Input
               </Button>
             )}
             {recommendation.type === 'monitor' && (
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" onClick={() => setShowDetails(true)}>
                 View Details
               </Button>
             )}
@@ -152,5 +156,65 @@ export default function RecommendationCard({
         </div>
       </CardContent>
     </Card>
+
+    <Dialog open={showDetails} onOpenChange={setShowDetails}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center space-x-2">
+            <span className="text-2xl">{getRecommendationEmoji(recommendation.type)}</span>
+            <span>{recommendation.title}</span>
+          </DialogTitle>
+        </DialogHeader>
+        
+        <div className="space-y-6">
+          <div>
+            <h4 className="font-semibold text-gray-900 mb-2">Recommendation Details</h4>
+            <p className="text-gray-700">{recommendation.description}</p>
+          </div>
+          
+          <div className="bg-gray-50 rounded-lg p-4">
+            <h4 className="font-semibold text-gray-900 mb-2">AI Analysis ({recommendation.aiModel})</h4>
+            <p className="text-gray-700 leading-relaxed">{recommendation.reasoning}</p>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <h4 className="font-medium text-gray-900">Priority Level</h4>
+              <p className="text-gray-600 capitalize">{recommendation.priority}</p>
+            </div>
+            <div>
+              <h4 className="font-medium text-gray-900">Confidence Score</h4>
+              <p className="text-gray-600">{recommendation.confidence}%</p>
+            </div>
+            {recommendation.potentialSavings && (
+              <div className="col-span-2">
+                <h4 className="font-medium text-gray-900">Potential Impact</h4>
+                <p className="text-gray-600">₹{recommendation.potentialSavings}/day in potential savings</p>
+              </div>
+            )}
+          </div>
+          
+          {recommendation.actionData && (
+            <div>
+              <h4 className="font-semibold text-gray-900 mb-2">Technical Details</h4>
+              <pre className="bg-gray-100 p-3 rounded text-sm overflow-x-auto">
+                {JSON.stringify(recommendation.actionData, null, 2)}
+              </pre>
+            </div>
+          )}
+          
+          <div className="flex justify-end space-x-3">
+            <Button variant="outline" onClick={() => setShowDetails(false)}>Close</Button>
+            {recommendation.type === 'actionable' && (
+              <Button onClick={() => { handleApply(); setShowDetails(false); }}>Apply Changes</Button>
+            )}
+            {recommendation.type !== 'actionable' && (
+              <Button variant="ghost" onClick={() => { handleDismiss(); setShowDetails(false); }}>Dismiss</Button>
+            )}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
