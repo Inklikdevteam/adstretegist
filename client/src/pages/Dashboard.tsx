@@ -55,6 +55,46 @@ export default function Dashboard() {
     enabled: isAuthenticated,
   });
 
+  const handleConnectGoogleAds = async () => {
+    try {
+      const response = await apiRequest("GET", "/api/google-ads/auth");
+      // Open the Google OAuth flow in a new window
+      window.open(response.authUrl, 'google_auth', 'width=500,height=600');
+      
+      // Listen for the OAuth completion
+      const handleMessage = (event: MessageEvent) => {
+        if (event.data.type === 'GOOGLE_ADS_AUTH_SUCCESS') {
+          window.removeEventListener('message', handleMessage);
+          toast({
+            title: "Success",
+            description: "Google Ads account connected successfully!",
+          });
+          // Refresh the dashboard data
+          queryClient.invalidateQueries();
+        }
+      };
+      
+      window.addEventListener('message', handleMessage);
+    } catch (error) {
+      if (isUnauthorizedError(error as Error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to connect Google Ads. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleRunEvaluation = async () => {
     try {
       await apiRequest("POST", "/api/recommendations/generate");
@@ -116,6 +156,10 @@ export default function Dashboard() {
                 <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                 <span>Last updated: 2 minutes ago</span>
               </div>
+              <Button onClick={handleConnectGoogleAds} variant="outline" className="border-green-500 text-green-600 hover:bg-green-50">
+                <Target className="w-4 h-4 mr-2" />
+                Connect Google Ads
+              </Button>
               <Button onClick={handleRunEvaluation} className="bg-primary hover:bg-blue-600">
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Run Evaluation
