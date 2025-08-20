@@ -47,8 +47,11 @@ export class GoogleAdsService {
   private client: GoogleAdsApi;
   private customer: Customer;
   private oauth2Client: OAuth2Client;
+  private config: GoogleAdsConfig;
 
   constructor(config: GoogleAdsConfig) {
+    this.config = config;
+    
     // Initialize OAuth2 client
     this.oauth2Client = new OAuth2Client(
       config.clientId,
@@ -85,10 +88,17 @@ export class GoogleAdsService {
         
         for (const clientAccount of clientAccounts) {
           try {
-            const clientCustomer = this.client.Customer({
+            // Create a completely new client for each client account
+            const clientGoogleAdsClient = new GoogleAdsApi({
+              client_id: this.config.clientId,
+              client_secret: this.config.clientSecret,
+              developer_token: this.config.developerToken,
+            });
+            
+            const clientCustomer = clientGoogleAdsClient.Customer({
               customer_id: clientAccount.id,
-              refresh_token: this.customer.credentials.refresh_token,
-              login_customer_id: this.customer.credentials.customer_id,
+              refresh_token: this.config.refreshToken,
+              login_customer_id: this.config.customerId,
             });
             
             const campaigns = await clientCustomer.query(`
