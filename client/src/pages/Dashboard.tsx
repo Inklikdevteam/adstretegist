@@ -66,20 +66,24 @@ export default function Dashboard() {
         // Navigate to the auth URL
         popup.location.href = response.authUrl;
         
-        // Listen for the OAuth completion
-        const handleMessage = (event: MessageEvent) => {
-          if (event.data.type === 'GOOGLE_ADS_AUTH_SUCCESS') {
-            window.removeEventListener('message', handleMessage);
-            toast({
-              title: "Success",
-              description: "Google Ads account connected successfully!",
-            });
-            // Refresh the dashboard data
-            queryClient.invalidateQueries();
+        // Listen for the popup to complete and handle the redirect
+        const checkForCompletion = setInterval(() => {
+          try {
+            const url = popup.location.href;
+            if (url.includes('google-ads-auth=success')) {
+              clearInterval(checkForCompletion);
+              popup.close();
+              toast({
+                title: "Success",
+                description: "Google Ads account connected successfully!",
+              });
+              // Refresh the dashboard data
+              queryClient.invalidateQueries();
+            }
+          } catch (e) {
+            // Cross-origin error when popup is on Google domain - expected
           }
-        };
-        
-        window.addEventListener('message', handleMessage);
+        }, 1000);
         
         // Check if popup was closed without completing auth
         const checkClosed = setInterval(() => {

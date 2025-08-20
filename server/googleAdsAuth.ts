@@ -80,13 +80,9 @@ export async function setupGoogleAdsAuth(app: Express) {
         isPrimary: true,
       });
 
-      // Send a success message to the parent window and close the popup
-      res.send(`
-        <script>
-          window.opener.postMessage({ type: 'GOOGLE_ADS_AUTH_SUCCESS', accountId: '${userId}' }, '*');
-          window.close();
-        </script>
-      `);
+      // Redirect to main domain with success parameter
+      const redirectUrl = `${process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}` : 'http://localhost:5000'}/?google-ads-auth=success&user=${userId}`;
+      res.redirect(redirectUrl);
     } catch (error) {
       console.error('Error handling Google Ads OAuth callback:', error);
       res.status(500).json({ message: 'Failed to complete Google Ads authentication' });
