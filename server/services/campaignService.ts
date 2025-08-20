@@ -56,7 +56,7 @@ export class CampaignService {
         status: (campaign.status || 'ACTIVE').toString().toLowerCase(),
         dailyBudget: (campaign.budget / 100).toFixed(2), // Convert from micros
         spend7d: (campaign.cost / 100).toFixed(2), // Convert from micros
-        conversions7d: campaign.conversions || 0,
+        conversions7d: Math.round(campaign.conversions || 0),
         actualCpa: campaign.conversions > 0 ? ((campaign.cost / 100) / campaign.conversions).toFixed(2) : null,
         actualRoas: campaign.cost > 0 ? (campaign.conversions * 500 / (campaign.cost / 100)).toFixed(2) : null, // Assuming ₹500 per conversion
         targetCpa: campaign.targetCpa ? (campaign.targetCpa / 100).toFixed(2) : null,
@@ -72,6 +72,11 @@ export class CampaignService {
       return [];
     } catch (error) {
       console.error('Error fetching real Google Ads campaigns:', error);
+      console.error('Full error details:', JSON.stringify(error, null, 2));
+      
+      // Clear any failed/partial data
+      await db.delete(campaigns).where(eq(campaigns.userId, userId));
+      
       return await this.getFallbackCampaigns(userId);
     }
   }
