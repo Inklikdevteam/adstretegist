@@ -1,0 +1,123 @@
+You are to implement an AI-powered Virtual Google Ads Expert that acts like a seasoned strategist.
+
+Purpose & Vision
+
+Behaves like an expert Google Ads manager.
+
+Logs in daily, reviews all active campaigns, understands goals, history, and context.
+
+Decides whether to:
+
+Apply a change
+
+Explain why no change is needed
+
+Ask for clarification
+
+Suggest a new direction
+
+Justifies every decision with reasoning and builds user trust.
+
+Core Components & Features
+
+Intelligent Decision Engine
+
+Analyze campaign goals (CPA, ROAS, Conversions, etc.), type (brand, remarketing, prospecting), stage (new, stable, recently edited), history, and time context.
+
+Decide whether to take action (adjust budget, pause keywords), wait/monitor, or request clarification.
+
+Daily Campaign Evaluator
+
+Run daily (or scheduled).
+
+For each campaign, review performance vs. goals.
+
+Factor in recency of changes, seasonality, patterns.
+
+Output one of: ✅ Actionable Suggestion, ⌛ Wait & Watch, 🧐 Needs Clarification.
+
+Provide a visible daily summary: “Today’s Smart Recommendations.”
+
+Optimization Goal Intelligence
+
+Allow per-account/campaign goal setting.
+
+Default goals: maximize conversions under X cost, maximize ROAS, maximize impressions.
+
+Accept natural-language goals like: “I want leads under ₹300, even if impressions drop.”
+
+Anchor all AI decisions to these goals.
+
+Multi-Account Management
+
+Support unlimited accounts (via OAuth + MCC linking).
+
+Provide a master dashboard with performance overview, daily highlights, and filtering.
+
+Role-Based Access Control
+
+Roles: Admin (view + apply), Manager (view + suggest only), Client (read-only).
+
+Permissions enforced at account and campaign levels.
+
+Multi-AI Recommendation Engine
+
+Integrate multiple AI models (OpenAI, Perplexity, Claude/Mistral optional).
+
+Each recommendation must include:
+
+Model used
+
+Reasoning trail
+
+Confidence score
+
+Cross-validation option: another AI validates/disagrees; show side-by-side reasoning.
+
+Change Awareness & Burn-In Handling
+
+Track recent edits and avoid premature optimization.
+
+Example: “Campaign modified 2 days ago, monitoring for 5 more days before deciding.”
+
+Configurable burn-in periods.
+
+AI Thought Process Visibility
+
+Every recommendation has a clear explanation.
+
+Example: “Paused keyword ‘xyz’ after ₹1,000 spent with zero conversions over 10 days.”
+
+1-Click Apply (Optional)
+
+If user permissions allow, AI can directly implement via Google Ads API.
+
+Always show preview before applying and maintain an audit trail.
+
+Natural Language Chat Interface (Optional, Phase 2)
+
+Users can ask questions like:
+
+“What changed today?”
+
+“Why is Campaign X underperforming?”
+
+“Suggest top 3 fixes this week.”
+
+Example Scenarios
+
+Scenario 1: Underperforming Campaign
+
+CPA above target, edited 2 days ago.
+
+AI says: “No action yet. Observe for 3 more days.”
+
+Scenario 2: High-Spending Wasted Keyword
+
+AI flags keyword with ₹500 spend, 0 conversions in 8 days.
+
+Suggest pausing, alternate AI agrees, user applies.
+
+Scenario 3: High-Performance Campaign
+
+AI suggests increasing budget by 15% for strong ROAS performer.
