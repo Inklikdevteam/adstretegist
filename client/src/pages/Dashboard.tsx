@@ -58,23 +58,43 @@ export default function Dashboard() {
   const handleConnectGoogleAds = async () => {
     try {
       const response = await apiRequest("GET", "/api/google-ads/auth");
+      
       // Open the Google OAuth flow in a new window
-      window.open(response.authUrl, 'google_auth', 'width=500,height=600');
+      const popup = window.open('', 'google_auth', 'width=600,height=700,scrollbars=yes,resizable=yes');
       
-      // Listen for the OAuth completion
-      const handleMessage = (event: MessageEvent) => {
-        if (event.data.type === 'GOOGLE_ADS_AUTH_SUCCESS') {
-          window.removeEventListener('message', handleMessage);
-          toast({
-            title: "Success",
-            description: "Google Ads account connected successfully!",
-          });
-          // Refresh the dashboard data
-          queryClient.invalidateQueries();
-        }
-      };
-      
-      window.addEventListener('message', handleMessage);
+      if (popup) {
+        // Navigate to the auth URL
+        popup.location.href = response.authUrl;
+        
+        // Listen for the OAuth completion
+        const handleMessage = (event: MessageEvent) => {
+          if (event.data.type === 'GOOGLE_ADS_AUTH_SUCCESS') {
+            window.removeEventListener('message', handleMessage);
+            toast({
+              title: "Success",
+              description: "Google Ads account connected successfully!",
+            });
+            // Refresh the dashboard data
+            queryClient.invalidateQueries();
+          }
+        };
+        
+        window.addEventListener('message', handleMessage);
+        
+        // Check if popup was closed without completing auth
+        const checkClosed = setInterval(() => {
+          if (popup.closed) {
+            clearInterval(checkClosed);
+            window.removeEventListener('message', handleMessage);
+          }
+        }, 1000);
+      } else {
+        toast({
+          title: "Popup Blocked",
+          description: "Please allow popups and try again.",
+          variant: "destructive",
+        });
+      }
     } catch (error) {
       if (isUnauthorizedError(error as Error)) {
         toast({
