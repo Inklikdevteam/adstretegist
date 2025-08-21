@@ -7,6 +7,25 @@ import { CampaignService } from "./campaignService";
 export class AIRecommendationService {
   private campaignService = new CampaignService();
 
+  // Helper method to clean currency values for database insertion
+  private parseCurrencyValue(value: string | number | undefined | null): string | null {
+    if (value === null || value === undefined) return null;
+    if (typeof value === 'number') return value.toString();
+    
+    // Remove currency symbols (₹, $, €, etc.) and commas
+    const cleanValue = value.toString()
+      .replace(/[₹$€£¥,]/g, '') // Remove common currency symbols and commas
+      .replace(/\s+/g, '') // Remove spaces
+      .trim();
+    
+    // Handle empty or invalid values
+    if (!cleanValue || cleanValue === '' || isNaN(parseFloat(cleanValue))) {
+      return null;
+    }
+    
+    return parseFloat(cleanValue).toString();
+  }
+
   async generateRecommendationsForUser(userId: string): Promise<Recommendation[]> {
     const campaigns = await this.campaignService.getUserCampaigns(userId);
     const newRecommendations: Recommendation[] = [];
@@ -33,7 +52,7 @@ export class AIRecommendationService {
           reasoning: analysis.reasoning,
           aiModel: "gpt-4o",
           confidence: analysis.confidence,
-          potentialSavings: analysis.potential_savings?.toString(),
+          potentialSavings: this.parseCurrencyValue(analysis.potential_savings),
           actionData: analysis.action_data,
           status: 'pending'
         };

@@ -311,6 +311,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update campaign goals endpoint
+  app.patch('/api/campaigns/:id/goals', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const campaignId = req.params.id;
+      const { goalType, targetValue, targetRoas, naturalLanguageGoal } = req.body;
+      
+      // Get the campaign to ensure it belongs to the user
+      const campaign = await campaignService.getCampaignById(campaignId, userId);
+      if (!campaign) {
+        return res.status(404).json({ message: "Campaign not found" });
+      }
+
+      // Update campaign goals
+      const [updatedCampaign] = await db
+        .update(campaigns)
+        .set({
+          goalType,
+          targetValue: parseFloat(targetValue || 0),
+          targetRoas: targetRoas ? parseFloat(targetRoas) : null,
+          naturalLanguageGoal,
+          updatedAt: new Date()
+        })
+        .where(and(eq(campaigns.id, campaignId), eq(campaigns.userId, userId)))
+        .returning();
+
+      res.json({ 
+        message: "Campaign goals updated successfully",
+        campaign: updatedCampaign
+      });
+    } catch (error) {
+      console.error("Error updating campaign goals:", error);
+      res.status(500).json({ message: "Failed to update campaign goals" });
+    }
+  });
+
   // Google Ads data refresh endpoint
   app.post('/api/google-ads/refresh', isAuthenticated, async (req: any, res) => {
     try {

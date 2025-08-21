@@ -4,6 +4,23 @@ import { eq, and } from "drizzle-orm";
 import { GoogleAdsService } from "./googleAdsService";
 
 export class CampaignService {
+  // Helper method to clean currency values for database insertion
+  private parseCurrencyValue(value: string | number): number {
+    if (typeof value === 'number') return value;
+    
+    // Remove currency symbols (₹, $, €, etc.) and commas
+    const cleanValue = value.toString()
+      .replace(/[₹$€£¥,]/g, '') // Remove common currency symbols and commas
+      .replace(/\s+/g, '') // Remove spaces
+      .trim();
+    
+    // Handle empty or invalid values
+    if (!cleanValue || cleanValue === '' || isNaN(parseFloat(cleanValue))) {
+      return 0;
+    }
+    
+    return parseFloat(cleanValue);
+  }
   async getUserCampaigns(userId: string): Promise<Campaign[]> {
     // First check if user has connected Google Ads accounts
     const connectedAccounts = await db
@@ -54,13 +71,13 @@ export class CampaignService {
         name: campaign.name || 'Unnamed Campaign',
         type: this.mapCampaignType(campaign.type),
         status: (campaign.status || 'ACTIVE').toString().toLowerCase(),
-        dailyBudget: campaign.budget.toFixed(2), // Already converted from micros in GoogleAdsService
-        spend7d: campaign.cost.toFixed(2), // Already converted from micros in GoogleAdsService
+        dailyBudget: this.parseCurrencyValue(campaign.budget.toFixed(2)).toString(), // Clean currency format
+        spend7d: this.parseCurrencyValue(campaign.cost.toFixed(2)).toString(), // Clean currency format
         conversions7d: Math.round(campaign.conversions || 0),
-        actualCpa: campaign.conversions > 0 ? (campaign.cost / campaign.conversions).toFixed(2) : null,
-        actualRoas: campaign.conversions > 0 && campaign.cost > 0 ? (campaign.conversions / campaign.cost).toFixed(2) : null, // Proper ROAS calculation
-        targetCpa: campaign.targetCpa ? campaign.targetCpa.toFixed(2) : null,
-        targetRoas: campaign.targetRoas ? campaign.targetRoas.toFixed(2) : null,
+        actualCpa: campaign.conversions > 0 ? this.parseCurrencyValue(campaign.cost / campaign.conversions).toString() : null,
+        actualRoas: campaign.conversions > 0 && campaign.cost > 0 ? this.parseCurrencyValue(campaign.conversions / campaign.cost).toString() : null, // Proper ROAS calculation
+        targetCpa: campaign.targetCpa ? this.parseCurrencyValue(campaign.targetCpa).toString() : null,
+        targetRoas: campaign.targetRoas ? this.parseCurrencyValue(campaign.targetRoas).toString() : null,
         goalDescription: `Real Google Ads campaign - ${campaign.bidStrategy || 'Auto bidding'}`
       }));
 
