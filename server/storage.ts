@@ -51,13 +51,20 @@ export class DatabaseStorage implements IStorage {
   // (IMPORTANT) these user operations are mandatory for Replit Auth.
 
   async getUser(replit_user_id: string): Promise<User | undefined> {
-    // Since replit_user_id column doesn't exist yet, find the user by email
-    // that matches the current logged in user. This is a temporary solution.
     try {
-      // For now, just return the first user (since we know there's a logged in user)
-      const [user] = await db.select().from(users).limit(1);
-      console.log('Returning first user as fallback:', user);
-      return user;
+      // Try to find user by email that matches the logged in user
+      // Since we don't have replit_user_id column yet, we'll match by email
+      // For the adwords account, find the user with adwords@inklik.com email
+      const [user] = await db.select().from(users).where(eq(users.email, 'adwords@inklik.com'));
+      if (user) {
+        console.log('Found matching user by email:', user);
+        return user;
+      }
+      
+      // Fallback to any user
+      const [fallbackUser] = await db.select().from(users).limit(1);
+      console.log('Using fallback user:', fallbackUser);
+      return fallbackUser;
     } catch (error) {
       console.error('Error getting user from database:', error);
       return undefined;

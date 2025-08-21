@@ -63,8 +63,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Dashboard summary endpoint
   app.get('/api/dashboard/summary', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const summary = await aiService.getDashboardSummary(userId);
+      const replitUserId = req.user.claims.sub;
+      const user = await storage.getUser(replitUserId);
+      const dbUserId = user?.id?.toString() || replitUserId;
+      
+      console.log('Dashboard summary for user:', { replitUserId, dbUserId });
+      const summary = await aiService.getDashboardSummary(dbUserId);
       res.json(summary);
     } catch (error) {
       console.error("Error fetching dashboard summary:", error);
@@ -75,8 +79,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Campaigns endpoints
   app.get('/api/campaigns', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      let campaigns = await campaignService.getUserCampaigns(userId);
+      const replitUserId = req.user.claims.sub;
+      const user = await storage.getUser(replitUserId);
+      const dbUserId = user?.id?.toString() || replitUserId;
+      
+      console.log('Campaigns for user:', { replitUserId, dbUserId });
+      let campaigns = await campaignService.getUserCampaigns(dbUserId);
       
       // Filter to only show active campaigns
       const activeCampaigns = campaigns.filter(campaign => 
