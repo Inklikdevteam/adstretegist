@@ -1,5 +1,5 @@
 import { db } from "../db";
-import { recommendations, auditLogs, type Recommendation, type InsertRecommendation, type InsertAuditLog } from "@shared/schema";
+import { recommendations, auditLogs, campaigns, type Recommendation, type InsertRecommendation, type InsertAuditLog } from "@shared/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { analyzeCampaignPerformance, generateDailySummary } from "../openai";
 import { CampaignService } from "./campaignService";
@@ -27,11 +27,11 @@ export class AIRecommendationService {
   }
 
   async generateRecommendationsForUser(userId: string): Promise<Recommendation[]> {
-    const campaigns = await this.campaignService.getUserCampaigns(userId);
+    const userCampaigns = await this.campaignService.getUserCampaigns(userId);
     const newRecommendations: Recommendation[] = [];
 
     // If no campaigns available, return empty array
-    if (!campaigns || campaigns.length === 0) {
+    if (!userCampaigns || userCampaigns.length === 0) {
       return [];
     }
 
@@ -44,10 +44,10 @@ export class AIRecommendationService {
     
     await db.delete(recommendations).where(eq(recommendations.status, 'pending'));
 
-    for (const campaign of campaigns) {
+    for (const campaign of userCampaigns) {
       try {
         // Double-check campaign still exists before creating recommendation
-        const campaignCheck = await db.select({ id: campaigns.id }).from(campaigns).where(eq(campaigns.id, campaign.id)).limit(1);
+        const campaignCheck = await db.select().from(campaigns).where(eq(campaigns.id, campaign.id)).limit(1);
         if (campaignCheck.length === 0) {
           console.warn(`Campaign ${campaign.id} no longer exists, skipping recommendation generation`);
           continue;
