@@ -24,29 +24,12 @@ function getOAuth2Client() {
   );
 }
 
+// Note: Google Ads authentication is now integrated with main authentication in replitAuth.ts
+// These routes are kept for backward compatibility but may not be needed
+
 export async function setupGoogleAdsAuth(app: Express) {
-  // Initiate Google Ads OAuth flow
-  app.get('/api/google-ads/auth', async (req: any, res) => {
-    try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ message: 'Unauthorized' });
-      }
-
-      const oauth2Client = getOAuth2Client();
-      
-      const authorizeUrl = oauth2Client.generateAuthUrl({
-        access_type: 'offline',
-        scope: GOOGLE_ADS_SCOPES,
-        prompt: 'consent', // Force consent to get refresh token
-        state: req.user.claims.sub // Store user ID in state
-      });
-
-      res.json({ authUrl: authorizeUrl });
-    } catch (error) {
-      console.error('Error initiating Google Ads OAuth:', error);
-      res.status(500).json({ message: 'Failed to initiate Google Ads authentication' });
-    }
-  });
+  // Legacy Google Ads OAuth endpoints - may be removed in future
+  // Authentication is now handled directly in main auth flow
 
   // Handle OAuth callback
   app.get('/api/auth/google-ads-callback', async (req, res) => {

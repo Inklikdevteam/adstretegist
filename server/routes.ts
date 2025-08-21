@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { setupGoogleAdsAuth } from "./googleAdsAuth";
+// Note: Google Ads authentication is now integrated with main authentication
 import { AIRecommendationService } from "./services/aiRecommendationService";
 import { CampaignService } from "./services/campaignService";
 import { MultiAIService } from "./services/multiAIService";
@@ -14,8 +14,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
   
-  // Google Ads OAuth setup
-  await setupGoogleAdsAuth(app);
+  // Note: Google Ads authentication is now integrated with main authentication
+  // No separate setup needed
 
   const aiService = new AIRecommendationService();
   const campaignService = new CampaignService();
