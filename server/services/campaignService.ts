@@ -170,10 +170,13 @@ export class CampaignService {
   }
 
   async getCampaignById(id: string, userId: string): Promise<Campaign | undefined> {
+    const userIdInt = parseInt(userId);
+    console.log('CampaignService getCampaignById for userId:', userIdInt, 'campaignId:', id);
+    
     const [campaign] = await db
       .select()
       .from(campaigns)
-      .where(and(eq(campaigns.id, id), eq(campaigns.userId, userId)));
+      .where(and(eq(campaigns.id, id), eq(campaigns.userId, userIdInt)));
     return campaign;
   }
 
@@ -260,6 +263,9 @@ export class CampaignService {
     userId: string, 
     goals: { targetCpa?: string; targetRoas?: string; goalDescription?: string }
   ): Promise<Campaign | undefined> {
+    const userIdInt = parseInt(userId);
+    console.log('CampaignService updateCampaignGoals for userId:', userIdInt, 'campaignId:', campaignId);
+    
     const [campaign] = await db
       .update(campaigns)
       .set({ 
@@ -267,7 +273,7 @@ export class CampaignService {
         updatedAt: new Date(),
         lastModified: new Date()
       })
-      .where(and(eq(campaigns.id, campaignId), eq(campaigns.userId, userId)))
+      .where(and(eq(campaigns.id, campaignId), eq(campaigns.userId, userIdInt)))
       .returning();
     return campaign;
   }

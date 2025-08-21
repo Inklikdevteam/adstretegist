@@ -144,14 +144,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/campaigns/:id/goals', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const replitUserId = req.user.claims.sub;
+      const user = await storage.getUser(replitUserId);
+      
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+      
+      const dbUserId = user.id.toString();
       const { targetCpa, targetRoas, goalDescription } = req.body;
       
       console.log(`DEBUG: Updating goals for campaign ${req.params.id}:`, { targetCpa, targetRoas, goalDescription });
       
       const campaign = await campaignService.updateCampaignGoals(
         req.params.id,
-        userId,
+        dbUserId,
         { targetCpa, targetRoas, goalDescription }
       );
       
@@ -305,11 +312,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Generate recommendations with specific AI provider
   app.post('/api/recommendations/generate-with-provider', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const replitUserId = req.user.claims.sub;
+      const user = await storage.getUser(replitUserId);
+      
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+      
+      const dbUserId = user.id.toString();
       const { campaignId, provider, prompt } = req.body;
       
       // Get campaign using campaign service
-      const campaign = await campaignService.getCampaignById(campaignId, userId);
+      const campaign = await campaignService.getCampaignById(campaignId, dbUserId);
       
       if (!campaign) {
         return res.status(404).json({ message: "Campaign not found" });
