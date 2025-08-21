@@ -36,7 +36,7 @@ class OpenAIProvider implements AIProvider {
         messages: [
           {
             role: "system",
-            content: "You are an expert Google Ads strategist. Provide specific, actionable recommendations with confidence scores. Always respond in JSON format."
+            content: "You are an expert Google Ads strategist specializing in the Indian market. Always use INR (₹) currency, never USD ($). Provide specific, actionable recommendations with confidence scores. Always respond in JSON format."
           },
           {
             role: "user",

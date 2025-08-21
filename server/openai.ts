@@ -22,7 +22,7 @@ export async function analyzeCampaignPerformance(
 ): Promise<CampaignAnalysis> {
   try {
     const prompt = `
-    You are an expert Google Ads strategist. Analyze this campaign performance and provide a recommendation.
+    You are an expert Google Ads strategist specializing in the Indian market. Always use INR (₹) currency, never USD ($). Analyze this campaign performance and provide a recommendation.
 
     Campaign Details:
     - Name: ${campaign.name}
@@ -61,7 +61,7 @@ export async function analyzeCampaignPerformance(
       messages: [
         {
           role: "system",
-          content: "You are an expert Google Ads strategist. Always respond with valid JSON only."
+          content: "You are an expert Google Ads strategist specializing in the Indian market. Always use INR (₹) currency, never USD ($). Always respond with valid JSON only."
         },
         {
           role: "user",

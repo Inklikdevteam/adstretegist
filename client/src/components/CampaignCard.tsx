@@ -67,7 +67,7 @@ export default function CampaignCard({ campaign, onUpdate }: CampaignCardProps) 
           const response = await apiRequest("POST", "/api/recommendations/generate-with-provider", {
             campaignId: campaign.id,
             provider,
-            prompt: `Analyze the campaign "${campaign.name}" with ${campaign.type} type. Current metrics: Daily Budget: ${campaign.dailyBudget}, 7-day Spend: ${campaign.spend7d}, Conversions: ${campaign.conversions7d}, CPA: ${campaign.actualCpa || 'N/A'}, ROAS: ${campaign.actualRoas || 'N/A'}. Target CPA: ${campaign.targetCpa || 'Not set'}, Target ROAS: ${campaign.targetRoas || 'Not set'}. Provide 3 specific actionable optimization recommendations for this individual campaign.`
+            prompt: `Analyze the campaign "${campaign.name}" with ${campaign.type} type. Current metrics: Daily Budget: ₹${campaign.dailyBudget}, 7-day Spend: ₹${campaign.spend7d}, Conversions: ${campaign.conversions7d}, CPA: ₹${campaign.actualCpa || 'N/A'}, ROAS: ${campaign.actualRoas || 'N/A'}. Target CPA: ₹${campaign.targetCpa || 'Not set'}, Target ROAS: ${campaign.targetRoas || 'Not set'}. IMPORTANT: This is an Indian market campaign - use only INR (₹) currency in your response, never USD ($). Provide 3 specific actionable optimization recommendations for this individual campaign.`
           });
 
           if (response?.content) {

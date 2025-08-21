@@ -72,7 +72,7 @@ export class MultiAIService {
 
   async generateSingle(prompt: string, provider: string, campaign: Campaign): Promise<AIResponse> {
     const campaignContext = this.buildCampaignContext(campaign);
-    const fullPrompt = `${campaignContext}\n\n${prompt}\n\nProvide a detailed analysis with specific recommendations and confidence score (0-100).`;
+    const fullPrompt = `${campaignContext}\n\n${prompt}\n\nIMPORTANT: This is an Indian market campaign - use only INR (₹) currency in your response, never USD ($) or other currencies. Provide a detailed analysis with specific recommendations and confidence score (0-100).`;
 
     switch (provider.toLowerCase()) {
       case 'openai':
@@ -113,16 +113,16 @@ export class MultiAIService {
   }
 
   private buildCampaignContext(campaign: Campaign): string {
-    return `Campaign Analysis Context:
+    return `Campaign Analysis Context for Indian Market:
 Campaign Name: ${campaign.name}
 Type: ${campaign.type}
 Status: ${campaign.status}
-Daily Budget: $${campaign.dailyBudget}
-7-Day Spend: $${campaign.spend7d}
+Daily Budget: ₹${campaign.dailyBudget}
+7-Day Spend: ₹${campaign.spend7d}
 7-Day Conversions: ${campaign.conversions7d}
-Actual CPA: ${campaign.actualCpa ? `$${campaign.actualCpa}` : 'N/A'}
+Actual CPA: ${campaign.actualCpa ? `₹${campaign.actualCpa}` : 'N/A'}
 Actual ROAS: ${campaign.actualRoas || 'N/A'}
-Target CPA: ${campaign.targetCpa ? `$${campaign.targetCpa}` : 'N/A'}
+Target CPA: ${campaign.targetCpa ? `₹${campaign.targetCpa}` : 'N/A'}
 Target ROAS: ${campaign.targetRoas || 'N/A'}
 Goal: ${campaign.goalDescription || 'No specific goal set'}`;
   }
@@ -183,7 +183,7 @@ Goal: ${campaign.goalDescription || 'No specific goal set'}`;
         messages: [
           {
             role: 'system',
-            content: 'You are an expert Google Ads strategist. Analyze campaign data and provide optimization recommendations.'
+            content: 'You are an expert Google Ads strategist specializing in the Indian market. Always use INR (₹) currency, never USD ($). Analyze campaign data and provide optimization recommendations.'
           },
           {
             role: 'user',
