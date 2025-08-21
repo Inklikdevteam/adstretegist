@@ -105,7 +105,7 @@ export class CampaignService {
         userId,
         name: campaign.name || 'Unnamed Campaign',
         type: this.mapCampaignType(campaign.type),
-        status: (campaign.status || 'ACTIVE').toString().toLowerCase(),
+        status: campaign.status === 'ENABLED' ? 'active' : (campaign.status || 'ACTIVE').toString().toLowerCase(),
         dailyBudget: this.parseCurrencyValue(campaign.budget.toFixed(2)).toString(), // Clean currency format
         spend7d: this.parseCurrencyValue(campaign.cost.toFixed(2)).toString(), // Clean currency format
         conversions7d: Math.round(campaign.conversions || 0),
@@ -179,6 +179,14 @@ export class CampaignService {
   }
 
   // Initialize sample campaigns for new users
+  async hasGoogleAdsConnection(userId: string): Promise<boolean> {
+    const connectedAccounts = await db
+      .select()
+      .from(googleAdsAccounts)
+      .where(and(eq(googleAdsAccounts.userId, userId), eq(googleAdsAccounts.isActive, true)));
+    return connectedAccounts.length > 0;
+  }
+
   async initializeSampleCampaigns(userId: string): Promise<Campaign[]> {
     const sampleCampaigns: InsertCampaign[] = [
       {

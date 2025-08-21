@@ -51,15 +51,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       let campaigns = await campaignService.getUserCampaigns(userId);
       
-      // Initialize sample campaigns for new users
-      if (campaigns.length === 0) {
-        campaigns = await campaignService.initializeSampleCampaigns(userId);
-      }
-      
       // Filter to only show active campaigns
       const activeCampaigns = campaigns.filter(campaign => 
         campaign.status === 'active' || campaign.status === 'enabled'
       );
+      
+      // Initialize sample campaigns ONLY if no Google Ads connection AND no active campaigns
+      if (activeCampaigns.length === 0) {
+        const hasGoogleAdsConnection = await campaignService.hasGoogleAdsConnection(userId);
+        if (!hasGoogleAdsConnection) {
+          campaigns = await campaignService.initializeSampleCampaigns(userId);
+          res.json(campaigns);
+          return;
+        }
+      }
       
       res.json(activeCampaigns);
     } catch (error) {
