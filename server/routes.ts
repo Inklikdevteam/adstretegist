@@ -324,14 +324,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Campaign not found" });
       }
 
-      // Update campaign goals
+      // Update campaign goals using correct schema fields
       const [updatedCampaign] = await db
         .update(campaigns)
         .set({
-          goalType,
-          targetValue: parseFloat(targetValue || 0),
-          targetRoas: targetRoas ? parseFloat(targetRoas) : null,
-          naturalLanguageGoal,
+          targetCpa: goalType === 'cpa' ? targetValue : null,
+          targetRoas: targetRoas ? targetRoas : null,
+          goalDescription: naturalLanguageGoal,
           updatedAt: new Date()
         })
         .where(and(eq(campaigns.id, campaignId), eq(campaigns.userId, userId)))
