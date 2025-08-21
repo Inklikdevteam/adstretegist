@@ -72,7 +72,16 @@ export class MultiAIService {
 
   async generateSingle(prompt: string, provider: string, campaign?: Campaign | null): Promise<AIResponse> {
     const campaignContext = this.buildCampaignContext(campaign);
-    const fullPrompt = `${campaignContext}\n\n${prompt}\n\nIMPORTANT: This is an Indian market campaign - use only INR (₹) currency in your response, never USD ($) or other currencies. Provide a detailed analysis with specific recommendations and confidence score (0-100).`;
+    const fullPrompt = `${campaignContext}\n\n${prompt}\n\nCRITICAL REQUIREMENTS:
+- Use only INR (₹) currency, never USD ($)
+- Provide SPECIFIC keywords, not generic suggestions
+- Include exact ₹ bid amounts and budget recommendations  
+- Give measurable performance targets and timelines
+- Analyze campaign name to infer business type and suggest relevant keywords
+- Provide confidence score (0-100) for all recommendations
+- Focus on actionable insights that can be implemented immediately
+
+AVOID generic advice - be specific to the campaign and Indian market!`;
 
     switch (provider.toLowerCase()) {
       case 'openai':
