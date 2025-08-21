@@ -412,6 +412,114 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // New AI Chat Endpoints for better conversation handling
+  
+  // General chat query endpoint
+  app.post('/api/chat/query', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { query, campaignId, provider = 'OpenAI', campaigns = [] } = req.body;
+      
+      if (!query?.trim()) {
+        return res.status(400).json({ message: 'Query is required' });
+      }
+
+      let campaign = null;
+      if (campaignId) {
+        // Get specific campaign if provided
+        campaign = await campaignService.getCampaignById(campaignId, userId);
+      } else if (campaigns.length > 0) {
+        // Use the first campaign from provided list as context
+        campaign = campaigns[0];
+      }
+
+      // Create contextual prompt for AI
+      let contextualPrompt = `You are an expert Google Ads strategist for the Indian market. Always use INR (₹) currency.
+
+User Query: ${query}
+
+Available Campaign Context: ${campaigns.length} campaigns loaded
+${campaign ? `
+Specific Campaign Focus: ${campaign.name}
+- Type: ${campaign.type}
+- Status: ${campaign.status} 
+- Daily Budget: ₹${campaign.dailyBudget}
+- 7-day Spend: ₹${campaign.spend7d}
+- Conversions: ${campaign.conversions7d}
+- Actual CPA: ${campaign.actualCpa ? '₹' + campaign.actualCpa : 'Not available'}
+- Target CPA: ${campaign.targetCpa ? '₹' + campaign.targetCpa : 'Not set'}
+- Target ROAS: ${campaign.targetRoas || 'Not set'}
+- Goal: ${campaign.goalDescription || 'No specific goal set'}
+` : ''}
+
+Please provide specific, actionable advice for the Indian market with proper INR formatting. Be conversational and helpful.`;
+
+      // Generate response using the multiAI service
+      const response = await multiAIService.generateSingle(
+        contextualPrompt,
+        provider,
+        campaign
+      );
+      
+      res.json({
+        response: response.content,
+        provider: provider,
+        confidence: response.confidence || 85,
+        campaignContext: campaign?.name || 'General analysis',
+        model: provider
+      });
+    } catch (error) {
+      console.error("Error processing chat query:", error);
+      res.status(500).json({ message: "Failed to process chat query", error: error.message });
+    }
+  });
+
+  // Chat consensus endpoint for multi-AI responses
+  app.post('/api/chat/consensus', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { query, campaignId, campaigns = [] } = req.body;
+      
+      if (!query?.trim()) {
+        return res.status(400).json({ message: 'Query is required' });
+      }
+
+      let campaign = null;
+      if (campaignId) {
+        campaign = await campaignService.getCampaignById(campaignId, userId);
+      } else if (campaigns.length > 0) {
+        campaign = campaigns[0];
+      }
+
+      if (!multiAIService.isAvailable()) {
+        return res.status(503).json({ message: "Multi-AI service not available" });
+      }
+
+      // Generate consensus using all available AI models
+      const consensus = await multiAIService.generateWithConsensus(
+        `User question: ${query}
+
+Please analyze this Google Ads question for the Indian market (always use INR ₹). ${campaign ? `
+Focus on campaign: ${campaign.name}
+Current performance: ${campaign.conversions7d} conversions, ₹${campaign.actualCpa || 'N/A'} CPA, ₹${campaign.spend7d} spend in 7 days.` : ''}
+
+Provide specific, actionable recommendations.`,
+        campaign
+      );
+      
+      res.json({
+        response: consensus.finalRecommendation,
+        consensus: consensus,
+        provider: 'Multi-AI Consensus',
+        confidence: consensus.confidence,
+        availableModels: multiAIService.getAvailableProviders()
+      });
+    } catch (error) {
+      console.error("Error generating chat consensus:", error);
+      res.status(500).json({ message: "Failed to generate consensus", error: error.message });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

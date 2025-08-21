@@ -78,33 +78,50 @@ export default function ChatInterface({ campaigns = [], isOpen, onClose }: ChatI
     setIsLoading(true);
 
     try {
-      // Determine if this is a specific campaign query
-      const campaignMatch = input.toLowerCase().match(/campaign (\w+)|(\w+) campaign/);
+      // Enhanced campaign detection with better pattern matching
       let targetCampaign = null;
       
-      if (campaignMatch) {
-        const campaignName = campaignMatch[1] || campaignMatch[2];
-        targetCampaign = campaigns.find(c => 
-          c.name.toLowerCase().includes(campaignName.toLowerCase())
-        );
+      // Look for campaign names mentioned in the input
+      if (campaigns && campaigns.length > 0) {
+        // First try to find exact campaign name matches
+        targetCampaign = campaigns.find(c => {
+          const campaignName = c.name.toLowerCase();
+          const inputLower = input.toLowerCase();
+          // Check for exact name mentions or partial matches
+          return inputLower.includes(campaignName) || 
+                 campaignName.includes(inputLower.replace(/[^a-z0-9\s]/g, '').trim());
+        });
+
+        // If no exact match, try finding by keywords (incrediblegifts, pmax, etc.)
+        if (!targetCampaign) {
+          const keywords = input.toLowerCase().match(/\b(?:incrediblegifts|pmax|sleep\s*spa|inklik|sanfort|ingrid|teenager|bina|frons|gsl)\b/g);
+          if (keywords && keywords.length > 0) {
+            targetCampaign = campaigns.find(c => {
+              const campaignName = c.name.toLowerCase();
+              return keywords.some(keyword => campaignName.includes(keyword.replace(/\s+/g, '')));
+            });
+          }
+        }
       }
 
-      // Generate AI response based on query type
+      // Generate AI response using new general chat endpoint
       let response;
       if (input.toLowerCase().includes('consensus') || input.toLowerCase().includes('compare')) {
         // Use consensus generation for comparison queries
-        response = await apiRequest("POST", "/api/recommendations/generate-consensus", {
-          campaignId: targetCampaign?.id || campaigns[0]?.id,
-          prompt: input
+        response = await apiRequest("POST", "/api/chat/consensus", {
+          query: input,
+          campaignId: targetCampaign?.id,
+          provider: selectedProvider,
+          campaigns: campaigns.slice(0, 5) // Send top 5 campaigns for context
         });
         
         const aiMessage: ChatMessage = {
           id: Date.now().toString() + '_ai',
           type: 'ai',
-          content: response.consensus?.finalRecommendation || 'No recommendation received',
+          content: response.response || response.consensus?.finalRecommendation || 'No recommendation received',
           timestamp: new Date(),
-          provider: response.consensus?.models?.join(', ') || 'Unknown',
-          confidence: response.consensus?.confidence || 0,
+          provider: response.consensus?.models?.join(', ') || 'Consensus',
+          confidence: response.consensus?.confidence || response.confidence || 0,
           context: {
             agreementLevel: response.consensus?.agreementLevel || 0,
             modelsUsed: response.consensus?.models?.length || 0
@@ -113,19 +130,20 @@ export default function ChatInterface({ campaigns = [], isOpen, onClose }: ChatI
         
         setMessages(prev => [...prev, aiMessage]);
       } else {
-        // Use single provider for specific queries
-        response = await apiRequest("POST", "/api/recommendations/generate-with-provider", {
-          campaignId: targetCampaign?.id || campaigns[0]?.id,
+        // Use general chat endpoint for all queries
+        response = await apiRequest("POST", "/api/chat/query", {
+          query: input,
+          campaignId: targetCampaign?.id,
           provider: selectedProvider,
-          prompt: input
+          campaigns: campaigns.slice(0, 10) // Send campaign context
         });
         
         const aiMessage: ChatMessage = {
           id: Date.now().toString() + '_ai',
           type: 'ai',
-          content: response?.content || 'No response received',
+          content: response?.response || response?.content || 'No response received',
           timestamp: new Date(),
-          provider: response?.provider || 'Unknown',
+          provider: response?.provider || selectedProvider,
           confidence: response?.confidence || 0,
           context: {
             model: response?.model || 'Unknown',

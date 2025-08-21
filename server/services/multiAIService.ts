@@ -192,7 +192,10 @@ Goal: ${campaign.goalDescription || 'No specific goal set'}`;
         ],
         max_tokens: 2000,
         temperature: 0.7,
-        stream: false
+        top_p: 0.9,
+        stream: false,
+        return_images: false,
+        return_related_questions: false
       }),
     });
 
