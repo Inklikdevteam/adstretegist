@@ -70,7 +70,7 @@ export class MultiAIService {
     return this.getAvailableProviders().length > 0;
   }
 
-  async generateSingle(prompt: string, provider: string, campaign: Campaign): Promise<AIResponse> {
+  async generateSingle(prompt: string, provider: string, campaign?: Campaign | null): Promise<AIResponse> {
     const campaignContext = this.buildCampaignContext(campaign);
     const fullPrompt = `${campaignContext}\n\n${prompt}\n\nIMPORTANT: This is an Indian market campaign - use only INR (₹) currency in your response, never USD ($) or other currencies. Provide a detailed analysis with specific recommendations and confidence score (0-100).`;
 
@@ -86,7 +86,7 @@ export class MultiAIService {
     }
   }
 
-  async generateWithConsensus(prompt: string, campaign: Campaign): Promise<ConsensusResponse> {
+  async generateWithConsensus(prompt: string, campaign?: Campaign | null): Promise<ConsensusResponse> {
     const availableProviders = this.getAvailableProviders();
     if (availableProviders.length < 2) {
       throw new Error('At least 2 AI providers are required for consensus generation');
@@ -112,14 +112,21 @@ export class MultiAIService {
     return await this.buildConsensus(responses, campaign);
   }
 
-  private buildCampaignContext(campaign: Campaign): string {
+  private buildCampaignContext(campaign: Campaign | null | undefined): string {
+    if (!campaign) {
+      return `Campaign Analysis Context for Indian Market:
+General analysis requested - No specific campaign selected
+Available context: User has 223+ campaigns loaded
+Focus: Provide general Google Ads optimization advice for the Indian market using INR (₹) currency`;
+    }
+
     return `Campaign Analysis Context for Indian Market:
-Campaign Name: ${campaign.name}
-Type: ${campaign.type}
-Status: ${campaign.status}
-Daily Budget: ₹${campaign.dailyBudget}
-7-Day Spend: ₹${campaign.spend7d}
-7-Day Conversions: ${campaign.conversions7d}
+Campaign Name: ${campaign.name || 'Unnamed Campaign'}
+Type: ${campaign.type || 'Unknown'}
+Status: ${campaign.status || 'Unknown'}
+Daily Budget: ₹${campaign.dailyBudget || '0'}
+7-Day Spend: ₹${campaign.spend7d || '0'}
+7-Day Conversions: ${campaign.conversions7d || 0}
 Actual CPA: ${campaign.actualCpa ? `₹${campaign.actualCpa}` : 'N/A'}
 Actual ROAS: ${campaign.actualRoas || 'N/A'}
 Target CPA: ${campaign.targetCpa ? `₹${campaign.targetCpa}` : 'N/A'}
