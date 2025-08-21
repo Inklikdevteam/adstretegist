@@ -49,29 +49,28 @@ export class CampaignService {
     }
   }
   async getUserCampaigns(userId: string): Promise<Campaign[]> {
-    const userIdInt = parseInt(userId);
-    console.log('CampaignService getUserCampaigns for userId:', userIdInt);
+    console.log('CampaignService getUserCampaigns for userId:', userId);
     
     // First check if user has connected Google Ads accounts
     const connectedAccounts = await db
       .select()
       .from(googleAdsAccounts)
-      .where(and(eq(googleAdsAccounts.userId, userIdInt), eq(googleAdsAccounts.isActive, true)));
+      .where(and(eq(googleAdsAccounts.userId, userId), eq(googleAdsAccounts.isActive, true)));
     
     if (connectedAccounts.length > 0) {
       // User has connected Google Ads - fetch real campaigns
-      return await this.fetchRealCampaigns(userIdInt.toString(), connectedAccounts);
+      return await this.fetchRealCampaigns(userId, connectedAccounts);
     }
     
     // No connected accounts - check for existing campaigns or create samples
     const existingCampaigns = await db
       .select()
       .from(campaigns)
-      .where(and(eq(campaigns.userId, userIdInt), eq(campaigns.status, 'active')));
+      .where(and(eq(campaigns.userId, userId), eq(campaigns.status, 'active')));
     
     if (existingCampaigns.length === 0) {
       // Initialize sample campaigns for users without Google Ads
-      return await this.initializeSampleCampaigns(userIdInt.toString());
+      return await this.initializeSampleCampaigns(userId);
     }
     
     return existingCampaigns;
@@ -170,13 +169,12 @@ export class CampaignService {
   }
 
   async getCampaignById(id: string, userId: string): Promise<Campaign | undefined> {
-    const userIdInt = parseInt(userId);
-    console.log('CampaignService getCampaignById for userId:', userIdInt, 'campaignId:', id);
+    console.log('CampaignService getCampaignById for userId:', userId, 'campaignId:', id);
     
     const [campaign] = await db
       .select()
       .from(campaigns)
-      .where(and(eq(campaigns.id, id), eq(campaigns.userId, userIdInt)));
+      .where(and(eq(campaigns.id, id), eq(campaigns.userId, userId)));
     return campaign;
   }
 
@@ -263,8 +261,7 @@ export class CampaignService {
     userId: string, 
     goals: { targetCpa?: string; targetRoas?: string; goalDescription?: string }
   ): Promise<Campaign | undefined> {
-    const userIdInt = parseInt(userId);
-    console.log('CampaignService updateCampaignGoals for userId:', userIdInt, 'campaignId:', campaignId);
+    console.log('CampaignService updateCampaignGoals for userId:', userId, 'campaignId:', campaignId);
     
     const [campaign] = await db
       .update(campaigns)
@@ -273,7 +270,7 @@ export class CampaignService {
         updatedAt: new Date(),
         lastModified: new Date()
       })
-      .where(and(eq(campaigns.id, campaignId), eq(campaigns.userId, userIdInt)))
+      .where(and(eq(campaigns.id, campaignId), eq(campaigns.userId, userId)))
       .returning();
     return campaign;
   }
