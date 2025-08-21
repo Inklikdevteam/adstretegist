@@ -30,6 +30,11 @@ export class AIRecommendationService {
     const campaigns = await this.campaignService.getUserCampaigns(userId);
     const newRecommendations: Recommendation[] = [];
 
+    // If no campaigns available, return empty array
+    if (!campaigns || campaigns.length === 0) {
+      return [];
+    }
+
     // Clear old pending recommendations safely by first deleting audit logs
     const pendingRecommendations = await db.select({ id: recommendations.id }).from(recommendations).where(eq(recommendations.status, 'pending'));
     
@@ -41,6 +46,13 @@ export class AIRecommendationService {
 
     for (const campaign of campaigns) {
       try {
+        // Double-check campaign still exists before creating recommendation
+        const [campaignExists] = await db.select({ id: campaigns.id }).from(campaigns).where(eq(campaigns.id, campaign.id)).limit(1);
+        if (!campaignExists) {
+          console.warn(`Campaign ${campaign.id} no longer exists, skipping recommendation generation`);
+          continue;
+        }
+
         const analysis = await analyzeCampaignPerformance(campaign);
         
         const recommendationData: InsertRecommendation = {
