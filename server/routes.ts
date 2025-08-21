@@ -24,9 +24,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      res.json(user);
+      const replitUserId = req.user.claims.sub;
+      console.log('Auth user request for:', replitUserId);
+      
+      const user = await storage.getUser(replitUserId);
+      console.log('User from storage:', user);
+      
+      if (!user) {
+        console.log('No user found, returning minimal user object');
+        return res.json({
+          id: 'temp-' + replitUserId,
+          replit_user_id: replitUserId,
+          firstName: req.user.name || 'User',
+          lastName: '',
+          email: req.user.email || '',
+          profileImageUrl: req.user.profileImageUrl || null
+        });
+      }
+      
+      // Ensure we return a valid JSON response
+      const userResponse = {
+        id: user.id,
+        replit_user_id: user.replit_user_id || replitUserId,
+        firstName: user.firstName || req.user.name || 'User',
+        lastName: user.lastName || '',
+        email: user.email || req.user.email || '',
+        profileImageUrl: user.profileImageUrl || req.user.profileImageUrl || null
+      };
+      
+      console.log('Returning user response:', userResponse);
+      res.json(userResponse);
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });

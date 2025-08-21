@@ -28,7 +28,7 @@ export const sessions = pgTable(
 // User storage table.
 // (IMPORTANT) This table is mandatory for Replit Auth, don't drop it.
 export const users = pgTable("users", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  id: integer("id").primaryKey(),
   email: varchar("email").unique(),
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
@@ -40,7 +40,7 @@ export const users = pgTable("users", {
 // Google Ads account connections
 export const googleAdsAccounts = pgTable("google_ads_accounts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id),
+  userId: integer("user_id").notNull().references(() => users.id),
   customerId: varchar("customer_id").notNull(),
   customerName: varchar("customer_name").notNull(),
   refreshToken: text("refresh_token").notNull(),
@@ -55,7 +55,7 @@ export const googleAdsAccounts = pgTable("google_ads_accounts", {
 
 export const campaigns = pgTable("campaigns", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id),
+  userId: integer("user_id").notNull().references(() => users.id),
   googleAdsAccountId: varchar("google_ads_account_id").references(() => googleAdsAccounts.id),
   googleAdsCampaignId: varchar("google_ads_campaign_id"), // The actual Google Ads campaign ID
   name: varchar("name").notNull(),
@@ -94,7 +94,7 @@ export const recommendations = pgTable("recommendations", {
 
 export const auditLogs = pgTable("audit_logs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").references(() => users.id),
+  userId: integer("user_id").references(() => users.id),
   campaignId: varchar("campaign_id").references(() => campaigns.id),
   recommendationId: varchar("recommendation_id").references(() => recommendations.id),
   action: varchar("action").notNull(),
