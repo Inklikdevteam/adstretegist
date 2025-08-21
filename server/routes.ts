@@ -192,9 +192,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/recommendations/generate', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      console.log(`DEBUG: Generating recommendations for user ${userId}`);
-      const recommendations = await aiService.generateRecommendationsForUser(userId);
+      const replitUserId = req.user.claims.sub;
+      const user = await storage.getUser(replitUserId);
+      
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+      
+      const dbUserId = user.id.toString();
+      console.log(`DEBUG: Generating recommendations for user ${dbUserId} (Replit: ${replitUserId})`);
+      const recommendations = await aiService.generateRecommendationsForUser(dbUserId);
       console.log(`DEBUG: Generated ${recommendations.length} recommendations`);
       res.json({ 
         message: "Recommendations generated successfully",
@@ -386,10 +393,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Google Ads data refresh endpoint
   app.post('/api/google-ads/refresh', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const replitUserId = req.user.claims.sub;
+      const user = await storage.getUser(replitUserId);
+      
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+      
+      const dbUserId = user.id;
+      console.log(`DEBUG: Refreshing Google Ads data for user ${dbUserId} (Replit: ${replitUserId})`);
       
       // Clear existing data to force refresh safely
-      const userCampaigns = await db.select({ id: campaigns.id }).from(campaigns).where(eq(campaigns.userId, userId));
+      const userCampaigns = await db.select({ id: campaigns.id }).from(campaigns).where(eq(campaigns.userId, dbUserId));
       const campaignIds = userCampaigns.map(c => c.id);
 
       // Clean up audit logs and recommendations first
@@ -399,10 +414,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Finally delete campaigns
-      await db.delete(campaigns).where(eq(campaigns.userId, userId));
+      await db.delete(campaigns).where(eq(campaigns.userId, dbUserId));
       
       // Get fresh campaigns (this will trigger real data fetch)
-      const freshCampaigns = await campaignService.getUserCampaigns(userId);
+      const freshCampaigns = await campaignService.getUserCampaigns(dbUserId.toString());
       
       res.json({ 
         message: `Refreshed ${freshCampaigns.length} campaigns from Google Ads`,
