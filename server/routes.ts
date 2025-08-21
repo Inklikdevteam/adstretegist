@@ -112,8 +112,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/campaigns/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const campaign = await campaignService.getCampaignById(req.params.id, userId);
+      const replitUserId = req.user.claims.sub;
+      const user = await storage.getUser(replitUserId);
+      
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+      
+      const dbUserId = user.id.toString();
+      const campaign = await campaignService.getCampaignById(req.params.id, dbUserId);
       
       if (!campaign) {
         return res.status(404).json({ message: "Campaign not found" });
@@ -128,10 +135,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/campaigns', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const replitUserId = req.user.claims.sub;
+      const user = await storage.getUser(replitUserId);
+      
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+      
+      const dbUserId = user.id;
       const validatedData = insertCampaignSchema.parse({
         ...req.body,
-        userId
+        userId: dbUserId
       });
       
       const campaign = await campaignService.createCampaign(validatedData);
@@ -181,8 +195,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Recommendations endpoints
   app.get('/api/recommendations', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const recommendations = await aiService.getRecommendationsByUser(userId);
+      const replitUserId = req.user.claims.sub;
+      const user = await storage.getUser(replitUserId);
+      
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+      
+      const dbUserId = user.id.toString();
+      const recommendations = await aiService.getRecommendationsByUser(dbUserId);
       res.json(recommendations);
     } catch (error) {
       console.error("Error fetching recommendations:", error);
@@ -217,8 +238,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/recommendations/:id/apply', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const success = await aiService.applyRecommendation(req.params.id, userId);
+      const replitUserId = req.user.claims.sub;
+      const user = await storage.getUser(replitUserId);
+      
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+      
+      const dbUserId = user.id.toString();
+      const success = await aiService.applyRecommendation(req.params.id, dbUserId);
       
       if (!success) {
         return res.status(400).json({ message: "Failed to apply recommendation" });
@@ -233,8 +261,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/recommendations/:id/dismiss', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const success = await aiService.dismissRecommendation(req.params.id, userId);
+      const replitUserId = req.user.claims.sub;
+      const user = await storage.getUser(replitUserId);
+      
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+      
+      const dbUserId = user.id.toString();
+      const success = await aiService.dismissRecommendation(req.params.id, dbUserId);
       
       if (!success) {
         return res.status(400).json({ message: "Failed to dismiss recommendation" });
@@ -250,7 +285,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Enhanced 1-click apply with real campaign changes
   app.post('/api/recommendations/:id/apply-live', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const replitUserId = req.user.claims.sub;
+      const user = await storage.getUser(replitUserId);
+      
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+      
+      const dbUserId = user.id.toString();
       const recommendation = await storage.getRecommendations(req.params.id);
       
       if (!recommendation.length) {
@@ -258,7 +300,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Apply the recommendation and make real changes
-      const result = await aiService.applyRecommendationLive(req.params.id, userId);
+      const result = await aiService.applyRecommendationLive(req.params.id, dbUserId);
       
       res.json({
         message: "Recommendation applied with live changes",
@@ -274,7 +316,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Multi-AI consensus recommendations
   app.post('/api/recommendations/generate-consensus', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const replitUserId = req.user.claims.sub;
+      const user = await storage.getUser(replitUserId);
+      
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+      
+      const dbUserId = user.id.toString();
       const { campaignId, prompt } = req.body;
       
       if (!multiAIService.isAvailable()) {
@@ -282,7 +331,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Get campaign context using campaign service
-      const campaign = await campaignService.getCampaignById(campaignId, userId);
+      const campaign = await campaignService.getCampaignById(campaignId, dbUserId);
       
       if (!campaign) {
         return res.status(404).json({ message: "Campaign not found" });
@@ -352,7 +401,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Real-time campaign monitoring endpoint
   app.get('/api/campaigns/:id/monitor', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const replitUserId = req.user.claims.sub;
+      const user = await storage.getUser(replitUserId);
+      
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+      
+      const dbUserId = user.id.toString();
       const campaignId = req.params.id;
       
       // This would integrate with real-time Google Ads data
@@ -380,8 +436,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Audit trail endpoint
   app.get('/api/audit-trail', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const auditTrail = await aiService.getAuditTrail(userId);
+      const replitUserId = req.user.claims.sub;
+      const user = await storage.getUser(replitUserId);
+      
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+      
+      const dbUserId = user.id.toString();
+      const auditTrail = await aiService.getAuditTrail(dbUserId);
       res.json(auditTrail);
     } catch (error) {
       console.error("Error fetching audit trail:", error);
@@ -432,7 +495,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update Google Ads customer ID endpoint
   app.post('/api/google-ads/update-customer-id', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const replitUserId = req.user.claims.sub;
+      const user = await storage.getUser(replitUserId);
+      
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+      
+      const dbUserId = user.id;
       const { customerId, customerName } = req.body;
       
       if (!customerId) {
@@ -447,7 +517,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           customerName: customerName || 'Google Ads Account',
           updatedAt: new Date()
         })
-        .where(and(eq(googleAdsAccounts.userId, userId), eq(googleAdsAccounts.isActive, true)))
+        .where(and(eq(googleAdsAccounts.userId, dbUserId), eq(googleAdsAccounts.isActive, true)))
         .returning();
       
       if (!updatedAccount) {
@@ -469,7 +539,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // General chat query endpoint
   app.post('/api/chat/query', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const replitUserId = req.user.claims.sub;
+      const user = await storage.getUser(replitUserId);
+      
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+      
+      const dbUserId = user.id.toString();
       const { query, campaignId, provider = 'OpenAI', campaigns = [] } = req.body;
       
       if (!query?.trim()) {
@@ -479,7 +556,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let campaign = null;
       if (campaignId) {
         // Get specific campaign if provided
-        campaign = await campaignService.getCampaignById(campaignId, userId);
+        campaign = await campaignService.getCampaignById(campaignId, dbUserId);
       } else if (campaigns.length > 0) {
         // Use the first campaign from provided list as context
         campaign = campaigns[0];
@@ -584,7 +661,14 @@ CRITICAL: Provide SPECIFIC suggestions with exact keywords, bid amounts in ₹, 
   // Chat consensus endpoint for multi-AI responses
   app.post('/api/chat/consensus', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const replitUserId = req.user.claims.sub;
+      const user = await storage.getUser(replitUserId);
+      
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+      
+      const dbUserId = user.id.toString();
       const { query, campaignId, campaigns = [] } = req.body;
       
       if (!query?.trim()) {
@@ -593,7 +677,7 @@ CRITICAL: Provide SPECIFIC suggestions with exact keywords, bid amounts in ₹, 
 
       let campaign = null;
       if (campaignId) {
-        campaign = await campaignService.getCampaignById(campaignId, userId);
+        campaign = await campaignService.getCampaignById(campaignId, dbUserId);
       } else if (campaigns.length > 0) {
         campaign = campaigns[0];
       }

@@ -142,8 +142,15 @@ export async function setupGoogleAdsAuth(app: Express) {
         return res.status(401).json({ message: 'Unauthorized' });
       }
 
-      const userId = req.user.claims.sub;
-      const accounts = await storage.getGoogleAdsAccounts(userId);
+      const replitUserId = req.user.claims.sub;
+      const user = await storage.getUser(replitUserId);
+      
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+      
+      const dbUserId = user.id.toString();
+      const accounts = await storage.getGoogleAdsAccounts(dbUserId);
       
       res.json(accounts);
     } catch (error) {
@@ -159,10 +166,17 @@ export async function setupGoogleAdsAuth(app: Express) {
         return res.status(401).json({ message: 'Unauthorized' });
       }
 
-      const { accountId } = req.params;
-      const userId = req.user.claims.sub;
+      const replitUserId = req.user.claims.sub;
+      const user = await storage.getUser(replitUserId);
       
-      await storage.deleteGoogleAdsAccount(accountId, userId);
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+      
+      const { accountId } = req.params;
+      const dbUserId = user.id.toString();
+      
+      await storage.deleteGoogleAdsAccount(accountId, dbUserId);
       
       res.json({ message: 'Google Ads account disconnected' });
     } catch (error) {
@@ -178,7 +192,14 @@ export async function setupGoogleAdsAuth(app: Express) {
         return res.status(401).json({ message: 'Unauthorized' });
       }
 
-      const userId = req.user.claims.sub;
+      const replitUserId = req.user.claims.sub;
+      const user = await storage.getUser(replitUserId);
+      
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+      
+      const dbUserId = user.id.toString();
       const { accountId } = req.body;
       
       // This would implement the actual sync logic with Google Ads API
