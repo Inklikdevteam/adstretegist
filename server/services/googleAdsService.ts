@@ -84,6 +84,10 @@ export class GoogleAdsService {
       if (clientAccounts.length > 0) {
         // This is a manager account - get campaigns from all client accounts
         console.log(`Manager account detected. Fetching campaigns from ${clientAccounts.length} client accounts...`);
+        console.log('DEBUG: Available client accounts:', clientAccounts.map(acc => ({ 
+          id: acc.id, 
+          name: acc.name 
+        })));
         const allCampaigns: GoogleAdsCampaign[] = [];
         
         for (const clientAccount of clientAccounts) {
@@ -342,17 +346,28 @@ export class GoogleAdsService {
 
   async getClientAccounts(): Promise<Array<{id: string, name: string}>> {
     try {
+      console.log(`DEBUG: Querying client accounts for manager customer ID: ${this.config.customerId}`);
+      
       const accounts = await this.customer.query(`
         SELECT 
           customer_client.id,
           customer_client.descriptive_name,
           customer_client.manager,
-          customer_client.test_account
+          customer_client.test_account,
+          customer_client.status
         FROM customer_client
         WHERE customer_client.status = 'ENABLED'
         AND customer_client.manager = false
         AND customer_client.test_account = false
       `);
+      
+      console.log(`DEBUG: Raw client accounts response:`, accounts.map((row: any) => ({
+        id: row.customer_client.id?.toString(),
+        name: row.customer_client.descriptive_name,
+        manager: row.customer_client.manager,
+        testAccount: row.customer_client.test_account,
+        status: row.customer_client.status
+      })));
       
       return accounts.map((row: any) => ({
         id: row.customer_client.id.toString(),
