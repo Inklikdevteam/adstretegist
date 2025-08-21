@@ -56,7 +56,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         campaigns = await campaignService.initializeSampleCampaigns(userId);
       }
       
-      res.json(campaigns);
+      // Filter to only show active campaigns
+      const activeCampaigns = campaigns.filter(campaign => 
+        campaign.status === 'active' || campaign.status === 'enabled'
+      );
+      
+      res.json(activeCampaigns);
     } catch (error) {
       console.error("Error fetching campaigns:", error);
       res.status(500).json({ message: "Failed to fetch campaigns" });

@@ -61,7 +61,10 @@ export class CampaignService {
     }
     
     // No connected accounts - check for existing campaigns or create samples
-    const existingCampaigns = await db.select().from(campaigns).where(eq(campaigns.userId, userId));
+    const existingCampaigns = await db
+      .select()
+      .from(campaigns)
+      .where(and(eq(campaigns.userId, userId), eq(campaigns.status, 'active')));
     
     if (existingCampaigns.length === 0) {
       // Initialize sample campaigns for users without Google Ads
@@ -90,10 +93,15 @@ export class CampaignService {
 
       const realCampaigns = await googleAdsService.getCampaigns();
       
+      // Filter only active/enabled campaigns
+      const activeCampaigns = realCampaigns.filter(campaign => 
+        campaign.status && campaign.status.toString().toUpperCase() === 'ENABLED'
+      );
+      
       // Clear existing campaigns and related data safely (cascade delete)
       await this.cleanupUserCampaigns(userId);
       
-      const campaignsToInsert: InsertCampaign[] = realCampaigns.map(campaign => ({
+      const campaignsToInsert: InsertCampaign[] = activeCampaigns.map(campaign => ({
         userId,
         name: campaign.name || 'Unnamed Campaign',
         type: this.mapCampaignType(campaign.type),

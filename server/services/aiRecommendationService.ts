@@ -191,7 +191,7 @@ export class AIRecommendationService {
     
     const summary = {
       totalCampaigns: campaigns.length,
-      activeCampaigns: campaigns.filter(c => c.status === 'active').length,
+      activeCampaigns: campaigns.filter(c => c.status === 'active' || c.status === 'enabled').length,
       recommendations: {
         actionable: pendingRecommendations.filter(r => r.type === 'actionable').length,
         monitor: pendingRecommendations.filter(r => r.type === 'monitor').length,

@@ -119,7 +119,7 @@ export class GoogleAdsService {
                 metrics.average_cpc,
                 metrics.conversions_from_interactions_rate
               FROM campaign 
-              WHERE campaign.status != 'REMOVED'
+              WHERE campaign.status = 'ENABLED'
               AND segments.date DURING LAST_7_DAYS
             `);
 
@@ -169,7 +169,7 @@ export class GoogleAdsService {
             metrics.average_cpc,
             metrics.conversions_from_interactions_rate
           FROM campaign 
-          WHERE campaign.status != 'REMOVED'
+          WHERE campaign.status = 'ENABLED'
           AND segments.date DURING LAST_7_DAYS
         `);
 
