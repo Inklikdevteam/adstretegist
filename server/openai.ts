@@ -78,6 +78,8 @@ export async function analyzeCampaignPerformance(
     }
     `;
 
+    console.log(`DEBUG: Analyzing campaign: ${campaign.name}`);
+    
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [
@@ -93,7 +95,9 @@ export async function analyzeCampaignPerformance(
       response_format: { type: "json_object" },
     });
 
+    console.log(`DEBUG: OpenAI response for ${campaign.name}:`, response.choices[0].message.content);
     const result = JSON.parse(response.choices[0].message.content || '{}');
+    console.log(`DEBUG: Parsed result:`, result);
     
     return {
       recommendation_type: result.recommendation_type || 'monitor',
