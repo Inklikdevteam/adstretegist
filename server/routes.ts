@@ -49,31 +49,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/campaigns', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      console.log(`DEBUG: Fetching campaigns for user ${userId}`);
-      
       let campaigns = await campaignService.getUserCampaigns(userId);
-      console.log(`DEBUG: Retrieved ${campaigns.length} campaigns from service`);
-      console.log('DEBUG: Campaign statuses from service:', campaigns.map(c => ({ name: c.name, status: c.status })));
       
       // Filter to only show active campaigns
       const activeCampaigns = campaigns.filter(campaign => 
         campaign.status === 'active' || campaign.status === 'enabled'
       );
-      console.log(`DEBUG: After filtering: ${activeCampaigns.length} active campaigns`);
       
       // Initialize sample campaigns ONLY if no Google Ads connection AND no active campaigns
       if (activeCampaigns.length === 0) {
         const hasGoogleAdsConnection = await campaignService.hasGoogleAdsConnection(userId);
-        console.log(`DEBUG: Has Google Ads connection: ${hasGoogleAdsConnection}`);
         if (!hasGoogleAdsConnection) {
           campaigns = await campaignService.initializeSampleCampaigns(userId);
-          console.log(`DEBUG: Created ${campaigns.length} sample campaigns`);
           res.json(campaigns);
           return;
         }
       }
       
-      console.log(`DEBUG: Returning ${activeCampaigns.length} campaigns to client`);
       res.json(activeCampaigns);
     } catch (error) {
       console.error("Error fetching campaigns:", error);
@@ -150,7 +142,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/recommendations/generate', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      console.log(`DEBUG: Generating recommendations for user ${userId}`);
       const recommendations = await aiService.generateRecommendationsForUser(userId);
+      console.log(`DEBUG: Generated ${recommendations.length} recommendations`);
       res.json({ 
         message: "Recommendations generated successfully",
         count: recommendations.length,
@@ -158,6 +152,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Error generating recommendations:", error);
+      console.error('Full error details:', JSON.stringify(error, null, 2));
       res.status(500).json({ message: "Failed to generate recommendations" });
     }
   });

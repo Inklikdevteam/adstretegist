@@ -92,14 +92,11 @@ export class CampaignService {
       });
 
       const realCampaigns = await googleAdsService.getCampaigns();
-      console.log(`DEBUG: Found ${realCampaigns.length} campaigns from Google Ads API`);
-      console.log('DEBUG: Campaign statuses:', realCampaigns.map(c => ({ name: c.name, status: c.status })));
       
       // Filter only active/enabled campaigns (status 2 = ENABLED in Google Ads API)
       const activeCampaigns = realCampaigns.filter(campaign => 
         campaign.status && (campaign.status === 2 || campaign.status === 'ENABLED' || campaign.status.toString().toUpperCase() === 'ENABLED')
       );
-      console.log(`DEBUG: After status filtering: ${activeCampaigns.length} active campaigns`);
       
       // Clear existing campaigns and related data safely (cascade delete)
       await this.cleanupUserCampaigns(userId);
@@ -120,13 +117,10 @@ export class CampaignService {
       }));
 
       if (campaignsToInsert.length > 0) {
-        console.log(`DEBUG: Inserting ${campaignsToInsert.length} campaigns to database`);
         const insertedCampaigns = await db.insert(campaigns).values(campaignsToInsert).returning();
-        console.log(`DEBUG: Successfully inserted ${insertedCampaigns.length} campaigns`);
         return insertedCampaigns;
       }
 
-      console.log('DEBUG: No campaigns to insert, returning empty array');
       return [];
     } catch (error) {
       console.error('Error fetching real Google Ads campaigns:', error);

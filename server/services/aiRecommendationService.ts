@@ -89,6 +89,7 @@ export class AIRecommendationService {
 
       } catch (error) {
         console.error(`Failed to generate recommendation for campaign ${campaign.id}:`, error);
+        console.error('Full error details:', JSON.stringify(error, null, 2));
       }
     }
 
