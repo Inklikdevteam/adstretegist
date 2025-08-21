@@ -49,26 +49,29 @@ export class CampaignService {
     }
   }
   async getUserCampaigns(userId: string): Promise<Campaign[]> {
+    const userIdInt = parseInt(userId);
+    console.log('CampaignService getUserCampaigns for userId:', userIdInt);
+    
     // First check if user has connected Google Ads accounts
     const connectedAccounts = await db
       .select()
       .from(googleAdsAccounts)
-      .where(and(eq(googleAdsAccounts.userId, userId), eq(googleAdsAccounts.isActive, true)));
+      .where(and(eq(googleAdsAccounts.userId, userIdInt), eq(googleAdsAccounts.isActive, true)));
     
     if (connectedAccounts.length > 0) {
       // User has connected Google Ads - fetch real campaigns
-      return await this.fetchRealCampaigns(userId, connectedAccounts);
+      return await this.fetchRealCampaigns(userIdInt.toString(), connectedAccounts);
     }
     
     // No connected accounts - check for existing campaigns or create samples
     const existingCampaigns = await db
       .select()
       .from(campaigns)
-      .where(and(eq(campaigns.userId, userId), eq(campaigns.status, 'active')));
+      .where(and(eq(campaigns.userId, userIdInt), eq(campaigns.status, 'active')));
     
     if (existingCampaigns.length === 0) {
       // Initialize sample campaigns for users without Google Ads
-      return await this.initializeSampleCampaigns(userId);
+      return await this.initializeSampleCampaigns(userIdInt.toString());
     }
     
     return existingCampaigns;

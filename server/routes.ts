@@ -31,25 +31,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('User from storage:', user);
       
       if (!user) {
-        console.log('No user found, returning minimal user object');
-        return res.json({
-          id: 'temp-' + replitUserId,
-          replit_user_id: replitUserId,
-          firstName: req.user.name || 'User',
-          lastName: '',
-          email: req.user.email || '',
-          profileImageUrl: req.user.profileImageUrl || null
-        });
+        console.log('No user found in database for Replit user:', replitUserId);
+        return res.status(401).json({ message: "User not found" });
       }
       
-      // Ensure we return a valid JSON response
+      // Return the actual user data
       const userResponse = {
         id: user.id,
-        replit_user_id: user.replit_user_id || replitUserId,
-        firstName: user.firstName || req.user.name || 'User',
+        firstName: user.firstName || 'User',
         lastName: user.lastName || '',
-        email: user.email || req.user.email || '',
-        profileImageUrl: user.profileImageUrl || req.user.profileImageUrl || null
+        email: user.email || '',
+        profileImageUrl: user.profileImageUrl || null
       };
       
       console.log('Returning user response:', userResponse);
@@ -65,9 +57,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const replitUserId = req.user.claims.sub;
       const user = await storage.getUser(replitUserId);
-      const dbUserId = user?.id?.toString() || replitUserId;
       
-      console.log('Dashboard summary for user:', { replitUserId, dbUserId });
+      if (!user) {
+        console.log('No user found for dashboard summary');
+        return res.status(401).json({ message: "User not found" });
+      }
+      
+      const dbUserId = user.id.toString();
+      console.log('Dashboard summary for user:', { replitUserId, dbUserId, userEmail: user.email });
+      
       const summary = await aiService.getDashboardSummary(dbUserId);
       res.json(summary);
     } catch (error) {
@@ -81,9 +79,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const replitUserId = req.user.claims.sub;
       const user = await storage.getUser(replitUserId);
-      const dbUserId = user?.id?.toString() || replitUserId;
       
-      console.log('Campaigns for user:', { replitUserId, dbUserId });
+      if (!user) {
+        console.log('No user found for campaigns');
+        return res.status(401).json({ message: "User not found" });
+      }
+      
+      const dbUserId = user.id.toString();
+      console.log('Campaigns for user:', { replitUserId, dbUserId, userEmail: user.email });
+      
       let campaigns = await campaignService.getUserCampaigns(dbUserId);
       
       // Filter to only show active campaigns
@@ -91,14 +95,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         campaign.status === 'active' || campaign.status === 'enabled'
       );
       
-      // Initialize sample campaigns ONLY if no Google Ads connection AND no active campaigns
+      // Since user logged in with Google Ads, they should have campaigns or we initialize sample ones
       if (activeCampaigns.length === 0) {
-        const hasGoogleAdsConnection = await campaignService.hasGoogleAdsConnection(userId);
-        if (!hasGoogleAdsConnection) {
-          campaigns = await campaignService.initializeSampleCampaigns(userId);
-          res.json(campaigns);
-          return;
-        }
+        console.log('No active campaigns found, initializing sample campaigns for user:', dbUserId);
+        campaigns = await campaignService.initializeSampleCampaigns(dbUserId);
+        res.json(campaigns);
+        return;
       }
       
       res.json(activeCampaigns);

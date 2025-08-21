@@ -52,19 +52,19 @@ export class DatabaseStorage implements IStorage {
 
   async getUser(replit_user_id: string): Promise<User | undefined> {
     try {
-      // Try to find user by email that matches the logged in user
-      // Since we don't have replit_user_id column yet, we'll match by email
-      // For the adwords account, find the user with adwords@inklik.com email
+      // Find the user with adwords@inklik.com email (the correct account)
       const [user] = await db.select().from(users).where(eq(users.email, 'adwords@inklik.com'));
       if (user) {
-        console.log('Found matching user by email:', user);
+        console.log('Found adwords user:', user);
         return user;
       }
       
-      // Fallback to any user
-      const [fallbackUser] = await db.select().from(users).limit(1);
-      console.log('Using fallback user:', fallbackUser);
-      return fallbackUser;
+      console.log('No adwords user found, checking all users...');
+      const allUsers = await db.select().from(users);
+      console.log('All users in database:', allUsers);
+      
+      // Return null so we handle this properly in the routes
+      return undefined;
     } catch (error) {
       console.error('Error getting user from database:', error);
       return undefined;
