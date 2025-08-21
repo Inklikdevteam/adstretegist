@@ -56,18 +56,42 @@ export class DatabaseStorage implements IStorage {
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
-    const [user] = await db
-      .insert(users)
-      .values(userData)
-      .onConflictDoUpdate({
-        target: users.id,
-        set: {
-          ...userData,
-          updatedAt: new Date(),
-        },
-      })
-      .returning();
-    return user;
+    try {
+      // First try to find existing user by email or ID
+      let existingUser = null;
+      if (userData.email) {
+        const [userByEmail] = await db.select().from(users).where(eq(users.email, userData.email));
+        existingUser = userByEmail;
+      }
+      
+      if (!existingUser && userData.id) {
+        const [userById] = await db.select().from(users).where(eq(users.id, userData.id));
+        existingUser = userById;
+      }
+
+      if (existingUser) {
+        // Update existing user
+        const [updatedUser] = await db
+          .update(users)
+          .set({
+            ...userData,
+            updatedAt: new Date(),
+          })
+          .where(eq(users.id, existingUser.id))
+          .returning();
+        return updatedUser;
+      } else {
+        // Create new user
+        const [newUser] = await db
+          .insert(users)
+          .values(userData)
+          .returning();
+        return newUser;
+      }
+    } catch (error) {
+      console.error('Error in upsertUser:', error);
+      throw error;
+    }
   }
 
   // Google Ads account operations

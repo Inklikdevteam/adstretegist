@@ -76,10 +76,13 @@ export async function setupAuth(app: Express) {
   app.use(passport.session());
 
   // Google OAuth Strategy with Google Ads permissions
+  const callbackURL = `${process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}` : 'http://localhost:5000'}/api/callback`;
+  console.log('OAuth Callback URL:', callbackURL);
+  
   passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_OAUTH_CLIENT_ID!,
     clientSecret: process.env.GOOGLE_OAUTH_CLIENT_SECRET!,
-    callbackURL: `${process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}` : 'http://localhost:5000'}/api/callback`,
+    callbackURL,
     scope: [
       'openid',
       'email', 
@@ -146,17 +149,37 @@ export async function setupAuth(app: Express) {
           console.warn('Could not get Google Ads info during login:', adsError);
         }
         
-        // Store Google Ads connection
-        await storage.createGoogleAdsAccount({
-          userId: profile.id,
-          customerId,
-          customerName,
-          refreshToken,
-          accessToken,
-          tokenExpiresAt: null,
-          isActive: true,
-          isPrimary: true,
-        });
+        // Store Google Ads connection (check for existing first)
+        try {
+          const existingAccounts = await storage.getGoogleAdsAccounts(profile.id);
+          const existingAccount = existingAccounts.find(acc => acc.customerId === customerId);
+          
+          if (existingAccount) {
+            // Update existing account with new tokens
+            await storage.updateGoogleAdsAccount(existingAccount.id, {
+              refreshToken,
+              accessToken,
+              tokenExpiresAt: null,
+              isActive: true,
+            });
+            console.log(`Updated existing Google Ads account: ${customerId}`);
+          } else {
+            // Create new account
+            await storage.createGoogleAdsAccount({
+              userId: profile.id,
+              customerId,
+              customerName,
+              refreshToken,
+              accessToken,
+              tokenExpiresAt: null,
+              isActive: true,
+              isPrimary: existingAccounts.length === 0, // Only primary if it's the first account
+            });
+            console.log(`Created new Google Ads account: ${customerId}`);
+          }
+        } catch (accountError) {
+          console.warn('Could not store Google Ads account:', accountError);
+        }
       }
       
       // Create session user object
@@ -201,7 +224,11 @@ export async function setupAuth(app: Express) {
     passport.authenticate('google', { 
       successRedirect: '/',
       failureRedirect: '/login-error'
-    })
+    }),
+    (error: any, req: any, res: any, next: any) => {
+      console.error('OAuth callback error:', error);
+      res.redirect('/login-error');
+    }
   );
 
   app.get("/api/logout", (req, res) => {
