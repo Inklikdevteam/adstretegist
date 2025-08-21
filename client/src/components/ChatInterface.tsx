@@ -7,6 +7,81 @@ import { Send, Bot, User, Zap, TrendingUp, Sparkles } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
+// Simple function to format AI responses with basic markdown-like formatting
+const formatMessageContent = (content: string) => {
+  if (!content) return content;
+  
+  // Split content into lines for processing
+  const lines = content.split('\n');
+  const formattedLines = lines.map((line, index) => {
+    let formattedLine = line;
+    
+    // Convert markdown headers
+    if (line.startsWith('### ')) {
+      return <h3 key={index} className="text-base font-semibold mt-3 mb-2 text-gray-800">{line.replace('### ', '')}</h3>;
+    }
+    if (line.startsWith('## ')) {
+      return <h2 key={index} className="text-lg font-bold mt-4 mb-2 text-gray-900">{line.replace('## ', '')}</h2>;
+    }
+    if (line.startsWith('# ')) {
+      return <h1 key={index} className="text-xl font-bold mt-4 mb-3 text-gray-900">{line.replace('# ', '')}</h1>;
+    }
+    
+    // Convert bullet points
+    if (line.startsWith('- ') || line.startsWith('• ')) {
+      return (
+        <div key={index} className="flex items-start ml-2 my-1">
+          <span className="text-primary mr-2 mt-1">•</span>
+          <span className="flex-1">{formatInlineText(line.replace(/^[•-]\s+/, ''))}</span>
+        </div>
+      );
+    }
+    
+    // Convert numbered lists
+    const numberedMatch = line.match(/^\d+\.\s+(.+)/);
+    if (numberedMatch) {
+      return (
+        <div key={index} className="flex items-start ml-2 my-1">
+          <span className="text-primary mr-2 font-medium">{line.match(/^\d+\./)?.[0]}</span>
+          <span className="flex-1">{formatInlineText(numberedMatch[1])}</span>
+        </div>
+      );
+    }
+    
+    // Empty lines for spacing
+    if (line.trim() === '') {
+      return <br key={index} />;
+    }
+    
+    // Regular paragraphs
+    return <p key={index} className="my-2 text-gray-700">{formatInlineText(line)}</p>;
+  });
+  
+  return <div className="space-y-1">{formattedLines}</div>;
+};
+
+// Format inline text with bold, emphasis, etc.
+const formatInlineText = (text: string) => {
+  if (!text) return text;
+  
+  // Split by **bold** patterns
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  
+  return parts.map((part, index) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={index} className="font-semibold text-gray-900">{part.slice(2, -2)}</strong>;
+    }
+    
+    // Handle ₹ currency formatting
+    const currencyFormatted = part.replace(/₹(\d+(?:,\d+)*(?:\.\d+)?)/g, '<span class="font-medium text-green-600">₹$1</span>');
+    if (currencyFormatted !== part) {
+      return <span key={index} dangerouslySetInnerHTML={{ __html: currencyFormatted }} />;
+    }
+    
+    return part;
+  });
+};
+
 interface ChatMessage {
   id: string;
   type: 'user' | 'ai' | 'system';
@@ -250,7 +325,9 @@ export default function ChatInterface({ campaigns = [], isOpen, onClose }: ChatI
                     <Zap className="w-4 h-4 mt-1 flex-shrink-0 text-gray-500" />
                   )}
                   <div className="flex-1">
-                    <p className="text-sm leading-relaxed">{message.content}</p>
+                    <div className="text-sm leading-relaxed prose prose-sm max-w-none">
+                      {formatMessageContent(message.content)}
+                    </div>
                     
                     {message.provider && (
                       <div className="flex items-center space-x-2 mt-2">

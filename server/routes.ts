@@ -433,7 +433,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         campaign = campaigns[0];
       }
 
-      // Create contextual prompt for AI
+      // Create contextual prompt for AI with formatting instructions
       let contextualPrompt = `You are an expert Google Ads strategist for the Indian market. Always use INR (₹) currency.
 
 User Query: ${query}
@@ -452,7 +452,15 @@ Specific Campaign Focus: ${campaign.name}
 - Goal: ${campaign.goalDescription || 'No specific goal set'}
 ` : ''}
 
-Please provide specific, actionable advice for the Indian market with proper INR formatting. Be conversational and helpful.`;
+FORMATTING REQUIREMENTS:
+- Use proper markdown formatting with headers (##), bullet points (-), and numbered lists (1.)
+- Break content into clear sections with spacing
+- Use **bold** for emphasis and key metrics
+- Include specific INR amounts with ₹ symbol
+- Keep paragraphs short (2-3 sentences max)
+- Use line breaks between sections
+
+Provide specific, actionable advice for the Indian market with proper formatting.`;
 
       // Generate response using the multiAI service
       const response = await multiAIService.generateSingle(
@@ -495,7 +503,7 @@ Please provide specific, actionable advice for the Indian market with proper INR
         return res.status(503).json({ message: "Multi-AI service not available" });
       }
 
-      // Generate consensus using all available AI models
+      // Generate consensus using all available AI models with formatting
       const consensus = await multiAIService.generateWithConsensus(
         `User question: ${query}
 
@@ -503,7 +511,13 @@ Please analyze this Google Ads question for the Indian market (always use INR �
 Focus on campaign: ${campaign.name}
 Current performance: ${campaign.conversions7d} conversions, ₹${campaign.actualCpa || 'N/A'} CPA, ₹${campaign.spend7d} spend in 7 days.` : ''}
 
-Provide specific, actionable recommendations.`,
+FORMATTING REQUIREMENTS:
+- Use proper markdown with ## headers, - bullet points, **bold** text
+- Break into clear sections with line breaks
+- Keep paragraphs short and readable
+- Use specific INR amounts with ₹ symbol
+
+Provide specific, actionable recommendations with proper formatting.`,
         campaign
       );
       
