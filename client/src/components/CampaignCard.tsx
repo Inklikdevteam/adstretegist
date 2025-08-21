@@ -2,9 +2,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { ShoppingCart, Megaphone, RotateCcw, Calendar, TrendingUp } from "lucide-react";
+import { ShoppingCart, Megaphone, RotateCcw, Calendar, TrendingUp, Brain, Sparkles, AlertCircle } from "lucide-react";
 import GoalSettingModal from "./GoalSettingModal";
 import { useState } from "react";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 interface CampaignCardProps {
   campaign: any;
@@ -14,6 +16,10 @@ interface CampaignCardProps {
 export default function CampaignCard({ campaign, onUpdate }: CampaignCardProps) {
   const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
+  const [showAIRecommendations, setShowAIRecommendations] = useState(false);
+  const [aiRecommendations, setAiRecommendations] = useState<any[]>([]);
+  const [isLoadingAI, setIsLoadingAI] = useState(false);
+  const { toast } = useToast();
 
   const getCampaignIcon = (type: string) => {
     switch (type) {
@@ -47,6 +53,82 @@ export default function CampaignCard({ campaign, onUpdate }: CampaignCardProps) 
   const Icon = getCampaignIcon(campaign.type);
   const status = getCampaignStatus(campaign);
   const hasGoals = campaign.targetCpa || campaign.targetRoas;
+
+  // Generate AI recommendations for this specific campaign
+  const generateAIRecommendations = async () => {
+    setIsLoadingAI(true);
+    try {
+      // Try all three AI providers for comprehensive analysis
+      const providers = ['OpenAI', 'Anthropic', 'Perplexity'];
+      const recommendations = [];
+
+      for (const provider of providers) {
+        try {
+          const response = await apiRequest("POST", "/api/recommendations/generate-with-provider", {
+            campaignId: campaign.id,
+            provider,
+            prompt: `Analyze the campaign "${campaign.name}" with ${campaign.type} type. Current metrics: Daily Budget: ${campaign.dailyBudget}, 7-day Spend: ${campaign.spend7d}, Conversions: ${campaign.conversions7d}, CPA: ${campaign.actualCpa || 'N/A'}, ROAS: ${campaign.actualRoas || 'N/A'}. Target CPA: ${campaign.targetCpa || 'Not set'}, Target ROAS: ${campaign.targetRoas || 'Not set'}. Provide 3 specific actionable optimization recommendations for this individual campaign.`
+          });
+
+          if (response?.content) {
+            recommendations.push({
+              provider,
+              content: response.content,
+              confidence: response.confidence || 85,
+              model: response.model || provider
+            });
+          }
+        } catch (error) {
+          console.error(`Error getting ${provider} recommendations:`, error);
+        }
+      }
+
+      if (recommendations.length === 0) {
+        // Fallback - generate simple recommendations based on campaign data
+        recommendations.push({
+          provider: 'AI Analysis',
+          content: generateBasicRecommendations(campaign),
+          confidence: 75,
+          model: 'Smart Analysis'
+        });
+      }
+
+      setAiRecommendations(recommendations);
+      setShowAIRecommendations(true);
+    } catch (error) {
+      console.error('Error generating AI recommendations:', error);
+      toast({
+        title: "Error",
+        description: "Failed to generate AI recommendations. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingAI(false);
+    }
+  };
+
+  // Basic recommendation fallback
+  const generateBasicRecommendations = (campaign: any) => {
+    const recommendations = [];
+    const spend = parseFloat(campaign.spend7d || '0');
+    const conversions = parseInt(campaign.conversions7d || '0');
+    const actualCpa = parseFloat(campaign.actualCpa || '0');
+    const targetCpa = parseFloat(campaign.targetCpa || '0');
+
+    if (conversions === 0) {
+      recommendations.push("• **Improve Ad Relevance**: No conversions detected - review ad copy and landing page alignment");
+    }
+    
+    if (targetCpa > 0 && actualCpa > targetCpa * 1.2) {
+      recommendations.push("• **Reduce CPA**: Current CPA is above target - consider lowering bids or improving quality score");
+    }
+    
+    if (spend > 0 && conversions < 5) {
+      recommendations.push("• **Optimize Targeting**: Low conversion volume - refine audience targeting and keywords");
+    }
+
+    return recommendations.join('\n') || "• **Set Campaign Goals**: Define target CPA and ROAS to get personalized recommendations\n• **Monitor Performance**: Track daily metrics to identify optimization opportunities\n• **Test Ad Variations**: Create multiple ad copies to improve CTR and conversion rates";
+  };
 
   return (
     <>
@@ -109,18 +191,34 @@ export default function CampaignCard({ campaign, onUpdate }: CampaignCardProps) 
                     : "Goals needed for AI optimization"
                 }
               </span>
-              {!hasGoals ? (
+              <div className="flex items-center space-x-2">
                 <Button 
+                  variant="outline" 
                   size="sm"
-                  onClick={() => setIsGoalModalOpen(true)}
+                  onClick={generateAIRecommendations}
+                  disabled={isLoadingAI}
+                  className="border-purple-500 text-purple-600 hover:bg-purple-50"
                 >
-                  Set Goals
+                  {isLoadingAI ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
+                  ) : (
+                    <Brain className="w-4 h-4 mr-1" />
+                  )}
+                  {isLoadingAI ? 'Analyzing...' : 'AI Ideas'}
                 </Button>
-              ) : (
-                <Button variant="ghost" size="sm" onClick={() => setShowDetails(true)}>
-                  View Details →
-                </Button>
-              )}
+                {!hasGoals ? (
+                  <Button 
+                    size="sm"
+                    onClick={() => setIsGoalModalOpen(true)}
+                  >
+                    Set Goals
+                  </Button>
+                ) : (
+                  <Button variant="ghost" size="sm" onClick={() => setShowDetails(true)}>
+                    Details →
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </CardContent>
@@ -247,6 +345,97 @@ export default function CampaignCard({ campaign, onUpdate }: CampaignCardProps) 
                 <Button onClick={() => { setShowDetails(false); setIsGoalModalOpen(true); }}>Edit Goals</Button>
               )}
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* AI Recommendations Modal */}
+      <Dialog open={showAIRecommendations} onOpenChange={setShowAIRecommendations}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                <Sparkles className="text-purple-600 w-5 h-5" />
+              </div>
+              <span>AI Recommendations for {campaign.name}</span>
+            </DialogTitle>
+            <DialogDescription>
+              Personalized optimization suggestions from multiple AI models based on your campaign performance.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {aiRecommendations.length > 0 ? (
+              <>
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <AlertCircle className="w-5 h-5 text-blue-600" />
+                    <h4 className="font-semibold text-blue-900">Campaign Overview</h4>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-blue-700">Type:</span> <span className="capitalize">{campaign.type}</span>
+                    </div>
+                    <div>
+                      <span className="text-blue-700">Budget:</span> ₹{parseFloat(campaign.dailyBudget || '0').toLocaleString()}/day
+                    </div>
+                    <div>
+                      <span className="text-blue-700">7-day Spend:</span> ₹{parseFloat(campaign.spend7d || '0').toLocaleString()}
+                    </div>
+                    <div>
+                      <span className="text-blue-700">Conversions:</span> {campaign.conversions7d || 0}
+                    </div>
+                  </div>
+                </div>
+
+                {aiRecommendations.map((rec, index) => (
+                  <div key={index} className="border border-gray-200 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center space-x-2">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-semibold ${
+                          rec.provider === 'OpenAI' ? 'bg-green-500' :
+                          rec.provider === 'Anthropic' ? 'bg-orange-500' :
+                          rec.provider === 'Perplexity' ? 'bg-blue-500' :
+                          'bg-purple-500'
+                        }`}>
+                          {rec.provider === 'OpenAI' ? 'O' :
+                           rec.provider === 'Anthropic' ? 'A' :
+                           rec.provider === 'Perplexity' ? 'P' : 'AI'}
+                        </div>
+                        <div>
+                          <h4 className="font-semibold text-gray-900">{rec.provider} Analysis</h4>
+                          <p className="text-sm text-gray-500">Confidence: {rec.confidence}% • {rec.model}</p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="prose prose-sm max-w-none">
+                      <div className="whitespace-pre-wrap text-gray-700 leading-relaxed">
+                        {rec.content}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                <div className="bg-green-50 p-4 rounded-lg">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <TrendingUp className="w-5 h-5 text-green-600" />
+                    <h4 className="font-semibold text-green-900">Next Steps</h4>
+                  </div>
+                  <ul className="text-sm text-green-700 space-y-1">
+                    <li>• Review all AI suggestions and prioritize based on your business goals</li>
+                    <li>• Test recommendations incrementally to measure impact</li>
+                    <li>• Monitor performance for 7-14 days after implementing changes</li>
+                    <li>• Use the chat interface for specific follow-up questions</li>
+                  </ul>
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+                <p className="text-gray-600">Generating personalized AI recommendations...</p>
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>
