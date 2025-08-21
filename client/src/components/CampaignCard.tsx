@@ -80,6 +80,7 @@ export default function CampaignCard({ campaign, onUpdate }: CampaignCardProps) 
           }
         } catch (error) {
           console.error(`Error getting ${provider} recommendations:`, error);
+          console.error(`Full error details for ${provider}:`, JSON.stringify(error, null, 2));
         }
       }
 
