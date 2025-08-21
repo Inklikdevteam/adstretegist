@@ -257,15 +257,39 @@ Goal: ${campaign.goalDescription || 'No specific goal set'}`;
     // Calculate agreement level based on response similarity
     const agreementLevel = this.calculateAgreementLevel(responses);
     
-    // Use OpenAI to synthesize the final consensus
-    const consensusPrompt = `Based on the following AI recommendations for campaign "${campaign.name}", provide a final consensus recommendation:
+    // Use OpenAI to synthesize specific consensus recommendations
+    const consensusPrompt = `Synthesize the following AI recommendations into ONE specific, actionable consensus for campaign "${campaign.name}":
 
 ${responses.map((r, i) => `
-${r.provider} (Confidence: ${r.confidence}%):
+## ${r.provider} Analysis (${r.confidence}% confidence):
 ${r.content}
 `).join('\n')}
 
-Synthesize these recommendations into a single, actionable recommendation. Consider the confidence levels and identify areas of agreement and disagreement. Provide a confidence score for the final recommendation.`;
+CONSENSUS SYNTHESIS REQUIREMENTS:
+1. Analyze areas of AGREEMENT among all AI models
+2. Identify the HIGHEST CONFIDENCE recommendations that appear across multiple models
+3. Synthesize SPECIFIC actionable steps with exact numbers
+
+Final Consensus Format:
+## 🎯 Consensus Recommendation
+
+### 📊 Agreement Analysis
+- High agreement areas: [List common recommendations]
+- Confidence weighted average: X%
+- Models in consensus: X out of ${responses.length}
+
+### 🚀 Specific Action Plan
+1. **Immediate Action**: [Most agreed-upon change with exact ₹ amounts]
+2. **Keywords**: [Specific keywords mentioned by 2+ models with bid ranges]
+3. **Budget**: [Consensus budget recommendation with ₹ amounts]
+4. **Timeline**: [Expected results in X days]
+
+### 📈 Expected Impact
+- CPA change: ₹X → ₹Y (based on model consensus)
+- Conversion lift: X% (average of model predictions)
+- Confidence in outcome: X% (weighted by agreement)
+
+CRITICAL: Only include recommendations that appeared in 2+ AI responses with specific ₹ amounts and measurable targets.`;
 
     const consensusResponse = await this.openai.chat.completions.create({
       model: "gpt-4o",

@@ -22,9 +22,9 @@ export async function analyzeCampaignPerformance(
 ): Promise<CampaignAnalysis> {
   try {
     const prompt = `
-    You are an expert Google Ads strategist specializing in the Indian market. Always use INR (₹) currency, never USD ($). Analyze this campaign performance and provide a recommendation.
+    You are a senior Google Ads strategist with 10+ years of experience in the Indian market. Provide SPECIFIC, actionable recommendations.
 
-    Campaign Details:
+    CAMPAIGN ANALYSIS:
     - Name: ${campaign.name}
     - Type: ${campaign.type}
     - Daily Budget: ₹${campaign.dailyBudget}
@@ -38,22 +38,44 @@ export async function analyzeCampaignPerformance(
     - Burn-in Period Until: ${campaign.burnInUntil || 'None'}
     - Goal Description: ${campaign.goalDescription || 'Not set'}
 
-    Analysis Rules:
-    1. If campaign was modified within burn-in period, recommend "monitor"
-    2. If no goals are set, recommend "clarification" 
-    3. If CPA > target CPA by >20% AND spend > ₹500 in 7 days, recommend "actionable"
-    4. If ROAS < target ROAS by >20% AND spend > ₹500 in 7 days, recommend "actionable"
-    5. If performance is meeting targets, recommend "monitor" or suggest improvements
+    ANALYSIS REQUIREMENTS:
+    1. Analyze campaign name "${campaign.name}" to infer:
+       - Business type (e-commerce/service/brand)
+       - Product/service category 
+       - Target audience demographics
+       - Competition level in Indian market
 
-    Provide response in JSON format with fields:
-    - recommendation_type: 'actionable' | 'monitor' | 'clarification'
-    - priority: 'high' | 'medium' | 'low' 
-    - title: Brief action title
-    - description: Detailed explanation
-    - reasoning: Your analysis logic
-    - confidence: 0-100 confidence score
-    - potential_savings: Estimated daily savings (if applicable)
-    - action_data: Structured data for the recommended action
+    2. Performance Analysis Rules:
+       - If burn-in period active → recommend "monitor"
+       - If no goals set → recommend "clarification" 
+       - If CPA >20% above target + spend >₹500 → "actionable" with SPECIFIC fixes
+       - If ROAS <20% below target + spend >₹500 → "actionable" with exact improvements
+       - If meeting targets → suggest SPECIFIC optimizations
+
+    3. Provide SPECIFIC recommendations:
+       - Exact keyword suggestions (10-15 keywords with ₹ bid ranges)
+       - Precise budget adjustments (exact ₹ amounts)
+       - Targeting refinements for Indian market segments
+       - Measurable improvement targets with timelines
+
+    JSON Response Format:
+    {
+      "recommendation_type": "actionable|monitor|clarification",
+      "priority": "high|medium|low",
+      "title": "Specific action (e.g. 'Add 12 Gift Keywords + Increase Budget 15%')",
+      "description": "Actionable description with exact numbers and ₹ amounts",
+      "reasoning": "Data-driven reasoning including campaign name analysis",
+      "confidence": "0-100",
+      "potential_savings": "Monthly savings estimate in ₹",
+      "action_data": {
+        "specific_changes": ["Exact keywords to add", "Budget: ₹X→₹Y", "Bids: ₹X-Y range"],
+        "keywords_to_add": ["keyword1 ₹X-Y CPC", "keyword2 ₹X-Y CPC"],
+        "budget_recommendation": "₹X daily (current: ₹${campaign.dailyBudget})",
+        "target_improvements": "CPA: ₹X→₹Y, ROAS: X→Y",
+        "expected_impact": "X% conversion increase, Y% CPA reduction",
+        "timeline": "Results in X days"
+      }
+    }
     `;
 
     const response = await openai.chat.completions.create({
@@ -127,15 +149,20 @@ export async function analyzeCampaignPerformance(
 export async function generateDailySummary(campaigns: any[], recommendations: any[]): Promise<string> {
   try {
     const prompt = `
-    Generate a brief daily summary for the Google Ads dashboard.
+    Generate a strategic daily summary for Google Ads portfolio with specific action priorities.
     
-    Campaigns: ${campaigns.length} total
-    Recommendations breakdown:
-    - Actionable: ${recommendations.filter(r => r.type === 'actionable').length}
-    - Monitor: ${recommendations.filter(r => r.type === 'monitor').length}
-    - Clarification needed: ${recommendations.filter(r => r.type === 'clarification').length}
+    PORTFOLIO OVERVIEW:
+    - Total Campaigns: ${campaigns.length}
+    - Actionable Optimizations: ${recommendations.filter(r => r.type === 'actionable').length} campaigns need immediate fixes
+    - Monitoring: ${recommendations.filter(r => r.type === 'monitor').length} campaigns stable  
+    - Clarification Required: ${recommendations.filter(r => r.type === 'clarification').length} campaigns need goals set
     
-    Provide a 1-2 sentence summary of the overall account health and priority actions.
+    Provide 2-3 sentences highlighting:
+    1. Overall portfolio health score (1-10)
+    2. #1 priority action with specific impact
+    3. Key opportunity with estimated ₹ savings potential
+    
+    Focus on actionable insights for Indian market campaigns.
     `;
 
     const response = await openai.chat.completions.create({
