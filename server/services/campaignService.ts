@@ -83,6 +83,16 @@ export class CampaignService {
         return await this.getFallbackCampaigns(userId);
       }
 
+      // Check for invalid customer ID
+      if (!primaryAccount.customerId || primaryAccount.customerId === 'no-customer-found' || primaryAccount.customerId === '') {
+        console.warn(`Invalid customer ID detected: ${primaryAccount.customerId}. Removing invalid account and using fallback.`);
+        
+        // Delete the invalid account record
+        await db.delete(googleAdsAccounts).where(eq(googleAdsAccounts.id, primaryAccount.id));
+        
+        return await this.getFallbackCampaigns(userId);
+      }
+
       const googleAdsService = new GoogleAdsService({
         clientId: process.env.GOOGLE_OAUTH_CLIENT_ID!,
         clientSecret: process.env.GOOGLE_OAUTH_CLIENT_SECRET!,
