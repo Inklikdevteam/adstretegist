@@ -112,10 +112,10 @@ export async function setupAuth(app: Express) {
       // Handle Google Ads account connection only if we have a refresh token
       if (refreshToken) {
         try {
-          console.log(`Processing Google Ads connection for user ${profile.id}`);
+          console.log(`Processing Google Ads connection for user database ID: ${user.id}`);
           
-          // Store or update Google Ads connection
-          const existingAccounts = await storage.getGoogleAdsAccounts(profile.id);
+          // Store or update Google Ads connection using the actual database user ID
+          const existingAccounts = await storage.getGoogleAdsAccounts(user.id);
           
           if (existingAccounts.length > 0) {
             // Update the first active account with new tokens
@@ -128,9 +128,9 @@ export async function setupAuth(app: Express) {
             });
             console.log(`Updated existing Google Ads account: ${activeAccount.customerId}`);
           } else {
-            // Create new Google Ads account with default values
+            // Create new Google Ads account with default values using correct user ID
             await storage.createGoogleAdsAccount({
-              userId: profile.id,
+              userId: user.id, // Use the actual database user ID, not the Google profile ID
               customerId: 'pending-setup',
               customerName: 'Google Ads Account',
               refreshToken,
@@ -139,7 +139,7 @@ export async function setupAuth(app: Express) {
               isActive: true,
               isPrimary: true,
             });
-            console.log(`Created new Google Ads account connection`);
+            console.log(`Created new Google Ads account connection for user ID: ${user.id}`);
           }
         } catch (accountError) {
           console.warn('Could not store Google Ads account, continuing with auth:', accountError);
