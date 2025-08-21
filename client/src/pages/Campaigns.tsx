@@ -11,33 +11,14 @@ export default function Campaigns() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
 
-  // Redirect to home if not authenticated
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      toast({
-        title: "Unauthorized",
-        description: "You are logged out. Logging in again...",
-        variant: "destructive",
-      });
-      setTimeout(() => {
-        window.location.href = "/api/login";
-      }, 500);
-      return;
-    }
-  }, [isAuthenticated, isLoading, toast]);
+  // Authentication is handled by the Router component
 
   const { data: campaigns = [], isLoading: campaignsLoading } = useQuery<any[]>({
     queryKey: ["/api/campaigns"],
     enabled: isAuthenticated,
   });
 
-  if (isLoading || !isAuthenticated) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
+  // Loading state handled by individual queries
 
   return (
     <div className="min-h-screen flex bg-gray-50">
