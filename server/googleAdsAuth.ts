@@ -87,13 +87,27 @@ export async function setupGoogleAdsAuth(app: Express) {
 
         // Get accessible customers
         console.log(`DEBUG: Calling listAccessibleCustomers for user ${userId}`);
-        const customers = await client.listAccessibleCustomers(tokens.refresh_token!);
-        console.log(`DEBUG: Found ${customers.length} accessible customers:`, customers);
+        const customersResponse = await client.listAccessibleCustomers(tokens.refresh_token!);
+        console.log(`DEBUG: Raw API response:`, customersResponse);
         
-        if (customers.length > 0) {
+        // Parse the resource_names array format
+        let foundCustomers = [];
+        if (customersResponse.resource_names && Array.isArray(customersResponse.resource_names)) {
+          foundCustomers = customersResponse.resource_names.map((resourceName: string) => {
+            const customerId = resourceName.replace('customers/', '');
+            return {
+              id: customerId,
+              descriptive_name: `Google Ads Account ${customerId}`
+            };
+          });
+        }
+        
+        console.log(`DEBUG: Found ${foundCustomers.length} accessible customers:`, foundCustomers);
+        
+        if (foundCustomers.length > 0) {
           // Use the first accessible customer
-          customerId = customers[0].id.replace(/\D/g, ''); // Remove non-digits
-          customerName = customers[0].descriptive_name || 'Google Ads Account';
+          customerId = foundCustomers[0].id.replace(/\D/g, ''); // Remove non-digits
+          customerName = foundCustomers[0].descriptive_name || 'Google Ads Account';
           console.log(`DEBUG: Selected customer ID: ${customerId}, Name: ${customerName}`);
         } else {
           console.warn(`DEBUG: No accessible Google Ads customers found for user ${userId}`);
