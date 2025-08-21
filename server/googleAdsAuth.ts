@@ -105,10 +105,20 @@ export async function setupGoogleAdsAuth(app: Express) {
         console.log(`DEBUG: Found ${foundCustomers.length} accessible customers:`, foundCustomers);
         
         if (foundCustomers.length > 0) {
-          // Use the first accessible customer
-          customerId = foundCustomers[0].id.replace(/\D/g, ''); // Remove non-digits
-          customerName = foundCustomers[0].descriptive_name || 'Google Ads Account';
-          console.log(`DEBUG: Selected customer ID: ${customerId}, Name: ${customerName}`);
+          // Try to find the manager account that has the most campaigns
+          // Customer ID 3007228917 is known to be the main manager account with all campaigns
+          const managerAccount = foundCustomers.find(customer => customer.id === '3007228917');
+          
+          if (managerAccount) {
+            customerId = managerAccount.id.replace(/\D/g, ''); // Remove non-digits
+            customerName = 'Manager Account - All Campaigns';
+            console.log(`DEBUG: Selected MANAGER customer ID: ${customerId}, Name: ${customerName}`);
+          } else {
+            // Fallback to first customer if manager account not found
+            customerId = foundCustomers[0].id.replace(/\D/g, ''); // Remove non-digits
+            customerName = foundCustomers[0].descriptive_name || 'Google Ads Account';
+            console.log(`DEBUG: Selected customer ID: ${customerId}, Name: ${customerName} (Manager account not found, using first available)`);
+          }
         } else {
           console.warn(`DEBUG: No accessible Google Ads customers found for user ${userId}`);
           console.warn('This usually means the user needs to:');
