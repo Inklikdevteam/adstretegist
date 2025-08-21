@@ -47,8 +47,8 @@ export class AIRecommendationService {
     for (const campaign of campaigns) {
       try {
         // Double-check campaign still exists before creating recommendation
-        const [campaignExists] = await db.select({ id: campaigns.id }).from(campaigns).where(eq(campaigns.id, campaign.id)).limit(1);
-        if (!campaignExists) {
+        const campaignCheck = await db.select({ id: campaigns.id }).from(campaigns).where(eq(campaigns.id, campaign.id)).limit(1);
+        if (campaignCheck.length === 0) {
           console.warn(`Campaign ${campaign.id} no longer exists, skipping recommendation generation`);
           continue;
         }
