@@ -105,85 +105,50 @@ export async function setupAuth(app: Express) {
         profileImageUrl: profile.photos?.[0]?.value || null,
       };
       
-      // Upsert user
-      await storage.upsertUser(userData);
+      // Upsert user first
+      const user = await storage.upsertUser(userData);
+      console.log(`User upserted successfully: ${user.id}`);
       
-      // Get Google Ads customer info if we have tokens
-      let customerId = 'no-customer-found';
-      let customerName = 'Google Ads Account';
-      
+      // Handle Google Ads account connection only if we have a refresh token
       if (refreshToken) {
         try {
-          console.log(`Attempting to get Google Ads accounts for user ${profile.id}`);
-          const { GoogleAdsApi } = await import('google-ads-api');
-          const client = new GoogleAdsApi({
-            client_id: process.env.GOOGLE_OAUTH_CLIENT_ID!,
-            client_secret: process.env.GOOGLE_OAUTH_CLIENT_SECRET!,
-            developer_token: process.env.GOOGLE_ADS_DEVELOPER_TOKEN!,
-          });
-
-          const customersResponse = await client.listAccessibleCustomers(refreshToken);
+          console.log(`Processing Google Ads connection for user ${profile.id}`);
           
-          if (customersResponse.resource_names && Array.isArray(customersResponse.resource_names)) {
-            const foundCustomers = customersResponse.resource_names.map((resourceName: string) => {
-              const customerId = resourceName.replace('customers/', '');
-              return { id: customerId, descriptive_name: `Google Ads Account ${customerId}` };
-            });
-            
-            if (foundCustomers.length > 0) {
-              // Try to find the manager account that has the most campaigns
-              const managerAccount = foundCustomers.find(customer => customer.id === '3007228917');
-              
-              if (managerAccount) {
-                customerId = managerAccount.id;
-                customerName = 'Manager Account - All Campaigns';
-                console.log(`Selected MANAGER customer ID: ${customerId}`);
-              } else {
-                customerId = foundCustomers[0].id;
-                customerName = foundCustomers[0].descriptive_name || 'Google Ads Account';
-                console.log(`Selected customer ID: ${customerId}`);
-              }
-            }
-          }
-        } catch (adsError) {
-          console.warn('Could not get Google Ads info during login:', adsError);
-        }
-        
-        // Store Google Ads connection (check for existing first)
-        try {
+          // Store or update Google Ads connection
           const existingAccounts = await storage.getGoogleAdsAccounts(profile.id);
-          const existingAccount = existingAccounts.find(acc => acc.customerId === customerId);
           
-          if (existingAccount) {
-            // Update existing account with new tokens
-            await storage.updateGoogleAdsAccount(existingAccount.id, {
+          if (existingAccounts.length > 0) {
+            // Update the first active account with new tokens
+            const activeAccount = existingAccounts.find(acc => acc.isActive) || existingAccounts[0];
+            await storage.updateGoogleAdsAccount(activeAccount.id, {
               refreshToken,
               accessToken,
               tokenExpiresAt: null,
               isActive: true,
             });
-            console.log(`Updated existing Google Ads account: ${customerId}`);
+            console.log(`Updated existing Google Ads account: ${activeAccount.customerId}`);
           } else {
-            // Create new account
+            // Create new Google Ads account with default values
             await storage.createGoogleAdsAccount({
               userId: profile.id,
-              customerId,
-              customerName,
+              customerId: 'pending-setup',
+              customerName: 'Google Ads Account',
               refreshToken,
               accessToken,
               tokenExpiresAt: null,
               isActive: true,
-              isPrimary: existingAccounts.length === 0, // Only primary if it's the first account
+              isPrimary: true,
             });
-            console.log(`Created new Google Ads account: ${customerId}`);
+            console.log(`Created new Google Ads account connection`);
           }
         } catch (accountError) {
-          console.warn('Could not store Google Ads account:', accountError);
+          console.warn('Could not store Google Ads account, continuing with auth:', accountError);
+          // Don't fail authentication if Google Ads setup fails
         }
       }
       
       // Create session user object
-      const user = {
+      const sessionUser = {
         claims: {
           sub: profile.id,
           email: userData.email,
@@ -196,10 +161,12 @@ export async function setupAuth(app: Express) {
         expires_at: Math.floor(Date.now() / 1000) + 3600 // 1 hour from now
       };
       
-      return done(null, user);
+      console.log(`OAuth callback completed successfully for user: ${profile.id}`);
+      return done(null, sessionUser);
     } catch (error) {
       console.error('Error in Google OAuth callback:', error);
-      return done(error, null);
+      // Don't expose internal errors to client
+      return done(new Error('Authentication failed'), null);
     }
   }));
 
@@ -221,13 +188,26 @@ export async function setupAuth(app: Express) {
   );
 
   app.get("/api/callback", 
-    passport.authenticate('google', { 
-      successRedirect: '/',
-      failureRedirect: '/login-error'
-    }),
-    (error: any, req: any, res: any, next: any) => {
-      console.error('OAuth callback error:', error);
-      res.redirect('/login-error');
+    (req, res, next) => {
+      passport.authenticate('google', (err, user, info) => {
+        if (err) {
+          console.error('OAuth authentication error:', err);
+          return res.redirect('/login-error');
+        }
+        if (!user) {
+          console.error('OAuth authentication failed - no user returned');
+          return res.redirect('/login-error');
+        }
+        
+        req.logIn(user, (loginErr) => {
+          if (loginErr) {
+            console.error('Login session error:', loginErr);
+            return res.redirect('/login-error');
+          }
+          console.log('User successfully logged in:', user.claims?.sub);
+          return res.redirect('/');
+        });
+      })(req, res, next);
     }
   );
 
