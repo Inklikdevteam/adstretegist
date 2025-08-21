@@ -203,10 +203,6 @@ export default function Dashboard() {
                 <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                 <span>Last updated: 2 minutes ago</span>
               </div>
-              <Button onClick={handleConnectGoogleAds} variant="outline" className="border-green-500 text-green-600 hover:bg-green-50">
-                <Target className="w-4 h-4 mr-2" />
-                Connect Google Ads
-              </Button>
               <Button onClick={handleRefreshGoogleAds} variant="outline" className="border-blue-500 text-blue-600 hover:bg-blue-50">
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Refresh Real Data
