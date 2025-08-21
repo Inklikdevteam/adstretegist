@@ -110,6 +110,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const { targetCpa, targetRoas, goalDescription } = req.body;
       
+      console.log(`DEBUG: Updating goals for campaign ${req.params.id}:`, { targetCpa, targetRoas, goalDescription });
+      
       const campaign = await campaignService.updateCampaignGoals(
         req.params.id,
         userId,
@@ -120,9 +122,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Campaign not found" });
       }
       
-      res.json(campaign);
+      console.log(`DEBUG: Goals updated successfully for campaign ${req.params.id}`);
+      res.json({ 
+        message: "Campaign goals updated successfully",
+        campaign 
+      });
     } catch (error) {
       console.error("Error updating campaign goals:", error);
+      console.error('Full error details:', JSON.stringify(error, null, 2));
       res.status(500).json({ message: "Failed to update campaign goals" });
     }
   });
@@ -324,40 +331,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Update campaign goals endpoint
-  app.patch('/api/campaigns/:id/goals', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const campaignId = req.params.id;
-      const { goalType, targetValue, targetRoas, naturalLanguageGoal } = req.body;
-      
-      // Get the campaign to ensure it belongs to the user
-      const campaign = await campaignService.getCampaignById(campaignId, userId);
-      if (!campaign) {
-        return res.status(404).json({ message: "Campaign not found" });
-      }
-
-      // Update campaign goals using correct schema fields
-      const [updatedCampaign] = await db
-        .update(campaigns)
-        .set({
-          targetCpa: goalType === 'cpa' ? targetValue : null,
-          targetRoas: targetRoas ? targetRoas : null,
-          goalDescription: naturalLanguageGoal,
-          updatedAt: new Date()
-        })
-        .where(and(eq(campaigns.id, campaignId), eq(campaigns.userId, userId)))
-        .returning();
-
-      res.json({ 
-        message: "Campaign goals updated successfully",
-        campaign: updatedCampaign
-      });
-    } catch (error) {
-      console.error("Error updating campaign goals:", error);
-      res.status(500).json({ message: "Failed to update campaign goals" });
-    }
-  });
 
   // Google Ads data refresh endpoint
   app.post('/api/google-ads/refresh', isAuthenticated, async (req: any, res) => {
