@@ -72,6 +72,8 @@ export async function setupGoogleAdsAuth(app: Express) {
       adsOAuth2Client.setCredentials(tokens);
       
       let customerId = 'no-customer-found';
+      
+      console.log(`DEBUG: Attempting to find Google Ads accounts for user ${userId}`);
       let customerName = 'Google Ads Account';
       
       try {
@@ -84,19 +86,26 @@ export async function setupGoogleAdsAuth(app: Express) {
         });
 
         // Get accessible customers
+        console.log(`DEBUG: Calling listAccessibleCustomers for user ${userId}`);
         const customers = await client.listAccessibleCustomers(tokens.refresh_token!);
+        console.log(`DEBUG: Found ${customers.length} accessible customers:`, customers);
         
         if (customers.length > 0) {
           // Use the first accessible customer
           customerId = customers[0].id.replace(/\D/g, ''); // Remove non-digits
           customerName = customers[0].descriptive_name || 'Google Ads Account';
-          console.log('Found Google Ads customer:', customerId, customerName);
+          console.log(`DEBUG: Selected customer ID: ${customerId}, Name: ${customerName}`);
         } else {
-          console.warn('No accessible Google Ads customers found');
+          console.warn(`DEBUG: No accessible Google Ads customers found for user ${userId}`);
+          console.warn('This usually means the user needs to:');
+          console.warn('1. Have a Google Ads account');
+          console.warn('2. Grant proper permissions during OAuth');
+          console.warn('3. Have access to Google Ads API');
         }
       } catch (apiError) {
-        console.error('Error fetching Google Ads customer info:', apiError);
-        // Continue with placeholder - better than failing the auth
+        console.error(`DEBUG: Error fetching Google Ads customer info for user ${userId}:`, apiError);
+        console.error('Full API error details:', JSON.stringify(apiError, null, 2));
+        console.warn('Continuing with placeholder customer ID - user will see sample data until they properly connect Google Ads');
       }
 
       await storage.createGoogleAdsAccount({
