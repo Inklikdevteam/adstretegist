@@ -38,8 +38,9 @@ export function getSession() {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === 'production', // Only secure in production
       maxAge: sessionTtl,
+      sameSite: 'lax', // Allow cross-site requests for OAuth callbacks
     },
   });
 }
@@ -71,6 +72,16 @@ import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 
 export async function setupAuth(app: Express) {
   app.set("trust proxy", 1);
+  
+  // Add CORS headers for session cookies
+  app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Origin', req.headers.origin);
+    res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Content-Length, X-Requested-With');
+    next();
+  });
+  
   app.use(getSession());
   app.use(passport.initialize());
   app.use(passport.session());
