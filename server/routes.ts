@@ -6,7 +6,7 @@ import { setupGoogleAdsAuth } from "./googleAdsAuth";
 import { AIRecommendationService } from "./services/aiRecommendationService";
 import { CampaignService } from "./services/campaignService";
 import { MultiAIService } from "./services/multiAIService";
-import { insertCampaignSchema, campaigns, googleAdsAccounts } from "@shared/schema";
+import { insertCampaignSchema, campaigns, googleAdsAccounts, auditLogs, recommendations } from "@shared/schema";
 import { eq, and } from "drizzle-orm";
 import { db } from "./db";
 
@@ -352,7 +352,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       
-      // Clear existing data to force refresh
+      // Clear existing data to force refresh safely
+      const userCampaigns = await db.select({ id: campaigns.id }).from(campaigns).where(eq(campaigns.userId, userId));
+      const campaignIds = userCampaigns.map(c => c.id);
+
+      // Clean up audit logs and recommendations first
+      for (const campaignId of campaignIds) {
+        await db.delete(auditLogs).where(eq(auditLogs.campaignId, campaignId));
+        await db.delete(recommendations).where(eq(recommendations.campaignId, campaignId));
+      }
+      
+      // Finally delete campaigns
       await db.delete(campaigns).where(eq(campaigns.userId, userId));
       
       // Get fresh campaigns (this will trigger real data fetch)

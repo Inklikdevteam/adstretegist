@@ -1,5 +1,5 @@
 import { db } from "../db";
-import { campaigns, users, googleAdsAccounts, type Campaign, type InsertCampaign } from "@shared/schema";
+import { campaigns, users, googleAdsAccounts, auditLogs, recommendations, type Campaign, type InsertCampaign } from "@shared/schema";
 import { eq, and } from "drizzle-orm";
 import { GoogleAdsService } from "./googleAdsService";
 
@@ -20,6 +20,33 @@ export class CampaignService {
     }
     
     return parseFloat(cleanValue);
+  }
+
+  // Safe cleanup method that handles foreign key constraints
+  private async cleanupUserCampaigns(userId: string): Promise<void> {
+    try {
+      // Get all campaign IDs for this user
+      const userCampaigns = await db.select({ id: campaigns.id }).from(campaigns).where(eq(campaigns.userId, userId));
+      const campaignIds = userCampaigns.map(c => c.id);
+
+      if (campaignIds.length === 0) return;
+
+      // First delete audit logs that reference these campaigns
+      for (const campaignId of campaignIds) {
+        await db.delete(auditLogs).where(eq(auditLogs.campaignId, campaignId));
+      }
+
+      // Then delete recommendations that reference these campaigns
+      for (const campaignId of campaignIds) {
+        await db.delete(recommendations).where(eq(recommendations.campaignId, campaignId));
+      }
+
+      // Finally delete the campaigns themselves
+      await db.delete(campaigns).where(eq(campaigns.userId, userId));
+    } catch (error) {
+      console.error('Error cleaning up user campaigns:', error);
+      throw error;
+    }
   }
   async getUserCampaigns(userId: string): Promise<Campaign[]> {
     // First check if user has connected Google Ads accounts
@@ -63,8 +90,8 @@ export class CampaignService {
 
       const realCampaigns = await googleAdsService.getCampaigns();
       
-      // Clear existing campaigns and insert real ones
-      await db.delete(campaigns).where(eq(campaigns.userId, userId));
+      // Clear existing campaigns and related data safely (cascade delete)
+      await this.cleanupUserCampaigns(userId);
       
       const campaignsToInsert: InsertCampaign[] = realCampaigns.map(campaign => ({
         userId,
@@ -91,8 +118,8 @@ export class CampaignService {
       console.error('Error fetching real Google Ads campaigns:', error);
       console.error('Full error details:', JSON.stringify(error, null, 2));
       
-      // Clear any failed/partial data
-      await db.delete(campaigns).where(eq(campaigns.userId, userId));
+      // Clear any failed/partial data safely
+      await this.cleanupUserCampaigns(userId);
       
       return await this.getFallbackCampaigns(userId);
     }
