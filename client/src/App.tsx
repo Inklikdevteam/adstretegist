@@ -32,6 +32,7 @@ function Router() {
         <>
           <Route path="/" component={Landing} />
           <Route path="/login-error" component={LoginError} />
+          <Route component={NotFound} />
         </>
       ) : (
         <>
@@ -40,9 +41,9 @@ function Router() {
           <Route path="/recommendations" component={Recommendations} />
           <Route path="/performance" component={Performance} />
           <Route path="/settings" component={Settings} />
+          <Route component={NotFound} />
         </>
       )}
-      <Route component={NotFound} />
     </Switch>
   );
 }
