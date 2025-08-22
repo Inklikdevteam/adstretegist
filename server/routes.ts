@@ -6,6 +6,7 @@ import { setupAuth, isAuthenticated } from "./replitAuth";
 import { AIRecommendationService } from "./services/aiRecommendationService";
 import { CampaignService } from "./services/campaignService";
 import { MultiAIService } from "./services/multiAIService";
+import { GoogleAdsService } from "./services/googleAdsService";
 import { insertCampaignSchema, campaigns, googleAdsAccounts, auditLogs, recommendations } from "@shared/schema";
 import { eq, and } from "drizzle-orm";
 import { db } from "./db";
@@ -88,7 +89,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const dbUserId = user.id.toString();
       console.log('Campaigns for user:', { replitUserId, dbUserId, userEmail: user.email });
       
-      let campaigns = await campaignService.getUserCampaigns(dbUserId);
+      const selectedAccount = req.query.selectedAccount as string;
+      let campaigns = await campaignService.getUserCampaigns(dbUserId, selectedAccount);
       
       // Filter to only show active campaigns
       const activeCampaigns = campaigns.filter(campaign => 
@@ -489,6 +491,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error refreshing Google Ads data:", error);
       res.status(500).json({ message: "Failed to refresh Google Ads data", error: error.message });
+    }
+  });
+
+  // Get available Google Ads accounts for selection
+  app.get('/api/google-ads/available-accounts', isAuthenticated, async (req: any, res) => {
+    try {
+      const replitUserId = req.user.claims.sub;
+      const user = await storage.getUser(replitUserId);
+      
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+
+      const dbUserId = user.id.toString();
+      
+      // Get the user's connected Google Ads accounts
+      const connectedAccounts = await db
+        .select()
+        .from(googleAdsAccounts)
+        .where(and(eq(googleAdsAccounts.userId, dbUserId), eq(googleAdsAccounts.isActive, true)));
+
+      if (connectedAccounts.length === 0) {
+        return res.json({ accounts: [], hasConnection: false });
+      }
+
+      const primaryAccount = connectedAccounts.find(acc => acc.isPrimary) || connectedAccounts[0];
+      
+      if (!primaryAccount.refreshToken || !primaryAccount.customerId || primaryAccount.customerId === 'no-customer-found') {
+        return res.json({ accounts: [], hasConnection: false });
+      }
+
+      const googleAdsService = new GoogleAdsService({
+        clientId: process.env.GOOGLE_OAUTH_CLIENT_ID!,
+        clientSecret: process.env.GOOGLE_OAUTH_CLIENT_SECRET!,
+        refreshToken: primaryAccount.refreshToken,
+        customerId: primaryAccount.customerId,
+        developerToken: process.env.GOOGLE_ADS_DEVELOPER_TOKEN!
+      });
+
+      const clientAccounts = await googleAdsService.getClientAccounts();
+      
+      const accountsWithNames = clientAccounts.map(account => ({
+        id: account.id,
+        name: account.name || `Account ${account.id}`,
+        customerId: account.id
+      }));
+
+      res.json({ 
+        accounts: accountsWithNames,
+        hasConnection: true,
+        selectedAccount: req.query.selectedAccount || null
+      });
+    } catch (error) {
+      console.error("Error fetching available Google Ads accounts:", error);
+      res.status(500).json({ message: "Failed to fetch accounts" });
     }
   });
 

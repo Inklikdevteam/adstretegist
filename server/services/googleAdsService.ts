@@ -76,21 +76,28 @@ export class GoogleAdsService {
     });
   }
 
-  async getCampaigns(): Promise<GoogleAdsCampaign[]> {
+  async getCampaigns(selectedAccountId?: string): Promise<GoogleAdsCampaign[]> {
     try {
       // First check if this is a manager account
       const clientAccounts = await this.getClientAccounts();
       
       if (clientAccounts.length > 0) {
         // This is a manager account - get campaigns from all client accounts
-        console.log(`Manager account detected. Fetching campaigns from ${clientAccounts.length} client accounts...`);
-        console.log('DEBUG: Available client accounts:', clientAccounts.map(acc => ({ 
+        const accountsToFetch = selectedAccountId && selectedAccountId !== 'all' 
+          ? clientAccounts.filter(acc => acc.id === selectedAccountId)
+          : clientAccounts;
+          
+        console.log(`Manager account detected. Fetching campaigns from ${accountsToFetch.length} client accounts...`);
+        if (selectedAccountId && selectedAccountId !== 'all') {
+          console.log(`DEBUG: Filtering for selected account: ${selectedAccountId}`);
+        }
+        console.log('DEBUG: Available client accounts:', accountsToFetch.map(acc => ({ 
           id: acc.id, 
           name: acc.name 
         })));
         const allCampaigns: GoogleAdsCampaign[] = [];
         
-        for (const clientAccount of clientAccounts) {
+        for (const clientAccount of accountsToFetch) {
           try {
             // Create a completely new client for each client account
             const clientGoogleAdsClient = new GoogleAdsApi({

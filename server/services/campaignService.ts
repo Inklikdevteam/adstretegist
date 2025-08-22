@@ -48,8 +48,8 @@ export class CampaignService {
       throw error;
     }
   }
-  async getUserCampaigns(userId: string): Promise<Campaign[]> {
-    console.log('CampaignService getUserCampaigns for userId:', userId);
+  async getUserCampaigns(userId: string, selectedAccountId?: string): Promise<Campaign[]> {
+    console.log('CampaignService getUserCampaigns for userId:', userId, 'selectedAccount:', selectedAccountId);
     
     // First check if user has connected Google Ads accounts
     const connectedAccounts = await db
@@ -59,7 +59,7 @@ export class CampaignService {
     
     if (connectedAccounts.length > 0) {
       // User has connected Google Ads - fetch real campaigns
-      return await this.fetchRealCampaigns(userId, connectedAccounts);
+      return await this.fetchRealCampaigns(userId, connectedAccounts, selectedAccountId);
     }
     
     // No connected accounts - check for existing campaigns or create samples
@@ -76,7 +76,7 @@ export class CampaignService {
     return existingCampaigns;
   }
 
-  private async fetchRealCampaigns(userId: string, accounts: any[]): Promise<Campaign[]> {
+  private async fetchRealCampaigns(userId: string, accounts: any[], selectedAccountId?: string): Promise<Campaign[]> {
     try {
       const primaryAccount = accounts.find(acc => acc.isPrimary) || accounts[0];
       
@@ -103,7 +103,7 @@ export class CampaignService {
         developerToken: process.env.GOOGLE_ADS_DEVELOPER_TOKEN!
       });
 
-      const realCampaigns = await googleAdsService.getCampaigns();
+      const realCampaigns = await googleAdsService.getCampaigns(selectedAccountId);
       
       // Filter only active/enabled campaigns (status 2 = ENABLED in Google Ads API)
       const activeCampaigns = realCampaigns.filter(campaign => 

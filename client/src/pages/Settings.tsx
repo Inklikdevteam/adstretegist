@@ -1,18 +1,47 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import Sidebar from "@/components/Sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Settings as SettingsIcon, User, Bell, Shield, HelpCircle } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Settings as SettingsIcon, User, Bell, Shield, HelpCircle, ExternalLink } from "lucide-react";
 
 export default function Settings() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading, user } = useAuth();
+  const [selectedAccount, setSelectedAccount] = useState<string>("");
 
-  // Authentication is handled by the Router component
+  // Get available Google Ads accounts
+  const { data: accountsData, isLoading: accountsLoading } = useQuery<any>({
+    queryKey: ["/api/google-ads/available-accounts"],
+    enabled: isAuthenticated,
+  });
 
-  // Loading state handled by individual queries
+  // Load selected account from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('selectedGoogleAdsAccount');
+    if (saved) {
+      setSelectedAccount(saved);
+    }
+  }, []);
+
+  const handleAccountChange = async (accountId: string) => {
+    setSelectedAccount(accountId);
+    localStorage.setItem('selectedGoogleAdsAccount', accountId);
+    
+    toast({
+      title: "Account Updated",
+      description: "Your selected Google Ads account has been updated. Campaign data will refresh.",
+    });
+
+    // Force refresh of campaign data
+    setTimeout(() => {
+      window.location.reload();
+    }, 1000);
+  };
 
   const userInfo = user as any;
 
@@ -31,6 +60,58 @@ export default function Settings() {
         </header>
 
         <div className="p-6 space-y-6">
+          {/* Google Ads Account Selection */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <ExternalLink className="w-5 h-5" />
+                <span>Google Ads Account</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {accountsLoading ? (
+                <div className="flex items-center space-x-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                  <span className="text-sm text-gray-600">Loading accounts...</span>
+                </div>
+              ) : accountsData?.hasConnection ? (
+                <div>
+                  <h4 className="font-medium text-gray-900 mb-2">Active Account</h4>
+                  <p className="text-sm text-gray-600 mb-3">Choose which Google Ads account to display campaigns from</p>
+                  <Select
+                    value={selectedAccount}
+                    onValueChange={handleAccountChange}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select an account..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Accounts (Default)</SelectItem>
+                      {accountsData?.accounts?.map((account: any) => (
+                        <SelectItem key={account.id} value={account.id}>
+                          {account.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {selectedAccount && selectedAccount !== "all" && (
+                    <p className="text-xs text-gray-500 mt-2">
+                      Currently viewing campaigns from: {accountsData?.accounts?.find((a: any) => a.id === selectedAccount)?.name}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div>
+                  <h4 className="font-medium text-gray-900 mb-2">No Google Ads Connection</h4>
+                  <p className="text-sm text-gray-600 mb-3">Connect your Google Ads account to manage campaigns</p>
+                  <Button variant="outline" size="sm">
+                    Connect Google Ads
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Profile Settings */}
           <Card>
             <CardHeader>

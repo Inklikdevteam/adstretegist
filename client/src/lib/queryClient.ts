@@ -29,7 +29,17 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    const res = await fetch(queryKey.join("/") as string, {
+    let url = queryKey.join("/") as string;
+    
+    // Add selected account parameter to campaigns API call
+    if (url === "/api/campaigns") {
+      const selectedAccount = localStorage.getItem('selectedGoogleAdsAccount');
+      if (selectedAccount) {
+        url += `?selectedAccount=${encodeURIComponent(selectedAccount)}`;
+      }
+    }
+    
+    const res = await fetch(url, {
       credentials: "include",
     });
 
