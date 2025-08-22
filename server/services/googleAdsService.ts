@@ -350,7 +350,10 @@ export class GoogleAdsService {
         return 'video';
       case 'MULTI_CHANNEL':
         return 'multi_channel';
+      case 'PERFORMANCE_MAX':
+        return 'PERFORMANCE_MAX';
       default:
+        console.warn(`Unknown channel type: ${channelType}`);
         return 'unknown';
     }
   }
