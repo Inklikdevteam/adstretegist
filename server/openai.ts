@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { buildPrompt } from "./prompts/corePrompt";
 
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
 const openai = new OpenAI({ 
@@ -21,62 +22,34 @@ export async function analyzeCampaignPerformance(
   historicalData: any = {}
 ): Promise<CampaignAnalysis> {
   try {
-    const prompt = `
-    You are a senior Google Ads strategist with 10+ years of experience in the Indian market. Provide SPECIFIC, actionable recommendations.
+    // Build campaign metrics JSON
+    const metricsJson = JSON.stringify({
+      name: campaign.name,
+      type: campaign.type,
+      dailyBudget: campaign.dailyBudget,
+      spend7d: campaign.spend7d || 0,
+      conversions7d: campaign.conversions7d || 0,
+      targetCpa: campaign.targetCpa,
+      actualCpa: campaign.actualCpa,
+      targetRoas: campaign.targetRoas,
+      actualRoas: campaign.actualRoas,
+      lastModified: campaign.lastModified,
+      burnInUntil: campaign.burnInUntil,
+      goalDescription: campaign.goalDescription
+    });
 
-    CAMPAIGN ANALYSIS:
-    - Name: ${campaign.name}
-    - Type: ${campaign.type}
-    - Daily Budget: ₹${campaign.dailyBudget}
-    - 7-day Spend: ₹${campaign.spend7d || 0}
-    - 7-day Conversions: ${campaign.conversions7d || 0}
-    - Target CPA: ${campaign.targetCpa ? `₹${campaign.targetCpa}` : 'Not set'}
-    - Actual CPA: ${campaign.actualCpa ? `₹${campaign.actualCpa}` : 'No data'}
-    - Target ROAS: ${campaign.targetRoas ? `${campaign.targetRoas}x` : 'Not set'}
-    - Actual ROAS: ${campaign.actualRoas ? `${campaign.actualRoas}x` : 'No data'}
-    - Last Modified: ${campaign.lastModified}
-    - Burn-in Period Until: ${campaign.burnInUntil || 'None'}
-    - Goal Description: ${campaign.goalDescription || 'Not set'}
+    const goals = `${campaign.targetCpa ? `Target CPA: ₹${campaign.targetCpa}` : ''} ${campaign.targetRoas ? `Target ROAS: ${campaign.targetRoas}x` : ''} ${campaign.goalDescription || ''}`.trim() || 'No specific goals set';
+    
+    const context = `Daily evaluation of campaign "${campaign.name}" for optimization opportunities. Historical data: ${JSON.stringify(historicalData)}`;
 
-    ANALYSIS REQUIREMENTS:
-    1. Analyze campaign name "${campaign.name}" to infer:
-       - Business type (e-commerce/service/brand)
-       - Product/service category 
-       - Target audience demographics
-       - Competition level in Indian market
-
-    2. Performance Analysis Rules:
-       - If burn-in period active → recommend "monitor"
-       - If no goals set → recommend "clarification" 
-       - If CPA >20% above target + spend >₹500 → "actionable" with SPECIFIC fixes
-       - If ROAS <20% below target + spend >₹500 → "actionable" with exact improvements
-       - If meeting targets → suggest SPECIFIC optimizations
-
-    3. Provide SPECIFIC recommendations:
-       - Exact keyword suggestions (10-15 keywords with ₹ bid ranges)
-       - Precise budget adjustments (exact ₹ amounts)
-       - Targeting refinements for Indian market segments
-       - Measurable improvement targets with timelines
-
-    JSON Response Format:
-    {
-      "recommendation_type": "actionable|monitor|clarification",
-      "priority": "high|medium|low",
-      "title": "Specific action (e.g. 'Add 12 Gift Keywords + Increase Budget 15%')",
-      "description": "Actionable description with exact numbers and ₹ amounts",
-      "reasoning": "Data-driven reasoning including campaign name analysis",
-      "confidence": "0-100",
-      "potential_savings": "Monthly savings estimate in ₹",
-      "action_data": {
-        "specific_changes": ["Exact keywords to add", "Budget: ₹X→₹Y", "Bids: ₹X-Y range"],
-        "keywords_to_add": ["keyword1 ₹X-Y CPC", "keyword2 ₹X-Y CPC"],
-        "budget_recommendation": "₹X daily (current: ₹${campaign.dailyBudget})",
-        "target_improvements": "CPA: ₹X→₹Y, ROAS: X→Y",
-        "expected_impact": "X% conversion increase, Y% CPA reduction",
-        "timeline": "Results in X days"
-      }
-    }
-    `;
+    const prompt = buildPrompt({
+      metrics_json: metricsJson,
+      goals: goals,
+      context: context,
+      role: 'admin',
+      mode: 'daily evaluation',
+      output_format: 'JSON'
+    });
 
     console.log(`DEBUG: Analyzing campaign: ${campaign.name}`);
     

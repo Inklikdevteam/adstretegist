@@ -10,6 +10,7 @@ import { GoogleAdsService } from "./services/googleAdsService";
 import { insertCampaignSchema, campaigns, googleAdsAccounts, auditLogs, recommendations } from "@shared/schema";
 import { eq, and } from "drizzle-orm";
 import { db } from "./db";
+import { buildPrompt } from "./prompts/corePrompt";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
@@ -640,81 +641,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         campaign = campaigns[0];
       }
 
-      // Create highly specific contextual prompt for actionable insights
-      let contextualPrompt = `You are a senior Google Ads strategist with 10+ years of experience in the Indian market. Provide specific, actionable insights.
+      // Build campaign metrics JSON
+      const metricsJson = campaign ? JSON.stringify({
+        name: campaign.name,
+        type: campaign.type,
+        status: campaign.status,
+        dailyBudget: campaign.dailyBudget,
+        spend7d: campaign.spend7d,
+        conversions7d: campaign.conversions7d,
+        actualCpa: campaign.actualCpa,
+        actualRoas: campaign.actualRoas,
+        targetCpa: campaign.targetCpa,
+        targetRoas: campaign.targetRoas,
+        goalDescription: campaign.goalDescription
+      }) : 'No specific campaign selected';
 
-USER QUERY: ${query}
+      const goals = campaign ? `${campaign.targetCpa ? `Target CPA: ₹${campaign.targetCpa}` : ''} ${campaign.targetRoas ? `Target ROAS: ${campaign.targetRoas}x` : ''} ${campaign.goalDescription || ''}`.trim() || 'No specific goals set' : 'General optimization for Indian market';
+      
+      const context = `User query: ${query}. ${campaign ? `Campaign context: ${campaign.name}` : `Portfolio analysis with ${campaigns.length} campaigns.`}`;
 
-CAMPAIGN ANALYSIS CONTEXT:
-${campaign ? `
-🎯 CAMPAIGN: ${campaign.name}
-📊 PERFORMANCE DATA:
-- Campaign Type: ${campaign.type}
-- Status: ${campaign.status}
-- Daily Budget: ₹${campaign.dailyBudget}
-- 7-Day Spend: ₹${campaign.spend7d}
-- 7-Day Conversions: ${campaign.conversions7d}
-- Current CPA: ${campaign.actualCpa ? '₹' + campaign.actualCpa : 'Unknown'}
-- Current ROAS: ${campaign.actualRoas || 'Unknown'}
-- Target CPA: ${campaign.targetCpa ? '₹' + campaign.targetCpa : 'Not set'}
-- Target ROAS: ${campaign.targetRoas || 'Not set'}
-- Campaign Goal: ${campaign.goalDescription || 'No specific goal'}
-
-ANALYSIS REQUIREMENTS:
-1. Analyze the campaign name "${campaign.name}" to infer:
-   - Business type (e-commerce/service/brand)
-   - Product category
-   - Target audience
-   - Competition level
-
-2. Based on performance metrics, identify:
-   - Performance vs targets
-   - Budget utilization efficiency  
-   - Conversion optimization opportunities
-` : `
-📊 PORTFOLIO ANALYSIS:
-- Total Campaigns: ${campaigns.length}
-- Focus: General Google Ads optimization for Indian market
-`}
-
-REQUIRED RESPONSE FORMAT:
-## 🚀 Campaign Analysis & Recommendations
-
-### 📈 Performance Assessment
-- Current vs target performance analysis
-- Key issues identified
-- Performance scoring (1-10)
-
-### 🎯 Specific Action Items
-1. **Budget Optimization**
-   - Exact budget recommendations with ₹ amounts
-   - Bid adjustment suggestions
-
-2. **Keyword Strategy** 
-   - 10-15 specific keyword suggestions based on campaign name
-   - Negative keyword recommendations
-   - Match type optimization
-
-3. **Targeting Improvements**
-   - Specific audience segments for India
-   - Geographic targeting recommendations
-   - Demographic adjustments
-
-4. **Creative Optimization**
-   - Ad copy improvements
-   - Landing page suggestions
-   - Extension recommendations
-
-### 📊 Expected Results
-- Projected CPA improvement: ₹X to ₹Y
-- Expected ROAS increase: X% 
-- Estimated conversion lift: X%
-
-### ⚡ Priority Actions (Next 7 Days)
-- Top 3 immediate changes to implement
-- Specific monitoring metrics
-
-CRITICAL: Provide SPECIFIC suggestions with exact keywords, bid amounts in ₹, and measurable targets. No generic advice!`;
+      const contextualPrompt = buildPrompt({
+        metrics_json: metricsJson,
+        goals: goals,
+        context: context,
+        role: 'manager',
+        mode: 'deep dive',
+        output_format: 'detailed reasoning'
+      });
 
       // Generate response using the multiAI service
       const response = await multiAIService.generateSingle(
@@ -764,47 +717,9 @@ CRITICAL: Provide SPECIFIC suggestions with exact keywords, bid amounts in ₹, 
         return res.status(503).json({ message: "Multi-AI service not available" });
       }
 
-      // Generate consensus with specific analysis requirements
+      // Generate consensus with master prompt
       const consensus = await multiAIService.generateWithConsensus(
-        `MULTI-AI CONSENSUS REQUEST: ${query}
-
-CAMPAIGN CONTEXT: ${campaign ? `
-Campaign: ${campaign.name}
-Performance: ${campaign.conversions7d} conversions, ₹${campaign.actualCpa || 'N/A'} CPA, ₹${campaign.spend7d} spend (7 days)
-Budget: ₹${campaign.dailyBudget}/day | Type: ${campaign.type} | Status: ${campaign.status}` : 'General Google Ads analysis for Indian market'}
-
-CONSENSUS ANALYSIS REQUIREMENTS:
-Each AI model must provide:
-
-## 🎯 Campaign-Specific Insights
-### Performance Diagnosis
-- Identify 3 key performance issues
-- Rate campaign health (1-10)
-
-### Keyword Recommendations  
-- 10 specific keywords to add (based on campaign name analysis)
-- 5 negative keywords to exclude
-- Bid range suggestions in ₹
-
-### Budget & Bidding Strategy
-- Optimal daily budget recommendation (₹)
-- CPA target optimization (current vs recommended ₹)
-- ROAS improvement strategy
-
-### Targeting Optimization
-- Specific Indian market segments
-- City-wise targeting priorities 
-- Device/time-of-day adjustments
-
-## 📊 Measurable Outcomes
-- Expected CPA change: ₹X → ₹Y
-- Projected conversion increase: X%
-- Timeline for results: X days
-
-## ⚡ Immediate Actions
-Top 3 changes to implement today with step-by-step instructions.
-
-CRITICAL: Provide SPECIFIC data points, exact keywords, precise ₹ amounts, and measurable targets. No generic advice allowed!`,
+        query,
         campaign
       );
       

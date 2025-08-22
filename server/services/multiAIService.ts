@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import Anthropic from '@anthropic-ai/sdk';
 import type { Campaign } from "@shared/schema";
+import { buildPrompt } from "../prompts/corePrompt";
 
 // <important_do_not_delete>
 const DEFAULT_MODEL_STR = "claude-sonnet-4-20250514";
@@ -71,17 +72,30 @@ export class MultiAIService {
   }
 
   async generateSingle(prompt: string, provider: string, campaign?: Campaign | null): Promise<AIResponse> {
-    const campaignContext = this.buildCampaignContext(campaign);
-    const fullPrompt = `${campaignContext}\n\n${prompt}\n\nCRITICAL REQUIREMENTS:
-- Use only INR (₹) currency, never USD ($)
-- Provide SPECIFIC keywords, not generic suggestions
-- Include exact ₹ bid amounts and budget recommendations  
-- Give measurable performance targets and timelines
-- Analyze campaign name to infer business type and suggest relevant keywords
-- Provide confidence score (0-100) for all recommendations
-- Focus on actionable insights that can be implemented immediately
+    // Build campaign metrics JSON
+    const metricsJson = campaign ? JSON.stringify({
+      name: campaign.name,
+      type: campaign.type,
+      dailyBudget: campaign.dailyBudget,
+      spend7d: campaign.spend7d,
+      conversions7d: campaign.conversions7d,
+      actualCpa: campaign.actualCpa,
+      actualRoas: campaign.actualRoas,
+      targetCpa: campaign.targetCpa,
+      targetRoas: campaign.targetRoas,
+      goalDescription: campaign.goalDescription
+    }) : 'No specific campaign selected';
 
-AVOID generic advice - be specific to the campaign and Indian market!`;
+    const goals = campaign ? `${campaign.targetCpa ? `Target CPA: ₹${campaign.targetCpa}` : ''} ${campaign.targetRoas ? `Target ROAS: ${campaign.targetRoas}x` : ''} ${campaign.goalDescription || ''}`.trim() || 'No specific goals set' : 'General optimization for Indian market';
+    
+    const fullPrompt = buildPrompt({
+      metrics_json: metricsJson,
+      goals: goals,
+      context: `User query: ${prompt}`,
+      role: 'manager',
+      mode: 'quick ideas',
+      output_format: '3 bullet points'
+    });
 
     switch (provider.toLowerCase()) {
       case 'openai':
@@ -257,39 +271,32 @@ Goal: ${campaign.goalDescription || 'No specific goal set'}`;
     // Calculate agreement level based on response similarity
     const agreementLevel = this.calculateAgreementLevel(responses);
     
-    // Use OpenAI to synthesize specific consensus recommendations
-    const consensusPrompt = `Synthesize the following AI recommendations into ONE specific, actionable consensus for campaign "${campaign.name}":
+    // Build campaign metrics JSON for consensus
+    const metricsJson = JSON.stringify({
+      name: campaign.name,
+      type: campaign.type,
+      dailyBudget: campaign.dailyBudget,
+      spend7d: campaign.spend7d,
+      conversions7d: campaign.conversions7d,
+      actualCpa: campaign.actualCpa,
+      actualRoas: campaign.actualRoas,
+      targetCpa: campaign.targetCpa,
+      targetRoas: campaign.targetRoas,
+      goalDescription: campaign.goalDescription
+    });
 
-${responses.map((r, i) => `
-## ${r.provider} Analysis (${r.confidence}% confidence):
-${r.content}
-`).join('\n')}
+    const goals = `${campaign.targetCpa ? `Target CPA: ₹${campaign.targetCpa}` : ''} ${campaign.targetRoas ? `Target ROAS: ${campaign.targetRoas}x` : ''} ${campaign.goalDescription || ''}`.trim() || 'No specific goals set';
+    
+    const context = `Multi-AI consensus analysis of campaign "${campaign.name}". Individual AI responses:\n${responses.map((r, i) => `## ${r.provider} Analysis (${r.confidence}% confidence):\n${r.content}`).join('\n\n')}`;
 
-CONSENSUS SYNTHESIS REQUIREMENTS:
-1. Analyze areas of AGREEMENT among all AI models
-2. Identify the HIGHEST CONFIDENCE recommendations that appear across multiple models
-3. Synthesize SPECIFIC actionable steps with exact numbers
-
-Final Consensus Format:
-## 🎯 Consensus Recommendation
-
-### 📊 Agreement Analysis
-- High agreement areas: [List common recommendations]
-- Confidence weighted average: X%
-- Models in consensus: X out of ${responses.length}
-
-### 🚀 Specific Action Plan
-1. **Immediate Action**: [Most agreed-upon change with exact ₹ amounts]
-2. **Keywords**: [Specific keywords mentioned by 2+ models with bid ranges]
-3. **Budget**: [Consensus budget recommendation with ₹ amounts]
-4. **Timeline**: [Expected results in X days]
-
-### 📈 Expected Impact
-- CPA change: ₹X → ₹Y (based on model consensus)
-- Conversion lift: X% (average of model predictions)
-- Confidence in outcome: X% (weighted by agreement)
-
-CRITICAL: Only include recommendations that appeared in 2+ AI responses with specific ₹ amounts and measurable targets.`;
+    const consensusPrompt = buildPrompt({
+      metrics_json: metricsJson,
+      goals: goals,
+      context: context,
+      role: 'admin',
+      mode: 'consensus analysis',
+      output_format: 'detailed reasoning'
+    });
 
     const consensusResponse = await this.openai.chat.completions.create({
       model: "gpt-4o",
