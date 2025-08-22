@@ -125,6 +125,11 @@ export class CampaignService {
           ec.name === (googleCampaign.name || 'Unnamed Campaign')
         );
         
+        console.log(`DEBUG: Matching campaign "${googleCampaign.name}" - Found existing:`, !!existingCampaign);
+        if (existingCampaign) {
+          console.log(`DEBUG: Preserving goals - CPA: ${existingCampaign.targetCpa}, ROAS: ${existingCampaign.targetRoas}`);
+        }
+        
         const campaignData = {
           userId,
           name: googleCampaign.name || 'Unnamed Campaign',

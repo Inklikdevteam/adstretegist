@@ -39,15 +39,19 @@ export default function GoalSettingModal({
         goalDescription: goalDescription || null,
       };
 
-      await apiRequest("PATCH", `/api/campaigns/${campaign.id}/goals`, goalData);
+      const response = await apiRequest("PATCH", `/api/campaigns/${campaign.id}/goals`, goalData);
+      console.log('Goal setting response:', response);
       
       toast({
-        title: "Goals Updated",
+        title: "Goals Updated", 
         description: "Campaign goals have been successfully updated.",
       });
       
-      onSave();
-      onClose();
+      // Wait a moment before refreshing to ensure database write is complete
+      setTimeout(() => {
+        onSave();
+        onClose();
+      }, 100);
     } catch (error) {
       if (isUnauthorizedError(error as Error)) {
         toast({

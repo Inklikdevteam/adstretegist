@@ -180,7 +180,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Campaign not found" });
       }
       
-      console.log(`DEBUG: Goals updated successfully for campaign ${req.params.id}`);
+      console.log(`DEBUG: Goals updated successfully for campaign ${req.params.id}:`, campaign);
       res.json({ 
         message: "Campaign goals updated successfully",
         campaign 
