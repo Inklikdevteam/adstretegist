@@ -31,11 +31,18 @@ export const getQueryFn: <T>(options: {
   async ({ queryKey }) => {
     let url = queryKey.join("/") as string;
     
-    // Add selected account parameter to campaigns and dashboard API calls
+    // Add selected accounts parameter to campaigns and dashboard API calls
     if (url === "/api/campaigns" || url === "/api/dashboard/summary") {
-      const selectedAccount = localStorage.getItem('selectedGoogleAdsAccount');
-      if (selectedAccount) {
-        url += `?selectedAccount=${encodeURIComponent(selectedAccount)}`;
+      const selectedAccountsString = localStorage.getItem('selectedGoogleAdsAccounts');
+      if (selectedAccountsString) {
+        try {
+          const selectedAccounts = JSON.parse(selectedAccountsString);
+          if (Array.isArray(selectedAccounts) && selectedAccounts.length > 0) {
+            url += `?selectedAccounts=${encodeURIComponent(JSON.stringify(selectedAccounts))}`;
+          }
+        } catch (e) {
+          // Invalid JSON, ignore
+        }
       }
     }
     

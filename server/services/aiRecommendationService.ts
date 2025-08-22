@@ -186,12 +186,12 @@ export class AIRecommendationService {
     await db.insert(auditLogs).values(eventData);
   }
 
-  async getDashboardSummary(userId: string, selectedAccount?: string) {
-    const campaigns = await this.campaignService.getUserCampaigns(userId, selectedAccount);
+  async getDashboardSummary(userId: string, selectedAccounts?: string[]) {
+    const campaigns = await this.campaignService.getUserCampaigns(userId, selectedAccounts);
     const pendingRecommendations = await this.getRecommendationsByUser(userId);
     
-    // If a specific account is selected, filter recommendations to only those for campaigns from that account
-    const filteredRecommendations = selectedAccount 
+    // If specific accounts are selected, filter recommendations to only those for campaigns from those accounts
+    const filteredRecommendations = selectedAccounts && selectedAccounts.length > 0
       ? pendingRecommendations.filter(r => {
           const campaignForRecommendation = campaigns.find(c => c.id === r.campaignId);
           return campaignForRecommendation !== undefined;

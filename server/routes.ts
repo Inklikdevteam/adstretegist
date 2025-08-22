@@ -65,10 +65,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const dbUserId = user.id.toString();
-      const selectedAccount = req.query.selectedAccount as string;
-      console.log('Dashboard summary for user:', { replitUserId, dbUserId, userEmail: user.email, selectedAccount });
+      const selectedAccountsParam = req.query.selectedAccounts as string;
+      let selectedAccounts: string[] = [];
       
-      const summary = await aiService.getDashboardSummary(dbUserId, selectedAccount);
+      if (selectedAccountsParam) {
+        try {
+          selectedAccounts = JSON.parse(selectedAccountsParam);
+        } catch (e) {
+          console.log('Invalid selectedAccounts parameter:', selectedAccountsParam);
+        }
+      }
+      
+      console.log('Dashboard summary for user:', { replitUserId, dbUserId, userEmail: user.email, selectedAccounts });
+      
+      const summary = await aiService.getDashboardSummary(dbUserId, selectedAccounts);
       res.json(summary);
     } catch (error) {
       console.error("Error fetching dashboard summary:", error);
@@ -90,8 +100,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const dbUserId = user.id.toString();
       console.log('Campaigns for user:', { replitUserId, dbUserId, userEmail: user.email });
       
-      const selectedAccount = req.query.selectedAccount as string;
-      let campaigns = await campaignService.getUserCampaigns(dbUserId, selectedAccount);
+      const selectedAccountsParam = req.query.selectedAccounts as string;
+      let selectedAccounts: string[] = [];
+      
+      if (selectedAccountsParam) {
+        try {
+          selectedAccounts = JSON.parse(selectedAccountsParam);
+        } catch (e) {
+          console.log('Invalid selectedAccounts parameter:', selectedAccountsParam);
+        }
+      }
+      
+      let campaigns = await campaignService.getUserCampaigns(dbUserId, selectedAccounts);
       
       // Filter to only show active campaigns
       const activeCampaigns = campaigns.filter(campaign => 

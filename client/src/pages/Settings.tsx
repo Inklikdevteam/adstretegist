@@ -7,12 +7,13 @@ import Sidebar from "@/components/Sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Settings as SettingsIcon, User, Bell, Shield, HelpCircle, ExternalLink } from "lucide-react";
 
 export default function Settings() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading, user } = useAuth();
-  const [selectedAccount, setSelectedAccount] = useState<string>("");
+  const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
 
   // Get available Google Ads accounts
   const { data: accountsData, isLoading: accountsLoading } = useQuery<any>({
@@ -20,24 +21,66 @@ export default function Settings() {
     enabled: isAuthenticated,
   });
 
-  // Load selected account from localStorage on mount
+  // Load selected accounts from localStorage on mount
   useEffect(() => {
-    const saved = localStorage.getItem('selectedGoogleAdsAccount');
+    const saved = localStorage.getItem('selectedGoogleAdsAccounts');
     if (saved) {
-      setSelectedAccount(saved);
+      try {
+        const parsedAccounts = JSON.parse(saved);
+        setSelectedAccounts(Array.isArray(parsedAccounts) ? parsedAccounts : []);
+      } catch {
+        setSelectedAccounts([]);
+      }
     }
   }, []);
 
-  const handleAccountChange = async (accountId: string) => {
-    setSelectedAccount(accountId);
-    localStorage.setItem('selectedGoogleAdsAccount', accountId);
+  const handleAccountToggle = (accountId: string, checked: boolean) => {
+    let newSelectedAccounts: string[];
+    
+    if (checked) {
+      newSelectedAccounts = [...selectedAccounts, accountId];
+    } else {
+      newSelectedAccounts = selectedAccounts.filter(id => id !== accountId);
+    }
+    
+    setSelectedAccounts(newSelectedAccounts);
+    localStorage.setItem('selectedGoogleAdsAccounts', JSON.stringify(newSelectedAccounts));
     
     toast({
-      title: "Account Updated",
-      description: "Your selected Google Ads account has been updated. Campaign data will refresh.",
+      title: "Accounts Updated",
+      description: `${newSelectedAccounts.length === 0 ? 'All accounts' : newSelectedAccounts.length + ' account(s)'} selected. Campaign data will refresh.`,
     });
 
     // Force refresh of campaign data
+    setTimeout(() => {
+      window.location.reload();
+    }, 1000);
+  };
+
+  const handleSelectAll = () => {
+    const allAccountIds = accountsData?.accounts?.map((account: any) => account.id) || [];
+    setSelectedAccounts(allAccountIds);
+    localStorage.setItem('selectedGoogleAdsAccounts', JSON.stringify(allAccountIds));
+    
+    toast({
+      title: "All Accounts Selected",
+      description: "All available accounts have been selected. Campaign data will refresh.",
+    });
+
+    setTimeout(() => {
+      window.location.reload();
+    }, 1000);
+  };
+
+  const handleClearAll = () => {
+    setSelectedAccounts([]);
+    localStorage.setItem('selectedGoogleAdsAccounts', JSON.stringify([]));
+    
+    toast({
+      title: "All Accounts Cleared", 
+      description: "No accounts selected - showing all account data. Campaign data will refresh.",
+    });
+
     setTimeout(() => {
       window.location.reload();
     }, 1000);
@@ -76,27 +119,63 @@ export default function Settings() {
                 </div>
               ) : accountsData?.hasConnection ? (
                 <div>
-                  <h4 className="font-medium text-gray-900 mb-2">Active Account</h4>
-                  <p className="text-sm text-gray-600 mb-3">Choose which Google Ads account to display campaigns from</p>
-                  <Select
-                    value={selectedAccount}
-                    onValueChange={handleAccountChange}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select an account..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Accounts (Default)</SelectItem>
-                      {accountsData?.accounts?.map((account: any) => (
-                        <SelectItem key={account.id} value={account.id}>
+                  <h4 className="font-medium text-gray-900 mb-2">Active Accounts</h4>
+                  <p className="text-sm text-gray-600 mb-3">Choose which Google Ads accounts to display campaigns from</p>
+                  
+                  <div className="flex gap-2 mb-3">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={handleSelectAll}
+                      data-testid="button-select-all"
+                    >
+                      Select All
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={handleClearAll}
+                      data-testid="button-clear-all"
+                    >
+                      Clear All
+                    </Button>
+                  </div>
+                  
+                  <div className="space-y-3 max-h-60 overflow-y-auto border border-gray-200 rounded-lg p-3">
+                    {accountsData?.accounts?.map((account: any) => (
+                      <div key={account.id} className="flex items-center space-x-3">
+                        <Checkbox
+                          id={`account-${account.id}`}
+                          checked={selectedAccounts.includes(account.id)}
+                          onCheckedChange={(checked) => handleAccountToggle(account.id, checked as boolean)}
+                          data-testid={`checkbox-account-${account.id}`}
+                        />
+                        <label 
+                          htmlFor={`account-${account.id}`} 
+                          className="text-sm font-medium text-gray-900 cursor-pointer flex-1"
+                        >
                           {account.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {selectedAccount && selectedAccount !== "all" && (
+                        </label>
+                        <span className="text-xs text-gray-500">
+                          ID: {account.id}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {selectedAccounts.length > 0 && (
                     <p className="text-xs text-gray-500 mt-2">
-                      Currently viewing campaigns from: {accountsData?.accounts?.find((a: any) => a.id === selectedAccount)?.name}
+                      Currently viewing campaigns from {selectedAccounts.length} selected account(s): {
+                        selectedAccounts.map(id => 
+                          accountsData?.accounts?.find((a: any) => a.id === id)?.name
+                        ).join(', ')
+                      }
+                    </p>
+                  )}
+                  
+                  {selectedAccounts.length === 0 && (
+                    <p className="text-xs text-gray-500 mt-2">
+                      No accounts selected - showing campaigns from all accounts
                     </p>
                   )}
                 </div>
