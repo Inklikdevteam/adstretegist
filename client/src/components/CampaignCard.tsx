@@ -174,8 +174,8 @@ export default function CampaignCard({ campaign, onUpdate }: CampaignCardProps) 
             <div>
               <p className="text-sm text-gray-600">Conv. Value</p>
               <p className="font-semibold text-gray-900">
-                {campaign.conversions && campaign.actualRoas ? 
-                  `₹${(parseFloat(campaign.spend7d || '0') * parseFloat(campaign.actualRoas)).toLocaleString()}` : 
+                {campaign.conversionValue && campaign.conversionValue > 0 ? 
+                  `₹${parseFloat(campaign.conversionValue).toLocaleString()}` : 
                   'No data'
                 }
               </p>
@@ -334,8 +334,8 @@ export default function CampaignCard({ campaign, onUpdate }: CampaignCardProps) 
                   <div className="flex justify-between">
                     <span className="text-gray-600">Conv. Value:</span>
                     <span className="font-medium">
-                      {campaign.conversions && campaign.actualRoas ? 
-                        `₹${(parseFloat(campaign.spend7d || '0') * parseFloat(campaign.actualRoas)).toLocaleString()}` : 
+                      {campaign.conversionValue && campaign.conversionValue > 0 ? 
+                        `₹${parseFloat(campaign.conversionValue).toLocaleString()}` : 
                         'No data'
                       }
                     </span>

@@ -130,9 +130,8 @@ export class CampaignService {
           console.log(`DEBUG: Preserving goals - CPA: ${existingCampaign.targetCpa}, ROAS: ${existingCampaign.targetRoas}`);
         }
         
-        // Calculate conversion value and ROAS
-        const conversionValue = googleCampaign.conversions > 0 && googleCampaign.cost > 0 ? 
-          (googleCampaign.conversions * (googleCampaign.cost / googleCampaign.conversions) * 2) : 0; // Assuming 2x ROAS for conv value calc
+        // Use actual conversion value from Google Ads API and calculate ROAS
+        const conversionValue = googleCampaign.conversionsValue || 0;
         const calculatedRoas = googleCampaign.cost > 0 ? (conversionValue / googleCampaign.cost) : 0;
         
         const campaignData = {
@@ -158,9 +157,9 @@ export class CampaignService {
           impressions: googleCampaign.impressions || 0,
           clicks: googleCampaign.clicks || 0,
           ctr: googleCampaign.ctr || 0,
-          avgCpc: googleCampaign.avgCpc || 0,
+          avgCpc: googleCampaign.avgCpc || 0, // Already converted from micros in the service
           conversions: googleCampaign.conversions || 0,
-          conversionValue: conversionValue,
+          conversionValue: conversionValue, // Real conversion value from Google Ads
           conversionRate: googleCampaign.conversionRate || 0
         };
         

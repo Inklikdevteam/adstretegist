@@ -125,6 +125,7 @@ export class GoogleAdsService {
                 metrics.impressions,
                 metrics.clicks,
                 metrics.conversions,
+                metrics.conversions_value,
                 metrics.cost_micros,
                 metrics.ctr,
                 metrics.average_cpc,
@@ -146,9 +147,10 @@ export class GoogleAdsService {
               impressions: row.metrics.impressions || 0,
               clicks: row.metrics.clicks || 0,
               conversions: row.metrics.conversions || 0,
+              conversionsValue: row.metrics.conversions_value || 0,
               cost: row.metrics.cost_micros / 1000000,
               ctr: row.metrics.ctr || 0,
-              avgCpc: row.metrics.average_cpc || 0,
+              avgCpc: (row.metrics.average_cpc || 0) / 1000000, // Convert from micros to actual currency
               conversionRate: row.metrics.conversions_from_interactions_rate || 0,
             }));
             
@@ -175,6 +177,7 @@ export class GoogleAdsService {
             metrics.impressions,
             metrics.clicks,
             metrics.conversions,
+            metrics.conversions_value,
             metrics.cost_micros,
             metrics.ctr,
             metrics.average_cpc,
@@ -196,9 +199,10 @@ export class GoogleAdsService {
           impressions: row.metrics.impressions || 0,
           clicks: row.metrics.clicks || 0,
           conversions: row.metrics.conversions || 0,
+          conversionsValue: row.metrics.conversions_value || 0,
           cost: row.metrics.cost_micros / 1000000,
           ctr: row.metrics.ctr || 0,
-          avgCpc: row.metrics.average_cpc || 0,
+          avgCpc: (row.metrics.average_cpc || 0) / 1000000, // Convert from micros to actual currency
           conversionRate: row.metrics.conversions_from_interactions_rate || 0,
         }));
       }
