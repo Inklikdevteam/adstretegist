@@ -26,24 +26,26 @@ function Router() {
     );
   }
 
+  if (!isAuthenticated) {
+    return (
+      <Switch>
+        <Route path="/" component={Landing} />
+        <Route path="/login-error" component={LoginError} />
+        <Route component={NotFound} />
+      </Switch>
+    );
+  }
+
+  console.log('Rendering authenticated routes');
+  
   return (
     <Switch>
-      {!isAuthenticated ? (
-        <>
-          <Route path="/" component={Landing} />
-          <Route path="/login-error" component={LoginError} />
-          <Route component={NotFound} />
-        </>
-      ) : (
-        <>
-          <Route path="/" component={Dashboard} />
-          <Route path="/campaigns" component={Campaigns} />
-          <Route path="/recommendations" component={Recommendations} />
-          <Route path="/performance" component={Performance} />
-          <Route path="/settings" component={Settings} />
-          <Route component={NotFound} />
-        </>
-      )}
+      <Route path="/" component={Dashboard} />
+      <Route path="/campaigns" component={Campaigns} />
+      <Route path="/recommendations" component={Recommendations} />
+      <Route path="/performance" component={Performance} />
+      <Route path="/settings" component={Settings} />
+      <Route component={NotFound} />
     </Switch>
   );
 }

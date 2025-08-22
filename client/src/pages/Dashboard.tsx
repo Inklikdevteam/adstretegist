@@ -15,6 +15,7 @@ import { queryClient } from "@/lib/queryClient";
 import { apiRequest } from "@/lib/queryClient";
 
 export default function Dashboard() {
+  console.log('Dashboard component rendering');
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
   const [showAuditModal, setShowAuditModal] = useState(false);
