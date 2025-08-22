@@ -65,9 +65,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const dbUserId = user.id.toString();
-      console.log('Dashboard summary for user:', { replitUserId, dbUserId, userEmail: user.email });
+      const selectedAccount = req.query.selectedAccount as string;
+      console.log('Dashboard summary for user:', { replitUserId, dbUserId, userEmail: user.email, selectedAccount });
       
-      const summary = await aiService.getDashboardSummary(dbUserId);
+      const summary = await aiService.getDashboardSummary(dbUserId, selectedAccount);
       res.json(summary);
     } catch (error) {
       console.error("Error fetching dashboard summary:", error);

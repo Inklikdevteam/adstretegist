@@ -31,8 +31,8 @@ export const getQueryFn: <T>(options: {
   async ({ queryKey }) => {
     let url = queryKey.join("/") as string;
     
-    // Add selected account parameter to campaigns API call
-    if (url === "/api/campaigns") {
+    // Add selected account parameter to campaigns and dashboard API calls
+    if (url === "/api/campaigns" || url === "/api/dashboard/summary") {
       const selectedAccount = localStorage.getItem('selectedGoogleAdsAccount');
       if (selectedAccount) {
         url += `?selectedAccount=${encodeURIComponent(selectedAccount)}`;

@@ -186,17 +186,25 @@ export class AIRecommendationService {
     await db.insert(auditLogs).values(eventData);
   }
 
-  async getDashboardSummary(userId: string) {
-    const campaigns = await this.campaignService.getUserCampaigns(userId);
+  async getDashboardSummary(userId: string, selectedAccount?: string) {
+    const campaigns = await this.campaignService.getUserCampaigns(userId, selectedAccount);
     const pendingRecommendations = await this.getRecommendationsByUser(userId);
+    
+    // If a specific account is selected, filter recommendations to only those for campaigns from that account
+    const filteredRecommendations = selectedAccount 
+      ? pendingRecommendations.filter(r => {
+          const campaignForRecommendation = campaigns.find(c => c.id === r.campaignId);
+          return campaignForRecommendation !== undefined;
+        })
+      : pendingRecommendations;
     
     const summary = {
       totalCampaigns: campaigns.length,
       activeCampaigns: campaigns.filter(c => c.status === 'active' || c.status === 'enabled').length,
       recommendations: {
-        actionable: pendingRecommendations.filter(r => r.type === 'actionable').length,
-        monitor: pendingRecommendations.filter(r => r.type === 'monitor').length,
-        clarification: pendingRecommendations.filter(r => r.type === 'clarification').length
+        actionable: filteredRecommendations.filter(r => r.type === 'actionable').length,
+        monitor: filteredRecommendations.filter(r => r.type === 'monitor').length,
+        clarification: filteredRecommendations.filter(r => r.type === 'clarification').length
       },
       totalSpend: campaigns.reduce((sum, c) => sum + parseFloat(c.spend7d || '0'), 0),
       totalConversions: campaigns.reduce((sum, c) => sum + (c.conversions7d || 0), 0)
