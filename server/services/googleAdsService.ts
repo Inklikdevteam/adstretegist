@@ -338,7 +338,31 @@ export class GoogleAdsService {
     }
   }
 
-  private mapChannelType(channelType: string): string {
+  private mapChannelType(channelType: string | number): string {
+    // Convert numeric values to strings based on Google Ads API enum
+    const numericChannelType = typeof channelType === 'number' ? channelType : parseInt(channelType);
+    
+    if (!isNaN(numericChannelType)) {
+      switch (numericChannelType) {
+        case 2:
+          return 'search';
+        case 3:
+          return 'display';
+        case 4:
+          return 'shopping';
+        case 6:
+          return 'video';
+        case 7:
+          return 'multi_channel';
+        case 10:
+          return 'PERFORMANCE_MAX';
+        default:
+          console.warn(`Unknown numeric channel type: ${channelType}`);
+          return 'unknown';
+      }
+    }
+    
+    // Handle string values for backward compatibility
     switch (channelType) {
       case 'SEARCH':
         return 'search';
