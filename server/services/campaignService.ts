@@ -130,8 +130,9 @@ export class CampaignService {
           console.log(`DEBUG: Preserving goals - CPA: ${existingCampaign.targetCpa}, ROAS: ${existingCampaign.targetRoas}`);
         }
         
-        // Calculate conversion value and additional metrics
-        const conversionValue = googleCampaign.conversions * googleCampaign.cost * (googleCampaign.actualRoas || 1);
+        // Calculate conversion value and ROAS
+        const conversionValue = googleCampaign.conversions > 0 && googleCampaign.cost > 0 ? 
+          (googleCampaign.conversions * (googleCampaign.cost / googleCampaign.conversions) * 2) : 0; // Assuming 2x ROAS for conv value calc
         const calculatedRoas = googleCampaign.cost > 0 ? (conversionValue / googleCampaign.cost) : 0;
         
         const campaignData = {
@@ -147,27 +148,39 @@ export class CampaignService {
           // Preserve existing goals if they exist
           targetCpa: existingCampaign?.targetCpa || (googleCampaign.targetCpa ? this.parseCurrencyValue(googleCampaign.targetCpa).toString() : null),
           targetRoas: existingCampaign?.targetRoas || (googleCampaign.targetRoas ? this.parseCurrencyValue(googleCampaign.targetRoas).toString() : null),
-          goalDescription: existingCampaign?.goalDescription || `Real Google Ads campaign - ${googleCampaign.bidStrategy || 'Auto bidding'}`,
-          
-          // Add the additional metrics as temporary fields (not stored in DB but passed to frontend)
-          ...(googleCampaign as any)
+          goalDescription: existingCampaign?.goalDescription || `Real Google Ads campaign - ${googleCampaign.bidStrategy || 'Auto bidding'}`
+        };
+
+        // Create the final campaign object with all Google Ads metrics
+        const finalCampaign = {
+          ...campaignData,
+          // Real Google Ads metrics
+          impressions: googleCampaign.impressions || 0,
+          clicks: googleCampaign.clicks || 0,
+          ctr: googleCampaign.ctr || 0,
+          avgCpc: googleCampaign.avgCpc || 0,
+          conversions: googleCampaign.conversions || 0,
+          conversionValue: conversionValue,
+          conversionRate: googleCampaign.conversionRate || 0
         };
         
         if (existingCampaign) {
-          // Update existing campaign
+          // Update existing campaign in database
           const [updatedCampaign] = await db
             .update(campaigns)
             .set(campaignData)
             .where(eq(campaigns.id, existingCampaign.id))
             .returning();
-          updatedCampaigns.push(updatedCampaign);
+          // Add Google Ads metrics to the returned campaign
+          updatedCampaigns.push({ ...updatedCampaign, ...finalCampaign });
         } else {
-          // Insert new campaign
+          // Insert new campaign in database
           const [newCampaign] = await db
             .insert(campaigns)
             .values(campaignData as InsertCampaign)
             .returning();
-          updatedCampaigns.push(newCampaign);
+          // Add Google Ads metrics to the returned campaign
+          updatedCampaigns.push({ ...newCampaign, ...finalCampaign });
         }
       }
       
@@ -253,58 +266,9 @@ export class CampaignService {
   }
 
   async initializeSampleCampaigns(userId: string): Promise<Campaign[]> {
-    const sampleCampaigns: InsertCampaign[] = [
-      {
-        userId,
-        name: "E-commerce - Electronics",
-        type: "search",
-        status: "active",
-        dailyBudget: "2500.00",
-        targetCpa: "300.00",
-        targetRoas: "4.00",
-        spend7d: "16240.00",
-        conversions7d: 57,
-        actualCpa: "285.00",
-        actualRoas: "5.20",
-        goalDescription: "Maximize conversions while maintaining CPA under ₹300"
-      },
-      {
-        userId,
-        name: "Brand Protection",
-        type: "search", 
-        status: "active",
-        dailyBudget: "800.00",
-        targetCpa: "300.00",
-        targetRoas: "4.00",
-        spend7d: "4680.00",
-        conversions7d: 19,
-        actualCpa: "245.00",
-        actualRoas: "6.10",
-        lastModified: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
-        burnInUntil: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000), // 5 days from now
-        goalDescription: "Protect brand terms and maintain high ROAS"
-      },
-      {
-        userId,
-        name: "Remarketing - Visitors",
-        type: "display",
-        status: "active", 
-        dailyBudget: "800.00",
-        spend7d: "5600.00",
-        conversions7d: 12,
-        actualCpa: "467.00",
-        actualRoas: "2.10",
-        goalDescription: null // No goals set - will trigger clarification
-      }
-    ];
-
-    const createdCampaigns: Campaign[] = [];
-    for (const campaignData of sampleCampaigns) {
-      const [campaign] = await db.insert(campaigns).values(campaignData).returning();
-      createdCampaigns.push(campaign);
-    }
-
-    return createdCampaigns;
+    // Return empty array - only use real Google Ads data
+    console.log("Skipping sample campaigns - only using real Google Ads data");
+    return [];
   }
 
   async updateCampaignGoals(
