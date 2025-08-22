@@ -130,6 +130,10 @@ export class CampaignService {
           console.log(`DEBUG: Preserving goals - CPA: ${existingCampaign.targetCpa}, ROAS: ${existingCampaign.targetRoas}`);
         }
         
+        // Calculate conversion value and additional metrics
+        const conversionValue = googleCampaign.conversions * googleCampaign.cost * (googleCampaign.actualRoas || 1);
+        const calculatedRoas = googleCampaign.cost > 0 ? (conversionValue / googleCampaign.cost) : 0;
+        
         const campaignData = {
           userId,
           name: googleCampaign.name || 'Unnamed Campaign',
@@ -139,11 +143,14 @@ export class CampaignService {
           spend7d: this.parseCurrencyValue(googleCampaign.cost.toFixed(2)).toString(),
           conversions7d: Math.round(googleCampaign.conversions || 0),
           actualCpa: googleCampaign.conversions > 0 ? this.parseCurrencyValue(googleCampaign.cost / googleCampaign.conversions).toString() : null,
-          actualRoas: googleCampaign.conversions > 0 && googleCampaign.cost > 0 ? this.parseCurrencyValue(googleCampaign.conversions / googleCampaign.cost).toString() : null,
+          actualRoas: calculatedRoas > 0 ? this.parseCurrencyValue(calculatedRoas).toString() : null,
           // Preserve existing goals if they exist
           targetCpa: existingCampaign?.targetCpa || (googleCampaign.targetCpa ? this.parseCurrencyValue(googleCampaign.targetCpa).toString() : null),
           targetRoas: existingCampaign?.targetRoas || (googleCampaign.targetRoas ? this.parseCurrencyValue(googleCampaign.targetRoas).toString() : null),
-          goalDescription: existingCampaign?.goalDescription || `Real Google Ads campaign - ${googleCampaign.bidStrategy || 'Auto bidding'}`
+          goalDescription: existingCampaign?.goalDescription || `Real Google Ads campaign - ${googleCampaign.bidStrategy || 'Auto bidding'}`,
+          
+          // Add the additional metrics as temporary fields (not stored in DB but passed to frontend)
+          ...(googleCampaign as any)
         };
         
         if (existingCampaign) {

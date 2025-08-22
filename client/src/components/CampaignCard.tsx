@@ -153,15 +153,43 @@ export default function CampaignCard({ campaign, onUpdate }: CampaignCardProps) 
             </div>
           </div>
           
-          <div className="grid grid-cols-2 gap-4 mb-4">
+          <div className="grid grid-cols-3 gap-4 mb-4">
+            <div>
+              <p className="text-sm text-gray-600">Campaign Type</p>
+              <p className="font-semibold text-gray-900 capitalize">{campaign.type}</p>
+            </div>
             <div>
               <p className="text-sm text-gray-600">Daily Budget</p>
               <p className="font-semibold text-gray-900">₹{parseFloat(campaign.dailyBudget).toLocaleString()}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-600">Spend (7d)</p>
+              <p className="text-sm text-gray-600">Cost (7d)</p>
               <p className="font-semibold text-gray-900">₹{parseFloat(campaign.spend7d || '0').toLocaleString()}</p>
             </div>
+            
+            <div>
+              <p className="text-sm text-gray-600">Conversions</p>
+              <p className="font-semibold text-gray-900">{campaign.conversions7d || campaign.conversions || 0}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Conv. Value</p>
+              <p className="font-semibold text-gray-900">
+                {campaign.conversions && campaign.actualRoas ? 
+                  `₹${(parseFloat(campaign.spend7d || '0') * parseFloat(campaign.actualRoas)).toLocaleString()}` : 
+                  'No data'
+                }
+              </p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">ROAS</p>
+              <p className={`font-semibold ${hasGoals ? 'text-green-600' : 'text-gray-700'}`}>
+                {campaign.actualRoas ? `${parseFloat(campaign.actualRoas).toFixed(1)}x` : 'No data'}
+              </p>
+              {campaign.targetRoas && (
+                <p className="text-xs text-gray-500">Target: {parseFloat(campaign.targetRoas).toFixed(1)}x</p>
+              )}
+            </div>
+            
             <div>
               <p className="text-sm text-gray-600">CPA</p>
               <p className={`font-semibold ${hasGoals ? 'text-green-600' : 'text-gray-700'}`}>
@@ -172,13 +200,31 @@ export default function CampaignCard({ campaign, onUpdate }: CampaignCardProps) 
               )}
             </div>
             <div>
-              <p className="text-sm text-gray-600">ROAS</p>
-              <p className={`font-semibold ${hasGoals ? 'text-green-600' : 'text-gray-700'}`}>
-                {campaign.actualRoas ? `${parseFloat(campaign.actualRoas).toFixed(1)}x` : 'No data'}
+              <p className="text-sm text-gray-600">Target ROAS</p>
+              <p className="font-semibold text-gray-900">
+                {campaign.targetRoas ? `${parseFloat(campaign.targetRoas).toFixed(1)}x` : 'Not set'}
               </p>
-              {campaign.targetRoas && (
-                <p className="text-xs text-gray-500">Target: {parseFloat(campaign.targetRoas).toFixed(1)}x</p>
-              )}
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Impressions</p>
+              <p className="font-semibold text-gray-900">{campaign.impressions?.toLocaleString() || 'No data'}</p>
+            </div>
+            
+            <div>
+              <p className="text-sm text-gray-600">Clicks</p>
+              <p className="font-semibold text-gray-900">{campaign.clicks?.toLocaleString() || 'No data'}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">CTR</p>
+              <p className="font-semibold text-gray-900">
+                {campaign.ctr ? `${(parseFloat(campaign.ctr) * 100).toFixed(2)}%` : 'No data'}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Avg. CPC</p>
+              <p className="font-semibold text-gray-900">
+                {campaign.avgCpc ? `₹${parseFloat(campaign.avgCpc).toFixed(2)}` : 'No data'}
+              </p>
             </div>
           </div>
           
@@ -252,7 +298,7 @@ export default function CampaignCard({ campaign, onUpdate }: CampaignCardProps) 
                 <h4 className="font-semibold text-gray-900 mb-3">Campaign Overview</h4>
                 <div className="space-y-2">
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Type:</span>
+                    <span className="text-gray-600">Campaign Type:</span>
                     <span className="capitalize font-medium">{campaign.type}</span>
                   </div>
                   <div className="flex justify-between">
@@ -263,6 +309,14 @@ export default function CampaignCard({ campaign, onUpdate }: CampaignCardProps) 
                     <span className="text-gray-600">Daily Budget:</span>
                     <span className="font-medium">₹{parseFloat(campaign.dailyBudget).toLocaleString()}</span>
                   </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Target CPA:</span>
+                    <span className="font-medium">{campaign.targetCpa ? `₹${parseFloat(campaign.targetCpa).toLocaleString()}` : 'Not set'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Target ROAS:</span>
+                    <span className="font-medium">{campaign.targetRoas ? `${parseFloat(campaign.targetRoas).toFixed(1)}x` : 'Not set'}</span>
+                  </div>
                 </div>
               </div>
               
@@ -270,12 +324,21 @@ export default function CampaignCard({ campaign, onUpdate }: CampaignCardProps) 
                 <h4 className="font-semibold text-gray-900 mb-3">Performance (7 days)</h4>
                 <div className="space-y-2">
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Spend:</span>
+                    <span className="text-gray-600">Cost:</span>
                     <span className="font-medium">₹{parseFloat(campaign.spend7d || '0').toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Conversions:</span>
-                    <span className="font-medium">{campaign.conversions7d || 0}</span>
+                    <span className="font-medium">{campaign.conversions7d || campaign.conversions || 0}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Conv. Value:</span>
+                    <span className="font-medium">
+                      {campaign.conversions && campaign.actualRoas ? 
+                        `₹${(parseFloat(campaign.spend7d || '0') * parseFloat(campaign.actualRoas)).toLocaleString()}` : 
+                        'No data'
+                      }
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">CPA:</span>
@@ -284,6 +347,36 @@ export default function CampaignCard({ campaign, onUpdate }: CampaignCardProps) 
                   <div className="flex justify-between">
                     <span className="text-gray-600">ROAS:</span>
                     <span className="font-medium">{campaign.actualRoas ? `${parseFloat(campaign.actualRoas).toFixed(1)}x` : 'No data'}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="mt-6">
+              <h4 className="font-semibold text-gray-900 mb-3">Traffic Metrics</h4>
+              <div className="grid grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Impressions:</span>
+                    <span className="font-medium">{campaign.impressions?.toLocaleString() || 'No data'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Clicks:</span>
+                    <span className="font-medium">{campaign.clicks?.toLocaleString() || 'No data'}</span>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">CTR:</span>
+                    <span className="font-medium">
+                      {campaign.ctr ? `${(parseFloat(campaign.ctr) * 100).toFixed(2)}%` : 'No data'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Avg. CPC:</span>
+                    <span className="font-medium">
+                      {campaign.avgCpc ? `₹${parseFloat(campaign.avgCpc).toFixed(2)}` : 'No data'}
+                    </span>
                   </div>
                 </div>
               </div>
