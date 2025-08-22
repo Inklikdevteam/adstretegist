@@ -110,30 +110,69 @@ export class CampaignService {
         campaign.status && (campaign.status === 2 || campaign.status === 'ENABLED' || campaign.status.toString().toUpperCase() === 'ENABLED')
       );
       
-      // Clear existing campaigns and related data safely (cascade delete)
-      await this.cleanupUserCampaigns(userId);
+      // Get existing campaigns for this user
+      const existingCampaigns = await db
+        .select()
+        .from(campaigns)
+        .where(eq(campaigns.userId, userId));
       
-      const campaignsToInsert: InsertCampaign[] = activeCampaigns.map(campaign => ({
-        userId,
-        name: campaign.name || 'Unnamed Campaign',
-        type: this.mapCampaignType(campaign.type),
-        status: (campaign.status === 2 || campaign.status === 'ENABLED') ? 'active' : 'active', // Google Ads status 2 = ENABLED
-        dailyBudget: this.parseCurrencyValue(campaign.budget.toFixed(2)).toString(), // Clean currency format
-        spend7d: this.parseCurrencyValue(campaign.cost.toFixed(2)).toString(), // Clean currency format
-        conversions7d: Math.round(campaign.conversions || 0),
-        actualCpa: campaign.conversions > 0 ? this.parseCurrencyValue(campaign.cost / campaign.conversions).toString() : null,
-        actualRoas: campaign.conversions > 0 && campaign.cost > 0 ? this.parseCurrencyValue(campaign.conversions / campaign.cost).toString() : null, // Proper ROAS calculation
-        targetCpa: campaign.targetCpa ? this.parseCurrencyValue(campaign.targetCpa).toString() : null,
-        targetRoas: campaign.targetRoas ? this.parseCurrencyValue(campaign.targetRoas).toString() : null,
-        goalDescription: `Real Google Ads campaign - ${campaign.bidStrategy || 'Auto bidding'}`
-      }));
-
-      if (campaignsToInsert.length > 0) {
-        const insertedCampaigns = await db.insert(campaigns).values(campaignsToInsert).returning();
-        return insertedCampaigns;
+      const updatedCampaigns: Campaign[] = [];
+      
+      for (const googleCampaign of activeCampaigns) {
+        // Find existing campaign by name (since Google Ads doesn't provide a stable ID we can use)
+        const existingCampaign = existingCampaigns.find(ec => 
+          ec.name === googleCampaign.name || 
+          ec.name === (googleCampaign.name || 'Unnamed Campaign')
+        );
+        
+        const campaignData = {
+          userId,
+          name: googleCampaign.name || 'Unnamed Campaign',
+          type: this.mapCampaignType(googleCampaign.type),
+          status: (googleCampaign.status === 2 || googleCampaign.status === 'ENABLED') ? 'active' : 'active' as 'active',
+          dailyBudget: this.parseCurrencyValue(googleCampaign.budget.toFixed(2)).toString(),
+          spend7d: this.parseCurrencyValue(googleCampaign.cost.toFixed(2)).toString(),
+          conversions7d: Math.round(googleCampaign.conversions || 0),
+          actualCpa: googleCampaign.conversions > 0 ? this.parseCurrencyValue(googleCampaign.cost / googleCampaign.conversions).toString() : null,
+          actualRoas: googleCampaign.conversions > 0 && googleCampaign.cost > 0 ? this.parseCurrencyValue(googleCampaign.conversions / googleCampaign.cost).toString() : null,
+          // Preserve existing goals if they exist
+          targetCpa: existingCampaign?.targetCpa || (googleCampaign.targetCpa ? this.parseCurrencyValue(googleCampaign.targetCpa).toString() : null),
+          targetRoas: existingCampaign?.targetRoas || (googleCampaign.targetRoas ? this.parseCurrencyValue(googleCampaign.targetRoas).toString() : null),
+          goalDescription: existingCampaign?.goalDescription || `Real Google Ads campaign - ${googleCampaign.bidStrategy || 'Auto bidding'}`
+        };
+        
+        if (existingCampaign) {
+          // Update existing campaign
+          const [updatedCampaign] = await db
+            .update(campaigns)
+            .set(campaignData)
+            .where(eq(campaigns.id, existingCampaign.id))
+            .returning();
+          updatedCampaigns.push(updatedCampaign);
+        } else {
+          // Insert new campaign
+          const [newCampaign] = await db
+            .insert(campaigns)
+            .values(campaignData as InsertCampaign)
+            .returning();
+          updatedCampaigns.push(newCampaign);
+        }
+      }
+      
+      // Remove campaigns that no longer exist in Google Ads
+      const googleCampaignNames = activeCampaigns.map(c => c.name || 'Unnamed Campaign');
+      const campaignsToRemove = existingCampaigns.filter(ec => 
+        !googleCampaignNames.includes(ec.name)
+      );
+      
+      for (const campaignToRemove of campaignsToRemove) {
+        // Clean up related data first
+        await db.delete(auditLogs).where(eq(auditLogs.campaignId, campaignToRemove.id));
+        await db.delete(recommendations).where(eq(recommendations.campaignId, campaignToRemove.id));
+        await db.delete(campaigns).where(eq(campaigns.id, campaignToRemove.id));
       }
 
-      return [];
+      return updatedCampaigns;
     } catch (error) {
       console.error('Error fetching real Google Ads campaigns:', error);
       console.error('Full error details:', JSON.stringify(error, null, 2));

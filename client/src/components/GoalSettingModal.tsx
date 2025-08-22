@@ -39,9 +39,6 @@ export default function GoalSettingModal({
         goalDescription: goalDescription || null,
       };
 
-      console.log('DEBUG: Sending goal data:', goalData);
-      console.log('DEBUG: Campaign ID:', campaign.id);
-      
       await apiRequest("PATCH", `/api/campaigns/${campaign.id}/goals`, goalData);
       
       toast({
