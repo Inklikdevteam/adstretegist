@@ -14,6 +14,7 @@ export default function Settings() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading, user } = useAuth();
   const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
+  const [appliedAccounts, setAppliedAccounts] = useState<string[]>([]);
 
   // Get available Google Ads accounts
   const { data: accountsData, isLoading: accountsLoading } = useQuery<any>({
@@ -27,9 +28,12 @@ export default function Settings() {
     if (saved) {
       try {
         const parsedAccounts = JSON.parse(saved);
-        setSelectedAccounts(Array.isArray(parsedAccounts) ? parsedAccounts : []);
+        const accounts = Array.isArray(parsedAccounts) ? parsedAccounts : [];
+        setSelectedAccounts(accounts);
+        setAppliedAccounts(accounts);
       } catch {
         setSelectedAccounts([]);
+        setAppliedAccounts([]);
       }
     }
   }, []);
@@ -44,11 +48,24 @@ export default function Settings() {
     }
     
     setSelectedAccounts(newSelectedAccounts);
-    localStorage.setItem('selectedGoogleAdsAccounts', JSON.stringify(newSelectedAccounts));
+  };
+
+  const handleSelectAll = () => {
+    const allAccountIds = accountsData?.accounts?.map((account: any) => account.id) || [];
+    setSelectedAccounts(allAccountIds);
+  };
+
+  const handleClearAll = () => {
+    setSelectedAccounts([]);
+  };
+
+  const handleUpdateAccounts = () => {
+    localStorage.setItem('selectedGoogleAdsAccounts', JSON.stringify(selectedAccounts));
+    setAppliedAccounts(selectedAccounts);
     
     toast({
       title: "Accounts Updated",
-      description: `${newSelectedAccounts.length === 0 ? 'All accounts' : newSelectedAccounts.length + ' account(s)'} selected. Campaign data will refresh.`,
+      description: `${selectedAccounts.length === 0 ? 'All accounts' : selectedAccounts.length + ' account(s)'} selected. Campaign data will refresh.`,
     });
 
     // Force refresh of campaign data
@@ -57,34 +74,7 @@ export default function Settings() {
     }, 1000);
   };
 
-  const handleSelectAll = () => {
-    const allAccountIds = accountsData?.accounts?.map((account: any) => account.id) || [];
-    setSelectedAccounts(allAccountIds);
-    localStorage.setItem('selectedGoogleAdsAccounts', JSON.stringify(allAccountIds));
-    
-    toast({
-      title: "All Accounts Selected",
-      description: "All available accounts have been selected. Campaign data will refresh.",
-    });
-
-    setTimeout(() => {
-      window.location.reload();
-    }, 1000);
-  };
-
-  const handleClearAll = () => {
-    setSelectedAccounts([]);
-    localStorage.setItem('selectedGoogleAdsAccounts', JSON.stringify([]));
-    
-    toast({
-      title: "All Accounts Cleared", 
-      description: "No accounts selected - showing all account data. Campaign data will refresh.",
-    });
-
-    setTimeout(() => {
-      window.location.reload();
-    }, 1000);
-  };
+  const hasChanges = JSON.stringify(selectedAccounts.sort()) !== JSON.stringify(appliedAccounts.sort());
 
   const userInfo = user as any;
 
@@ -139,6 +129,17 @@ export default function Settings() {
                     >
                       Clear All
                     </Button>
+                    {hasChanges && (
+                      <Button 
+                        variant="default" 
+                        size="sm" 
+                        onClick={handleUpdateAccounts}
+                        data-testid="button-update-accounts"
+                        className="ml-auto"
+                      >
+                        Update
+                      </Button>
+                    )}
                   </div>
                   
                   <div className="space-y-3 max-h-60 overflow-y-auto border border-gray-200 rounded-lg p-3">
@@ -163,19 +164,25 @@ export default function Settings() {
                     ))}
                   </div>
                   
-                  {selectedAccounts.length > 0 && (
+                  {appliedAccounts.length > 0 && (
                     <p className="text-xs text-gray-500 mt-2">
-                      Currently viewing campaigns from {selectedAccounts.length} selected account(s): {
-                        selectedAccounts.map(id => 
+                      Currently viewing campaigns from {appliedAccounts.length} active account(s): {
+                        appliedAccounts.map(id => 
                           accountsData?.accounts?.find((a: any) => a.id === id)?.name
                         ).join(', ')
                       }
                     </p>
                   )}
                   
-                  {selectedAccounts.length === 0 && (
+                  {appliedAccounts.length === 0 && (
                     <p className="text-xs text-gray-500 mt-2">
-                      No accounts selected - showing campaigns from all accounts
+                      No accounts active - showing campaigns from all accounts
+                    </p>
+                  )}
+                  
+                  {hasChanges && (
+                    <p className="text-xs text-orange-600 mt-2 font-medium">
+                      Changes pending - click Update to apply
                     </p>
                   )}
                 </div>
