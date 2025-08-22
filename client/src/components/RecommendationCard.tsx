@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import { formatAIContent } from "@/utils/aiFormatting";
 
 interface RecommendationCardProps {
   recommendation: any;
@@ -113,9 +114,9 @@ export default function RecommendationCard({
         
         <div className="bg-gray-50 rounded-lg p-4 mb-4">
           <p className="text-sm text-gray-700 font-medium mb-2">AI Reasoning ({recommendation.aiModel}):</p>
-          <p className="text-sm text-gray-600 leading-relaxed">
-            {recommendation.reasoning}
-          </p>
+          <div className="text-sm text-gray-600 leading-relaxed">
+            {formatAIContent(recommendation.reasoning)}
+          </div>
         </div>
         
         <div className="flex items-center justify-between">
@@ -172,12 +173,12 @@ export default function RecommendationCard({
         <div className="space-y-6">
           <div>
             <h4 className="font-semibold text-gray-900 mb-2">Recommendation Details</h4>
-            <p className="text-gray-700">{recommendation.description}</p>
+            <div className="text-gray-700">{formatAIContent(recommendation.description)}</div>
           </div>
           
           <div className="bg-gray-50 rounded-lg p-4">
             <h4 className="font-semibold text-gray-900 mb-2">AI Analysis ({recommendation.aiModel})</h4>
-            <p className="text-gray-700 leading-relaxed">{recommendation.reasoning}</p>
+            <div className="text-gray-700 leading-relaxed">{formatAIContent(recommendation.reasoning)}</div>
           </div>
           
           <div className="grid grid-cols-2 gap-4">

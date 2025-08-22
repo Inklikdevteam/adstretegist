@@ -13,78 +13,7 @@ interface CampaignCardProps {
   onUpdate: () => void;
 }
 
-// Format AI content with proper styling
-const formatAIContent = (content: string) => {
-  if (!content) return content;
-  
-  // Split content into lines for processing
-  const lines = content.split('\n');
-  const formattedLines = lines.map((line, index) => {
-    // Convert markdown headers
-    if (line.startsWith('### ')) {
-      return <h3 key={index} className="text-lg font-semibold mt-4 mb-2 text-gray-800">{line.replace('### ', '')}</h3>;
-    }
-    if (line.startsWith('## ')) {
-      return <h2 key={index} className="text-xl font-bold mt-5 mb-3 text-gray-900">{line.replace('## ', '')}</h2>;
-    }
-    if (line.startsWith('# ')) {
-      return <h1 key={index} className="text-2xl font-bold mt-6 mb-4 text-gray-900">{line.replace('# ', '')}</h1>;
-    }
-    
-    // Convert bullet points with better styling
-    if (line.startsWith('- ') || line.startsWith('• ')) {
-      return (
-        <div key={index} className="flex items-start ml-1 my-2 p-3 bg-gray-50 rounded-lg border-l-4 border-blue-500">
-          <span className="text-blue-600 mr-3 mt-1 text-lg font-bold">•</span>
-          <span className="flex-1 text-gray-800">{formatInlineTextAI(line.replace(/^[•-]\s+/, ''))}</span>
-        </div>
-      );
-    }
-    
-    // Convert numbered lists with better styling
-    const numberedMatch = line.match(/^\d+\.\s+(.+)/);
-    if (numberedMatch) {
-      return (
-        <div key={index} className="flex items-start ml-1 my-2 p-3 bg-blue-50 rounded-lg border-l-4 border-blue-600">
-          <span className="text-blue-700 mr-3 font-bold min-w-[2rem] bg-blue-200 px-2 py-1 rounded-full text-center text-sm">{line.match(/^\d+/)?.[0]}</span>
-          <span className="flex-1 text-gray-800">{formatInlineTextAI(numberedMatch[1])}</span>
-        </div>
-      );
-    }
-    
-    // Skip empty lines 
-    if (line.trim() === '') {
-      return <div key={index} className="h-3"></div>;
-    }
-    
-    // Regular paragraphs with better spacing
-    return <p key={index} className="my-3 text-gray-700 leading-relaxed text-base">{formatInlineTextAI(line)}</p>;
-  });
-  
-  return <div className="space-y-2">{formattedLines}</div>;
-};
-
-// Format inline text with bold, emphasis, etc.
-const formatInlineTextAI = (text: string) => {
-  if (!text) return text;
-  
-  // Split by **bold** patterns
-  const parts = text.split(/(\*\*[^*]+\*\*)/g);
-  
-  return parts.map((part, index) => {
-    if (part.startsWith('**') && part.endsWith('**')) {
-      return <strong key={index} className="font-bold text-gray-900 bg-yellow-200 px-2 py-1 rounded-md">{part.slice(2, -2)}</strong>;
-    }
-    
-    // Handle ₹ currency formatting with better styling
-    const currencyFormatted = part.replace(/₹(\d+(?:,\d+)*(?:\.\d+)?)/g, '<span class="font-bold text-green-800 bg-green-200 px-2 py-1 rounded-md">₹$1</span>');
-    if (currencyFormatted !== part) {
-      return <span key={index} dangerouslySetInnerHTML={{ __html: currencyFormatted }} />;
-    }
-    
-    return part;
-  });
-};
+import { formatAIContent } from "@/utils/aiFormatting";
 
 export default function CampaignCard({ campaign, onUpdate }: CampaignCardProps) {
   const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
