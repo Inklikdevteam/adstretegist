@@ -174,13 +174,39 @@ export class CampaignService {
           // Add Google Ads metrics to the returned campaign
           updatedCampaigns.push({ ...updatedCampaign, ...finalCampaign });
         } else {
-          // Insert new campaign in database
-          const [newCampaign] = await db
-            .insert(campaigns)
-            .values(campaignData as InsertCampaign)
-            .returning();
-          // Add Google Ads metrics to the returned campaign
-          updatedCampaigns.push({ ...newCampaign, ...finalCampaign });
+          // Use upsert logic to handle potential race conditions
+          try {
+            const [newCampaign] = await db
+              .insert(campaigns)
+              .values(campaignData as InsertCampaign)
+              .returning();
+            // Add Google Ads metrics to the returned campaign
+            updatedCampaigns.push({ ...newCampaign, ...finalCampaign });
+          } catch (insertError: any) {
+            // Handle unique constraint violation by updating existing campaign
+            if (insertError.code === '23505' && insertError.constraint === 'campaigns_user_name_unique') {
+              console.log(`DEBUG: Handling duplicate campaign insertion for "${campaignName}" - updating existing`);
+              
+              // Find the existing campaign that caused the conflict
+              const conflictCampaign = await db
+                .select()
+                .from(campaigns)
+                .where(and(eq(campaigns.userId, userId), eq(campaigns.name, campaignName)))
+                .limit(1);
+              
+              if (conflictCampaign.length > 0) {
+                const [updatedCampaign] = await db
+                  .update(campaigns)
+                  .set(campaignData)
+                  .where(eq(campaigns.id, conflictCampaign[0].id))
+                  .returning();
+                // Add Google Ads metrics to the returned campaign
+                updatedCampaigns.push({ ...updatedCampaign, ...finalCampaign });
+              }
+            } else {
+              throw insertError; // Re-throw other errors
+            }
+          }
         }
       }
       
