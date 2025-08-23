@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import Sidebar from "@/components/Sidebar";
+import AccountSelector from "@/components/AccountSelector";
 import MetricsCard from "@/components/MetricsCard";
 import RecommendationCard from "@/components/RecommendationCard";
 import CampaignCard from "@/components/CampaignCard";
@@ -22,21 +23,25 @@ export default function Dashboard() {
   const [showChatInterface, setShowChatInterface] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isEvaluating, setIsEvaluating] = useState(false);
+  const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
 
   // Authentication is handled by the Router component
 
   const { data: dashboardSummary, isLoading: summaryLoading } = useQuery<any>({
-    queryKey: ["/api/dashboard/summary"],
+    queryKey: ["/api/dashboard/summary", selectedAccounts],
+    queryFn: () => apiRequest("GET", `/api/dashboard/summary?selectedAccounts=${encodeURIComponent(JSON.stringify(selectedAccounts))}`),
     enabled: isAuthenticated,
   });
 
   const { data: campaigns = [], isLoading: campaignsLoading } = useQuery<any[]>({
-    queryKey: ["/api/campaigns"],
+    queryKey: ["/api/campaigns", selectedAccounts],
+    queryFn: () => apiRequest("GET", `/api/campaigns?selectedAccounts=${encodeURIComponent(JSON.stringify(selectedAccounts))}`),
     enabled: isAuthenticated,
   });
 
   const { data: recommendations = [], isLoading: recommendationsLoading } = useQuery<any[]>({
-    queryKey: ["/api/recommendations"],
+    queryKey: ["/api/recommendations", selectedAccounts],
+    queryFn: () => apiRequest("GET", `/api/recommendations?selectedAccounts=${encodeURIComponent(JSON.stringify(selectedAccounts))}`),
     enabled: isAuthenticated,
   });
 
@@ -136,8 +141,7 @@ export default function Dashboard() {
     try {
       setIsRefreshing(true);
       
-      // Get selected accounts from localStorage
-      const selectedAccounts = JSON.parse(localStorage.getItem('selectedGoogleAdsAccounts') || '[]');
+      // Use current selected accounts from state
       
       const response = await apiRequest("POST", "/api/google-ads/refresh", { selectedAccounts });
       await queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
@@ -173,8 +177,7 @@ export default function Dashboard() {
     try {
       setIsEvaluating(true);
       
-      // Get selected accounts from localStorage
-      const selectedAccounts = JSON.parse(localStorage.getItem('selectedGoogleAdsAccounts') || '[]');
+      // Use current selected accounts from state
       
       await apiRequest("POST", "/api/recommendations/generate", { selectedAccounts });
       await queryClient.invalidateQueries({ queryKey: ["/api/recommendations"] });
@@ -228,9 +231,16 @@ export default function Dashboard() {
         {/* Header */}
         <header className="bg-white shadow-sm border-b border-gray-200 px-6 py-4">
           <div className="flex items-center justify-between">
-            <div>
+            <div className="flex-1">
               <h2 className="text-2xl font-semibold text-gray-900">Campaign Dashboard</h2>
               <p className="text-gray-600 mt-1">AI-powered insights and recommendations for your Google Ads</p>
+              <div className="mt-3">
+                <AccountSelector
+                  selectedAccounts={selectedAccounts}
+                  onAccountsChange={setSelectedAccounts}
+                  className="flex-wrap"
+                />
+              </div>
             </div>
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2 text-sm text-gray-600">

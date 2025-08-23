@@ -2,19 +2,22 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import { useEffect } from "react";
+import { useState } from "react";
 import Sidebar from "@/components/Sidebar";
+import AccountSelector from "@/components/AccountSelector";
 import CampaignCard from "@/components/CampaignCard";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 
 export default function Campaigns() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
+  const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
 
   // Authentication is handled by the Router component
 
   const { data: campaigns = [], isLoading: campaignsLoading } = useQuery<any[]>({
-    queryKey: ["/api/campaigns"],
+    queryKey: ["/api/campaigns", selectedAccounts],
+    queryFn: () => apiRequest("GET", `/api/campaigns?selectedAccounts=${encodeURIComponent(JSON.stringify(selectedAccounts))}`),
     enabled: isAuthenticated,
   });
 
@@ -27,9 +30,16 @@ export default function Campaigns() {
       <main className="flex-1 overflow-auto">
         <header className="bg-white shadow-sm border-b border-gray-200 px-6 py-4">
           <div className="flex items-center justify-between">
-            <div>
+            <div className="flex-1">
               <h2 className="text-2xl font-semibold text-gray-900">All Campaigns</h2>
               <p className="text-gray-600 mt-1">Manage and monitor your Google Ads campaigns</p>
+              <div className="mt-3">
+                <AccountSelector
+                  selectedAccounts={selectedAccounts}
+                  onAccountsChange={setSelectedAccounts}
+                  className="flex-wrap"
+                />
+              </div>
             </div>
           </div>
         </header>
