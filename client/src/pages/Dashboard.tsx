@@ -10,8 +10,7 @@ import RecommendationCard from "@/components/RecommendationCard";
 import CampaignCard from "@/components/CampaignCard";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { RefreshCw, TrendingUp, Target, DollarSign, BarChart3, Activity, MessageSquare, Clock } from "lucide-react";
-import ChatInterface from "@/components/ChatInterface";
+import { RefreshCw, TrendingUp, Target, DollarSign, BarChart3, Activity, Clock } from "lucide-react";
 import { queryClient } from "@/lib/queryClient";
 import { apiRequest } from "@/lib/queryClient";
 import { formatDistanceToNow } from "date-fns";
@@ -20,7 +19,6 @@ export default function Dashboard() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
   const [showAuditModal, setShowAuditModal] = useState(false);
-  const [showChatInterface, setShowChatInterface] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
@@ -425,14 +423,6 @@ export default function Dashboard() {
                     </div>
                   )}
                 </div>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => setShowChatInterface(true)}
-                >
-                  <MessageSquare className="w-4 h-4 mr-1" />
-                  Chat with AI
-                </Button>
               </div>
               {recommendationsLoading ? (
                 <div className="space-y-4">
@@ -600,12 +590,6 @@ export default function Dashboard() {
         </DialogContent>
       </Dialog>
 
-      {/* Chat Interface */}
-      <ChatInterface
-        campaigns={campaigns}
-        isOpen={showChatInterface}
-        onClose={() => setShowChatInterface(false)}
-      />
     </div>
   );
 }
