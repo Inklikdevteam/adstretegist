@@ -35,44 +35,21 @@ export default function Settings() {
   // Fetch user settings from database
   const { data: userSettings, isLoading: isLoadingSettings } = useQuery({
     queryKey: ['/api/user/settings'],
-    onSuccess: (settings: any) => {
-      setSelectedAccounts(settings.selectedGoogleAdsAccounts || []);
-      setAppliedAccounts(settings.selectedGoogleAdsAccounts || []);
-      setFrequency(settings.aiFrequency || 'daily');
-      setConfidenceThreshold(settings.confidenceThreshold?.toString() || '70');
-      setEmailAlerts(settings.emailAlerts !== false);
-      setDailySummaries(settings.dailySummaries === true);
-      setBudgetAlerts(settings.budgetAlerts !== false);
-    },
-    onError: (error: any) => {
-      console.error('Failed to load user settings:', error);
-      // Fallback to localStorage if database fails
-      const saved = localStorage.getItem('selectedGoogleAdsAccounts');
-      if (saved) {
-        try {
-          const parsedAccounts = JSON.parse(saved);
-          const accounts = Array.isArray(parsedAccounts) ? parsedAccounts : [];
-          setSelectedAccounts(accounts);
-          setAppliedAccounts(accounts);
-        } catch {
-          setSelectedAccounts([]);
-          setAppliedAccounts([]);
-        }
-      }
-      
-      const savedFrequency = localStorage.getItem('aiFrequency') || 'daily';
-      const savedConfidence = localStorage.getItem('confidenceThreshold') || '70';
-      const savedEmailAlerts = localStorage.getItem('emailAlerts') !== 'false';
-      const savedDailySummaries = localStorage.getItem('dailySummaries') === 'true';
-      const savedBudgetAlerts = localStorage.getItem('budgetAlerts') !== 'false';
-      
-      setFrequency(savedFrequency);
-      setConfidenceThreshold(savedConfidence);
-      setEmailAlerts(savedEmailAlerts);
-      setDailySummaries(savedDailySummaries);
-      setBudgetAlerts(savedBudgetAlerts);
-    }
+    enabled: isAuthenticated,
   });
+
+  // Update form fields when settings data changes (TanStack Query v5 compatible)
+  useEffect(() => {
+    if (userSettings) {
+      setSelectedAccounts(userSettings.selectedGoogleAdsAccounts || []);
+      setAppliedAccounts(userSettings.selectedGoogleAdsAccounts || []);
+      setFrequency(userSettings.aiFrequency || 'daily');
+      setConfidenceThreshold(userSettings.confidenceThreshold?.toString() || '70');
+      setEmailAlerts(userSettings.emailAlerts !== false);
+      setDailySummaries(userSettings.dailySummaries === true);
+      setBudgetAlerts(userSettings.budgetAlerts !== false);
+    }
+  }, [userSettings]);
   
   // Update user settings mutation
   const updateSettingsMutation = useMutation({
