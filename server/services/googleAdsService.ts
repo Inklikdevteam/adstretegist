@@ -60,6 +60,148 @@ export class GoogleAdsService {
     return date.toISOString().split('T')[0];
   }
 
+  // Performance-specific method that accepts date ranges
+  async getCampaignsWithDateRange(selectedAccountIds?: string[], dateFrom?: Date, dateTo?: Date): Promise<GoogleAdsCampaign[]> {
+    try {
+      // First check if this is a manager account
+      const clientAccounts = await this.getClientAccounts();
+      
+      if (clientAccounts.length > 0) {
+        // This is a manager account - get campaigns from all client accounts
+        const accountsToFetch = selectedAccountIds && selectedAccountIds.length > 0
+          ? clientAccounts.filter(acc => selectedAccountIds.includes(acc.id))
+          : clientAccounts;
+          
+        console.log(`Performance: Manager account detected. Fetching campaigns from ${accountsToFetch.length} client accounts...`);
+        const allCampaigns: GoogleAdsCampaign[] = [];
+        
+        for (const clientAccount of accountsToFetch) {
+          try {
+            // Create a completely new client for each client account
+            const clientGoogleAdsClient = new GoogleAdsApi({
+              client_id: this.config.clientId,
+              client_secret: this.config.clientSecret,
+              developer_token: this.config.developerToken,
+            });
+            
+            const clientCustomer = clientGoogleAdsClient.Customer({
+              customer_id: clientAccount.id,
+              refresh_token: this.config.refreshToken,
+              login_customer_id: this.config.customerId,
+            });
+            
+            const campaigns = await clientCustomer.query(`
+              SELECT 
+                campaign.id,
+                campaign.name,
+                campaign.status,
+                campaign.start_date,
+                campaign.advertising_channel_type,
+                campaign_budget.amount_micros,
+                campaign.bidding_strategy_type,
+                campaign.target_cpa.target_cpa_micros,
+                campaign.target_roas.target_roas,
+                metrics.impressions,
+                metrics.clicks,
+                metrics.conversions,
+                metrics.conversions_value,
+                metrics.cost_micros,
+                metrics.ctr,
+                metrics.average_cpc,
+                metrics.conversions_from_interactions_rate
+              FROM campaign 
+              WHERE campaign.status = 'ENABLED'
+              AND segments.date BETWEEN '${this.formatDateForQuery(dateFrom)}' AND '${this.formatDateForQuery(dateTo)}'
+            `);
+
+            const clientCampaigns = campaigns.map((row: any) => {
+              return {
+                id: row.campaign.id.toString(),
+                name: `${clientAccount.name} - ${row.campaign.name}`,
+                status: row.campaign.status,
+                startDate: row.campaign.start_date,
+                campaignAgeInDays: 7, // Always use 7 days
+                actualDataDays: 7, // Always use 7 days
+                type: this.mapChannelType(row.campaign.advertising_channel_type),
+                budget: row.campaign_budget.amount_micros / 1000000,
+                bidStrategy: row.campaign.bidding_strategy_type,
+                targetCpa: row.campaign.target_cpa?.target_cpa_micros / 1000000,
+                targetRoas: row.campaign.target_roas?.target_roas,
+                impressions: row.metrics.impressions || 0,
+                clicks: row.metrics.clicks || 0,
+                conversions: row.metrics.conversions || 0,
+                conversionsValue: row.metrics.conversions_value || 0,
+                cost: row.metrics.cost_micros / 1000000,
+                ctr: row.metrics.ctr || 0,
+                avgCpc: (row.metrics.average_cpc || 0) / 1000000, // Convert from micros to actual currency
+                conversionRate: row.metrics.conversions_from_interactions_rate || 0,
+              };
+            });
+            
+            allCampaigns.push(...clientCampaigns);
+            console.log(`Performance: Found ${clientCampaigns.length} campaigns from client account: ${clientAccount.name}`);
+          } catch (clientError) {
+            console.warn(`Performance: Error fetching campaigns from client account ${clientAccount.name}:`, clientError);
+          }
+        }
+        
+        return allCampaigns;
+      } else {
+        // Regular account - fetch campaigns directly
+        const campaigns = await this.customer.query(`
+          SELECT 
+            campaign.id,
+            campaign.name,
+            campaign.status,
+            campaign.start_date,
+            campaign.advertising_channel_type,
+            campaign_budget.amount_micros,
+            campaign.bidding_strategy_type,
+            campaign.target_cpa.target_cpa_micros,
+            campaign.target_roas.target_roas,
+            metrics.impressions,
+            metrics.clicks,
+            metrics.conversions,
+            metrics.conversions_value,
+            metrics.cost_micros,
+            metrics.ctr,
+            metrics.average_cpc,
+            metrics.conversions_from_interactions_rate
+          FROM campaign 
+          WHERE campaign.status = 'ENABLED'
+          AND segments.date BETWEEN '${this.formatDateForQuery(dateFrom)}' AND '${this.formatDateForQuery(dateTo)}'
+        `);
+
+        return campaigns.map((row: any) => {
+          return {
+            id: row.campaign.id.toString(),
+            name: row.campaign.name,
+            status: row.campaign.status,
+            startDate: row.campaign.start_date,
+            campaignAgeInDays: 7, // Always use 7 days  
+            actualDataDays: 7, // Always use 7 days
+            type: this.mapChannelType(row.campaign.advertising_channel_type),
+            budget: row.campaign_budget.amount_micros / 1000000,
+            bidStrategy: row.campaign.bidding_strategy_type,
+            targetCpa: row.campaign.target_cpa?.target_cpa_micros / 1000000,
+            targetRoas: row.campaign.target_roas?.target_roas,
+            impressions: row.metrics.impressions || 0,
+            clicks: row.metrics.clicks || 0,
+            conversions: row.metrics.conversions || 0,
+            conversionsValue: row.metrics.conversions_value || 0,
+            cost: row.metrics.cost_micros / 1000000,
+            ctr: row.metrics.ctr || 0,
+            avgCpc: (row.metrics.average_cpc || 0) / 1000000, // Convert from micros to actual currency
+            conversionRate: row.metrics.conversions_from_interactions_rate || 0,
+          };
+        });
+      }
+    } catch (error) {
+      console.error('Performance: Error fetching campaigns with date range:', error);
+      throw error;
+    }
+  }
+
   constructor(config: GoogleAdsConfig) {
     this.config = config;
     
@@ -87,7 +229,7 @@ export class GoogleAdsService {
     });
   }
 
-  async getCampaigns(selectedAccountIds?: string[], dateFrom?: Date, dateTo?: Date): Promise<GoogleAdsCampaign[]> {
+  async getCampaigns(selectedAccountIds?: string[]): Promise<GoogleAdsCampaign[]> {
     try {
       // First check if this is a manager account
       const clientAccounts = await this.getClientAccounts();
@@ -144,7 +286,7 @@ export class GoogleAdsService {
                 metrics.conversions_from_interactions_rate
               FROM campaign 
               WHERE campaign.status = 'ENABLED'
-              AND segments.date BETWEEN '${this.formatDateForQuery(dateFrom)}' AND '${this.formatDateForQuery(dateTo)}'
+              AND segments.date DURING LAST_7_DAYS
             `);
 
             const clientCampaigns = campaigns.map((row: any) => {

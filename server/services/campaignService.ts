@@ -48,7 +48,7 @@ export class CampaignService {
       throw error;
     }
   }
-  async getUserCampaigns(userId: string, selectedAccountIds?: string[], dateFrom?: Date, dateTo?: Date): Promise<Campaign[]> {
+  async getUserCampaigns(userId: string, selectedAccountIds?: string[]): Promise<Campaign[]> {
     console.log('CampaignService getUserCampaigns for userId:', userId, 'selectedAccounts:', selectedAccountIds);
     
     // First check if user has connected Google Ads accounts
@@ -59,7 +59,7 @@ export class CampaignService {
     
     if (connectedAccounts.length > 0) {
       // User has connected Google Ads - fetch real campaigns
-      return await this.fetchRealCampaigns(userId, connectedAccounts, selectedAccountIds, dateFrom, dateTo);
+      return await this.fetchRealCampaigns(userId, connectedAccounts, selectedAccountIds);
     }
     
     // No connected accounts - check for existing campaigns or create samples
@@ -76,7 +76,26 @@ export class CampaignService {
     return existingCampaigns;
   }
 
-  private async fetchRealCampaigns(userId: string, accounts: any[], selectedAccountIds?: string[], dateFrom?: Date, dateTo?: Date): Promise<Campaign[]> {
+  // Performance-specific method that respects date ranges
+  async getPerformanceCampaigns(userId: string, selectedAccountIds?: string[], dateFrom?: Date, dateTo?: Date): Promise<Campaign[]> {
+    console.log('CampaignService getPerformanceCampaigns for userId:', userId, 'selectedAccounts:', selectedAccountIds, 'dateRange:', { dateFrom, dateTo });
+    
+    // First check if user has connected Google Ads accounts
+    const connectedAccounts = await db
+      .select()
+      .from(googleAdsAccounts)
+      .where(and(eq(googleAdsAccounts.userId, userId), eq(googleAdsAccounts.isActive, true)));
+    
+    if (connectedAccounts.length > 0) {
+      // User has connected Google Ads - fetch real campaigns with date range
+      return await this.fetchRealCampaignsWithDateRange(userId, connectedAccounts, selectedAccountIds, dateFrom, dateTo);
+    }
+    
+    // No connected accounts - return regular campaigns
+    return await this.getUserCampaigns(userId, selectedAccountIds);
+  }
+
+  private async fetchRealCampaignsWithDateRange(userId: string, accounts: any[], selectedAccountIds?: string[], dateFrom?: Date, dateTo?: Date): Promise<Campaign[]> {
     try {
       const primaryAccount = accounts.find(acc => acc.isPrimary) || accounts[0];
       
@@ -103,7 +122,113 @@ export class CampaignService {
         developerToken: process.env.GOOGLE_ADS_DEVELOPER_TOKEN!
       });
 
-      const realCampaigns = await googleAdsService.getCampaigns(selectedAccountIds, dateFrom, dateTo);
+      const realCampaigns = await googleAdsService.getCampaignsWithDateRange(selectedAccountIds, dateFrom, dateTo);
+      
+      // Filter only active/enabled campaigns (status 2 = ENABLED in Google Ads API)
+      const activeCampaigns = realCampaigns.filter(campaign => 
+        campaign.status && (campaign.status === 2 || campaign.status === 'ENABLED' || campaign.status.toString().toUpperCase() === 'ENABLED')
+      );
+      
+      // Get existing campaigns for this user
+      const existingCampaigns = await db
+        .select()
+        .from(campaigns)
+        .where(eq(campaigns.userId, userId));
+      
+      const updatedCampaigns: Campaign[] = [];
+      
+      for (const googleCampaign of activeCampaigns) {
+        // Find existing campaign by exact name match first, with more robust matching
+        const campaignName = googleCampaign.name || 'Unnamed Campaign';
+        const existingCampaign = existingCampaigns.find(ec => 
+          ec.name === campaignName
+        );
+        
+        // Use actual conversion value from Google Ads API and calculate ROAS
+        const conversionValue = googleCampaign.conversionsValue || 0;
+        const calculatedRoas = googleCampaign.cost > 0 ? (conversionValue / googleCampaign.cost) : 0;
+        
+        const campaignData = {
+          userId,
+          googleAdsAccountId: accounts.find(acc => acc.isPrimary)?.id || accounts[0]?.id, // Set the account ID
+          name: googleCampaign.name || 'Unnamed Campaign',
+          type: this.mapCampaignType(googleCampaign.type),
+          status: (googleCampaign.status === 2 || googleCampaign.status === 'ENABLED') ? 'active' : 'active' as 'active',
+          dailyBudget: this.parseCurrencyValue(googleCampaign.budget.toFixed(2)).toString(),
+          spend7d: this.parseCurrencyValue(googleCampaign.cost.toFixed(2)).toString(),
+          conversions7d: Math.round(googleCampaign.conversions || 0),
+          actualCpa: googleCampaign.conversions > 0 ? this.parseCurrencyValue(googleCampaign.cost / googleCampaign.conversions).toString() : null,
+          actualRoas: calculatedRoas > 0 ? this.parseCurrencyValue(calculatedRoas).toString() : null,
+          // Additional metrics from Google Ads API
+          impressions7d: Math.round(googleCampaign.impressions || 0),
+          clicks7d: Math.round(googleCampaign.clicks || 0),
+          ctr7d: this.parseCurrencyValue(googleCampaign.ctr || 0).toString(),
+          conversionValue7d: this.parseCurrencyValue(conversionValue).toString(),
+          avgCpc7d: this.parseCurrencyValue(googleCampaign.avgCpc || 0).toString(),
+          conversionRate7d: this.parseCurrencyValue(googleCampaign.conversionRate || 0).toString(),
+          // Preserve existing goals if they exist
+          targetCpa: existingCampaign?.targetCpa || (googleCampaign.targetCpa ? this.parseCurrencyValue(googleCampaign.targetCpa).toString() : null),
+          targetRoas: existingCampaign?.targetRoas || (googleCampaign.targetRoas ? this.parseCurrencyValue(googleCampaign.targetRoas).toString() : null),
+          goalDescription: existingCampaign?.goalDescription || `Real Google Ads campaign - ${googleCampaign.bidStrategy || 'Auto bidding'}`
+        };
+
+        // Create the final campaign object with all Google Ads metrics and campaign age data
+        const finalCampaign = {
+          ...campaignData,
+          // Real Google Ads metrics
+          impressions: googleCampaign.impressions || 0,
+          clicks: googleCampaign.clicks || 0,
+          ctr: googleCampaign.ctr || 0,
+          avgCpc: googleCampaign.avgCpc || 0, // Already converted from micros in the service
+          conversions: googleCampaign.conversions || 0,
+          conversionValue: conversionValue, // Real conversion value from Google Ads
+          conversionRate: googleCampaign.conversionRate || 0,
+          // Campaign age data for AI analysis
+          startDate: googleCampaign.startDate,
+          campaignAgeInDays: googleCampaign.campaignAgeInDays,
+          actualDataDays: googleCampaign.actualDataDays
+        };
+        
+        // For Performance page, we don't update the database, just return the data
+        updatedCampaigns.push(finalCampaign as Campaign);
+      }
+      
+      return updatedCampaigns;
+    } catch (error) {
+      console.error('Error fetching performance campaigns with date range:', error);
+      // Fallback to regular campaigns
+      return await this.getUserCampaigns(userId, selectedAccountIds);
+    }
+  }
+
+  private async fetchRealCampaigns(userId: string, accounts: any[], selectedAccountIds?: string[]): Promise<Campaign[]> {
+    try {
+      const primaryAccount = accounts.find(acc => acc.isPrimary) || accounts[0];
+      
+      if (!primaryAccount.refreshToken) {
+        console.warn('No refresh token available for Google Ads account');
+        return await this.getFallbackCampaigns(userId);
+      }
+
+      // Check for invalid customer ID
+      if (!primaryAccount.customerId || primaryAccount.customerId === 'no-customer-found' || primaryAccount.customerId === '') {
+        console.warn(`Invalid customer ID detected: ${primaryAccount.customerId}. Removing invalid account and using fallback.`);
+        
+        // Delete the invalid account record
+        await db.delete(googleAdsAccounts).where(eq(googleAdsAccounts.id, primaryAccount.id));
+        
+        return await this.getFallbackCampaigns(userId);
+      }
+
+      const googleAdsService = new GoogleAdsService({
+        clientId: process.env.GOOGLE_OAUTH_CLIENT_ID!,
+        clientSecret: process.env.GOOGLE_OAUTH_CLIENT_SECRET!,
+        refreshToken: primaryAccount.refreshToken,
+        customerId: primaryAccount.customerId,
+        developerToken: process.env.GOOGLE_ADS_DEVELOPER_TOKEN!
+      });
+
+      const realCampaigns = await googleAdsService.getCampaigns(selectedAccountIds);
       
       // Filter only active/enabled campaigns (status 2 = ENABLED in Google Ads API)
       const activeCampaigns = realCampaigns.filter(campaign => 

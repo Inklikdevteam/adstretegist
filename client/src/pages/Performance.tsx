@@ -71,27 +71,27 @@ export default function Performance() {
   // Authentication is handled by the Router component
 
   const { data: dashboardSummary, isLoading: summaryLoading } = useQuery<any>({
-    queryKey: ["/api/dashboard/summary", selectedAccounts, dateRange],
+    queryKey: ["/api/performance/summary", selectedAccounts, dateRange],
     queryFn: () => {
       const params = new URLSearchParams({
         selectedAccounts: JSON.stringify(selectedAccounts),
         dateFrom: dateRange.from.toISOString(),
         dateTo: dateRange.to.toISOString(),
       });
-      return apiRequest("GET", `/api/dashboard/summary?${params}`);
+      return apiRequest("GET", `/api/performance/summary?${params}`);
     },
     enabled: isAuthenticated,
   });
 
   const { data: campaigns = [] } = useQuery<any[]>({
-    queryKey: ["/api/campaigns", selectedAccounts, dateRange],
+    queryKey: ["/api/performance/campaigns", selectedAccounts, dateRange],
     queryFn: () => {
       const params = new URLSearchParams({
         selectedAccounts: JSON.stringify(selectedAccounts),
         dateFrom: dateRange.from.toISOString(),
         dateTo: dateRange.to.toISOString(),
       });
-      return apiRequest("GET", `/api/campaigns?${params}`);
+      return apiRequest("GET", `/api/performance/campaigns?${params}`);
     },
     enabled: isAuthenticated,
   });

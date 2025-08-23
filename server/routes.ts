@@ -54,6 +54,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Performance-specific endpoint with date range filtering
+  app.get('/api/performance/campaigns', isAuthenticated, async (req: any, res) => {
+    try {
+      const replitUserId = req.user.claims.sub;
+      const user = await storage.getUser(replitUserId);
+      
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+      
+      const dbUserId = user.id.toString();
+      const selectedAccountsParam = req.query.selectedAccounts as string;
+      let selectedAccounts: string[] = [];
+      
+      if (selectedAccountsParam) {
+        try {
+          selectedAccounts = JSON.parse(selectedAccountsParam);
+        } catch (e) {
+          console.log('Invalid selectedAccounts parameter:', selectedAccountsParam);
+        }
+      }
+      
+      // Parse date range parameters for Performance page only
+      const dateFromParam = req.query.dateFrom as string;
+      const dateToParam = req.query.dateTo as string;
+      const dateFrom = dateFromParam ? new Date(dateFromParam) : undefined;
+      const dateTo = dateToParam ? new Date(dateToParam) : undefined;
+      
+      // Use a separate method for Performance page that respects date ranges
+      const campaigns = await campaignService.getPerformanceCampaigns(dbUserId, selectedAccounts, dateFrom, dateTo);
+      res.json(campaigns);
+    } catch (error) {
+      console.error('Error fetching performance campaigns:', error);
+      res.status(500).json({ message: 'Failed to fetch performance campaigns' });
+    }
+  });
+
+  // Performance-specific dashboard summary with date range filtering
+  app.get('/api/performance/summary', isAuthenticated, async (req: any, res) => {
+    try {
+      const replitUserId = req.user.claims.sub;
+      const user = await storage.getUser(replitUserId);
+      
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+      
+      const dbUserId = user.id.toString();
+      const selectedAccountsParam = req.query.selectedAccounts as string;
+      let selectedAccounts: string[] = [];
+      
+      if (selectedAccountsParam) {
+        try {
+          selectedAccounts = JSON.parse(selectedAccountsParam);
+        } catch (e) {
+          console.log('Invalid selectedAccounts parameter:', selectedAccountsParam);
+        }
+      }
+      
+      // Parse date range parameters for Performance page only
+      const dateFromParam = req.query.dateFrom as string;
+      const dateToParam = req.query.dateTo as string;
+      const dateFrom = dateFromParam ? new Date(dateFromParam) : undefined;
+      const dateTo = dateToParam ? new Date(dateToParam) : undefined;
+      
+      const summary = await aiService.getPerformanceSummary(dbUserId, selectedAccounts, dateFrom, dateTo);
+      res.json(summary);
+    } catch (error) {
+      console.error('Error fetching performance summary:', error);
+      res.status(500).json({ message: 'Failed to fetch performance summary' });
+    }
+  });
+
   // Dashboard summary endpoint
   app.get('/api/dashboard/summary', isAuthenticated, async (req: any, res) => {
     try {
@@ -77,15 +150,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Parse date range parameters
-      const dateFromParam = req.query.dateFrom as string;
-      const dateToParam = req.query.dateTo as string;
-      const dateFrom = dateFromParam ? new Date(dateFromParam) : undefined;
-      const dateTo = dateToParam ? new Date(dateToParam) : undefined;
+      console.log('Dashboard summary for user:', { replitUserId, dbUserId, userEmail: user.email, selectedAccounts });
       
-      console.log('Dashboard summary for user:', { replitUserId, dbUserId, userEmail: user.email, selectedAccounts, dateFrom, dateTo });
-      
-      const summary = await aiService.getDashboardSummary(dbUserId, selectedAccounts, dateFrom, dateTo);
+      const summary = await aiService.getDashboardSummary(dbUserId, selectedAccounts);
       res.json(summary);
     } catch (error) {
       console.error("Error fetching dashboard summary:", error);
@@ -118,13 +185,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Parse date range parameters
-      const dateFromParam = req.query.dateFrom as string;
-      const dateToParam = req.query.dateTo as string;
-      const dateFrom = dateFromParam ? new Date(dateFromParam) : undefined;
-      const dateTo = dateToParam ? new Date(dateToParam) : undefined;
-      
-      let campaigns = await campaignService.getUserCampaigns(dbUserId, selectedAccounts, dateFrom, dateTo);
+      let campaigns = await campaignService.getUserCampaigns(dbUserId, selectedAccounts);
       
       // Filter to only show active campaigns
       const activeCampaigns = campaigns.filter(campaign => 
@@ -310,14 +371,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Parse date range parameters for filtering campaigns
-      const dateFromParam = req.query.dateFrom as string;
-      const dateToParam = req.query.dateTo as string;
-      const dateFrom = dateFromParam ? new Date(dateFromParam) : undefined;
-      const dateTo = dateToParam ? new Date(dateToParam) : undefined;
-      
       // Get user campaigns first to filter recommendations
-      const userCampaigns = await new CampaignService().getUserCampaigns(dbUserId, selectedAccounts.length > 0 ? selectedAccounts : undefined, dateFrom, dateTo);
+      const userCampaigns = await new CampaignService().getUserCampaigns(dbUserId, selectedAccounts.length > 0 ? selectedAccounts : undefined);
       const campaignIds = userCampaigns.map(c => c.id);
 
       if (campaignIds.length === 0) {
@@ -676,14 +731,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Finally delete campaigns
       await db.delete(campaigns).where(eq(campaigns.userId, dbUserId));
       
-      // Parse date range parameters for refresh
-      const dateFromParam = req.query.dateFrom as string;
-      const dateToParam = req.query.dateTo as string;
-      const dateFrom = dateFromParam ? new Date(dateFromParam) : undefined;
-      const dateTo = dateToParam ? new Date(dateToParam) : undefined;
-      
       // Get fresh campaigns (this will trigger real data fetch) with account filtering
-      const freshCampaigns = await campaignService.getUserCampaigns(dbUserId.toString(), selectedAccounts, dateFrom, dateTo);
+      const freshCampaigns = await campaignService.getUserCampaigns(dbUserId.toString(), selectedAccounts);
       
       res.json({ 
         message: `Refreshed ${freshCampaigns.length} campaigns from Google Ads`,
