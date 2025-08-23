@@ -345,40 +345,64 @@ export class GoogleAdsService {
     if (!isNaN(numericChannelType)) {
       switch (numericChannelType) {
         case 2:
-          return 'search';
+          return 'Search';
         case 3:
-          return 'display';
+          return 'Display';
         case 4:
-          return 'shopping';
+          return 'Shopping';
+        case 5:
+          return 'Hotel';
         case 6:
-          return 'video';
+          return 'Video';
         case 7:
-          return 'multi_channel';
+          return 'App';  // Multi-channel campaigns (Universal App campaigns)
+        case 8:
+          return 'Local';
+        case 9:
+          return 'Smart';
         case 10:
-          return 'PERFORMANCE_MAX';
+          return 'Performance Max';
+        case 11:
+          return 'Local Services';
+        case 12:
+          return 'Discovery';  // Also known as Demand Gen campaigns
+        case 13:
+          return 'Travel';
         default:
           console.warn(`Unknown numeric channel type: ${channelType}`);
-          return 'unknown';
+          return 'Unknown';
       }
     }
     
     // Handle string values for backward compatibility
-    switch (channelType) {
+    switch (channelType.toUpperCase()) {
       case 'SEARCH':
-        return 'search';
+        return 'Search';
       case 'DISPLAY':
-        return 'display';
+        return 'Display';
       case 'SHOPPING':
-        return 'shopping';
+        return 'Shopping';
+      case 'HOTEL':
+        return 'Hotel';
       case 'VIDEO':
-        return 'video';
+        return 'Video';
       case 'MULTI_CHANNEL':
-        return 'multi_channel';
+        return 'App';  // Multi-channel campaigns (Universal App campaigns)
+      case 'LOCAL':
+        return 'Local';
+      case 'SMART':
+        return 'Smart';
       case 'PERFORMANCE_MAX':
-        return 'PERFORMANCE_MAX';
+        return 'Performance Max';
+      case 'LOCAL_SERVICES':
+        return 'Local Services';
+      case 'DISCOVERY':
+        return 'Discovery';  // Also known as Demand Gen campaigns
+      case 'TRAVEL':
+        return 'Travel';
       default:
         console.warn(`Unknown channel type: ${channelType}`);
-        return 'unknown';
+        return 'Unknown';
     }
   }
 
