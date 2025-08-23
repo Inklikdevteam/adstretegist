@@ -237,7 +237,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           emailAlerts: true,
           dailySummaries: false,
           budgetAlerts: true,
-          selectedGoogleAdsAccounts: []
+          selectedGoogleAdsAccounts: [],
+          currentViewAccounts: []
         };
         res.json(defaultSettings);
       } else {

@@ -117,8 +117,10 @@ export const userSettings = pgTable("user_settings", {
   emailAlerts: boolean("email_alerts").default(true),
   dailySummaries: boolean("daily_summaries").default(false),
   budgetAlerts: boolean("budget_alerts").default(true),
-  // Google Ads Account Selection
-  selectedGoogleAdsAccounts: jsonb("selected_google_ads_accounts").default([]), // Array of account IDs
+  // Google Ads Account Selection (Master Configuration - only editable in Settings)
+  selectedGoogleAdsAccounts: jsonb("selected_google_ads_accounts").default([]), // Array of account IDs marked as "active"
+  // Current View Selection (temporary filter for data display)
+  currentViewAccounts: jsonb("current_view_accounts").default([]), // Array of account IDs for current view filter
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
