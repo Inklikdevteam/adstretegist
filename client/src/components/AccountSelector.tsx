@@ -23,7 +23,21 @@ export default function AccountSelector({ selectedAccounts, onAccountsChange, cl
     enabled: isAuthenticated,
   });
 
-  const accounts = accountsData?.accounts || [];
+  // Get user settings to filter by active accounts
+  const { data: userSettings, isLoading: isLoadingSettings } = useQuery({
+    queryKey: ['/api/user/settings'],
+    enabled: isAuthenticated,
+  });
+
+  // Filter accounts to only show those marked as active in Settings
+  const allAccounts = accountsData?.accounts || [];
+  const activeAccountIds = userSettings?.selectedGoogleAdsAccounts || [];
+  
+  // If no accounts are marked as active in Settings, show all accounts as fallback
+  // Otherwise, only show the accounts marked as active
+  const accounts = activeAccountIds.length > 0 
+    ? allAccounts.filter((account: any) => activeAccountIds.includes(account.id))
+    : allAccounts;
 
   const handleAccountToggle = (accountId: string) => {
     const newSelectedAccounts = selectedAccounts.includes(accountId)
@@ -108,13 +122,13 @@ export default function AccountSelector({ selectedAccounts, onAccountsChange, cl
                   Clear All
                 </Button>
               </div>
-              {accountsLoading ? (
+              {(accountsLoading || isLoadingSettings) ? (
                 <div className="p-4 text-center text-sm text-gray-500">
                   Loading accounts...
                 </div>
               ) : accounts.length === 0 ? (
                 <div className="p-4 text-center text-sm text-gray-500">
-                  No accounts available
+                  {activeAccountIds.length > 0 ? 'No active accounts set in Settings' : 'No accounts available'}
                 </div>
               ) : (
                 accounts.map((account: any) => (
