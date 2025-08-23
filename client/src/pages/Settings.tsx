@@ -84,9 +84,10 @@ export default function Settings() {
     try {
       setIsUpdating(true);
       
-      // Save to database instead of localStorage
+      // Save to database with both selectedGoogleAdsAccounts (Settings config) and reset currentViewAccounts
       await updateSettingsMutation.mutateAsync({
-        selectedGoogleAdsAccounts: selectedAccounts
+        selectedGoogleAdsAccounts: selectedAccounts,
+        currentViewAccounts: [] // Reset view filter to force using the new Settings config
       });
       
       // Fallback to localStorage for immediate use
@@ -94,14 +95,15 @@ export default function Settings() {
       setAppliedAccounts(selectedAccounts);
       
       toast({
-        title: "Accounts Updated",
-        description: `${selectedAccounts.length === 0 ? 'All accounts' : selectedAccounts.length + ' account(s)'} selected. Campaign data will refresh.`,
+        title: "Active Accounts Updated",
+        description: `${selectedAccounts.length === 0 ? 'All accounts' : selectedAccounts.length + ' account(s)'} marked as active. All pages will now show data from these accounts only.`,
       });
       
       // Invalidate all relevant queries to trigger refresh
       await queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
       await queryClient.invalidateQueries({ queryKey: ["/api/dashboard/summary"] });
       await queryClient.invalidateQueries({ queryKey: ["/api/recommendations"] });
+      await queryClient.invalidateQueries({ queryKey: ['/api/user/settings'] });
       
     } catch (error) {
       if (isUnauthorizedError(error as Error)) {
@@ -137,8 +139,8 @@ export default function Settings() {
         confidenceThreshold: parseInt(confidenceThreshold),
         emailAlerts,
         dailySummaries,
-        budgetAlerts,
-        selectedGoogleAdsAccounts: appliedAccounts // Preserve current account selection
+        budgetAlerts
+        // Don't update selectedGoogleAdsAccounts here - it should only be changed via "Update Accounts"
       });
       
       // Fallback to localStorage for immediate use

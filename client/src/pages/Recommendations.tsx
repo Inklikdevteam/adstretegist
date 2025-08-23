@@ -31,13 +31,21 @@ export default function Recommendations() {
     }
   });
 
-  // Load saved current view selection from user settings
+  // Load account selection from user settings with proper fallback
   useEffect(() => {
-    if (userSettings && userSettings.currentViewAccounts) {
-      setSelectedAccounts(userSettings.currentViewAccounts);
-    } else if (userSettings && userSettings.selectedGoogleAdsAccounts) {
-      // Default to showing all active accounts if no view filter is set
-      setSelectedAccounts(userSettings.selectedGoogleAdsAccounts);
+    if (userSettings) {
+      // If currentViewAccounts exists and is not empty, use it (temporary view filter)
+      if (userSettings.currentViewAccounts && userSettings.currentViewAccounts.length > 0) {
+        setSelectedAccounts(userSettings.currentViewAccounts);
+      } 
+      // Otherwise, use selectedGoogleAdsAccounts from Settings (master configuration)
+      else if (userSettings.selectedGoogleAdsAccounts && userSettings.selectedGoogleAdsAccounts.length > 0) {
+        setSelectedAccounts(userSettings.selectedGoogleAdsAccounts);
+      }
+      // If no accounts are configured in Settings, use empty array (will show all accounts)
+      else {
+        setSelectedAccounts([]);
+      }
     }
   }, [userSettings]);
 
