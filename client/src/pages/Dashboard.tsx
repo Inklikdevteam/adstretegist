@@ -96,6 +96,11 @@ export default function Dashboard() {
     enabled: isAuthenticated,
   });
 
+  const { data: lastGeneratedData } = useQuery<{ lastGenerated: string | null }>({
+    queryKey: ["/api/recommendations/last-generated"],
+    enabled: isAuthenticated,
+  });
+
   // Calculate the most recent update time from campaigns
   const getLastUpdateTime = () => {
     if (!campaigns || campaigns.length === 0) return null;
@@ -411,7 +416,15 @@ export default function Dashboard() {
             {/* Priority Recommendations */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-gray-900">Priority Recommendations</h3>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Priority Recommendations</h3>
+                  {lastGeneratedData?.lastGenerated && (
+                    <div className="flex items-center text-sm text-gray-500 mt-1">
+                      <Clock className="w-4 h-4 mr-1" />
+                      <span>Last generated {formatDistanceToNow(new Date(lastGeneratedData.lastGenerated), { addSuffix: true })}</span>
+                    </div>
+                  )}
+                </div>
                 <Button 
                   variant="outline" 
                   size="sm"
