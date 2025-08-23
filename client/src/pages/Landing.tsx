@@ -20,7 +20,7 @@ export default function Landing() {
             Get intelligent campaign recommendations, automated optimizations, and expert insights 
             powered by advanced AI. Let our virtual ads manager handle the complexity while you focus on growth.
           </p>
-          <Button size="lg" className="text-lg px-8 py-6 animate-bounce hover:animate-none" onClick={() => {
+          <Button size="lg" className="text-lg px-8 py-6" onClick={() => {
             sessionStorage.setItem('justLoggedIn', 'true');
             window.location.href = '/api/login';
           }}>
@@ -82,7 +82,7 @@ export default function Landing() {
           <Button 
             size="lg" 
             variant="secondary" 
-            className="text-lg px-8 py-6 bg-white text-blue-700 hover:bg-blue-50 animate-pulse hover:animate-none" 
+            className="text-lg px-8 py-6 bg-white text-blue-700 hover:bg-blue-50" 
             onClick={() => {
               sessionStorage.setItem('justLoggedIn', 'true');
               window.location.href = '/api/login';

@@ -259,7 +259,6 @@ export default function CampaignCard({ campaign, onUpdate }: CampaignCardProps) 
                   <Button 
                     size="sm"
                     onClick={() => setIsGoalModalOpen(true)}
-                    className="animate-pulse hover:animate-none"
                   >
                     Set Goals
                   </Button>
@@ -438,7 +437,6 @@ export default function CampaignCard({ campaign, onUpdate }: CampaignCardProps) 
               {!hasGoals && (
                 <Button 
                   onClick={() => { setShowDetails(false); setIsGoalModalOpen(true); }}
-                  className="animate-pulse hover:animate-none"
                 >
                   Set Goals
                 </Button>
