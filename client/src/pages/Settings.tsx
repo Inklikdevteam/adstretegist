@@ -16,6 +16,14 @@ export default function Settings() {
   const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
   const [appliedAccounts, setAppliedAccounts] = useState<string[]>([]);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  
+  // AI Preferences state
+  const [frequency, setFrequency] = useState('daily');
+  const [confidenceThreshold, setConfidenceThreshold] = useState('70');
+  const [emailAlerts, setEmailAlerts] = useState(true);
+  const [dailySummaries, setDailySummaries] = useState(false);
+  const [budgetAlerts, setBudgetAlerts] = useState(true);
 
   // Get available Google Ads accounts
   const { data: accountsData, isLoading: accountsLoading } = useQuery<any>({
@@ -23,7 +31,7 @@ export default function Settings() {
     enabled: isAuthenticated,
   });
 
-  // Load selected accounts from localStorage on mount
+  // Load selected accounts and settings from localStorage on mount
   useEffect(() => {
     const saved = localStorage.getItem('selectedGoogleAdsAccounts');
     if (saved) {
@@ -37,6 +45,19 @@ export default function Settings() {
         setAppliedAccounts([]);
       }
     }
+    
+    // Load AI preferences
+    const savedFrequency = localStorage.getItem('aiFrequency') || 'daily';
+    const savedConfidence = localStorage.getItem('confidenceThreshold') || '70';
+    const savedEmailAlerts = localStorage.getItem('emailAlerts') !== 'false';
+    const savedDailySummaries = localStorage.getItem('dailySummaries') === 'true';
+    const savedBudgetAlerts = localStorage.getItem('budgetAlerts') !== 'false';
+    
+    setFrequency(savedFrequency);
+    setConfidenceThreshold(savedConfidence);
+    setEmailAlerts(savedEmailAlerts);
+    setDailySummaries(savedDailySummaries);
+    setBudgetAlerts(savedBudgetAlerts);
   }, []);
 
   const handleAccountToggle = (accountId: string, checked: boolean) => {
@@ -82,6 +103,34 @@ export default function Settings() {
   };
 
   const hasChanges = JSON.stringify(selectedAccounts.sort()) !== JSON.stringify(appliedAccounts.sort());
+  
+  const handleSaveSettings = async () => {
+    try {
+      setIsSaving(true);
+      
+      // Save AI preferences to localStorage
+      localStorage.setItem('aiFrequency', frequency);
+      localStorage.setItem('confidenceThreshold', confidenceThreshold);
+      localStorage.setItem('emailAlerts', emailAlerts.toString());
+      localStorage.setItem('dailySummaries', dailySummaries.toString());
+      localStorage.setItem('budgetAlerts', budgetAlerts.toString());
+      
+      await new Promise(resolve => setTimeout(resolve, 800)); // Show loading state
+      
+      toast({
+        title: "Settings Saved",
+        description: "Your AI and notification preferences have been saved successfully.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to save settings. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const userInfo = user as any;
 
@@ -261,16 +310,37 @@ export default function Settings() {
                 <h4 className="font-medium text-gray-900 mb-2">Recommendation Frequency</h4>
                 <p className="text-sm text-gray-600 mb-3">How often should AI analyze your campaigns?</p>
                 <div className="space-y-2">
-                  <label className="flex items-center space-x-2">
-                    <input type="radio" name="frequency" defaultChecked className="text-primary" />
+                  <label className="flex items-center space-x-2 cursor-pointer">
+                    <input 
+                      type="radio" 
+                      name="frequency" 
+                      value="daily"
+                      checked={frequency === 'daily'}
+                      onChange={(e) => setFrequency(e.target.value)}
+                      className="text-primary" 
+                    />
                     <span className="text-sm">Daily (Recommended)</span>
                   </label>
-                  <label className="flex items-center space-x-2">
-                    <input type="radio" name="frequency" className="text-primary" />
+                  <label className="flex items-center space-x-2 cursor-pointer">
+                    <input 
+                      type="radio" 
+                      name="frequency" 
+                      value="weekly"
+                      checked={frequency === 'weekly'}
+                      onChange={(e) => setFrequency(e.target.value)}
+                      className="text-primary" 
+                    />
                     <span className="text-sm">Weekly</span>
                   </label>
-                  <label className="flex items-center space-x-2">
-                    <input type="radio" name="frequency" className="text-primary" />
+                  <label className="flex items-center space-x-2 cursor-pointer">
+                    <input 
+                      type="radio" 
+                      name="frequency" 
+                      value="manual"
+                      checked={frequency === 'manual'}
+                      onChange={(e) => setFrequency(e.target.value)}
+                      className="text-primary" 
+                    />
                     <span className="text-sm">Manual only</span>
                   </label>
                 </div>
@@ -279,7 +349,11 @@ export default function Settings() {
               <div>
                 <h4 className="font-medium text-gray-900 mb-2">Confidence Threshold</h4>
                 <p className="text-sm text-gray-600 mb-3">Minimum confidence level for AI recommendations</p>
-                <select className="w-full p-2 border border-gray-300 rounded-lg">
+                <select 
+                  className="w-full p-2 border border-gray-300 rounded-lg"
+                  value={confidenceThreshold}
+                  onChange={(e) => setConfidenceThreshold(e.target.value)}
+                >
                   <option value="70">70% - More recommendations (default)</option>
                   <option value="80">80% - Balanced</option>
                   <option value="90">90% - Only high confidence</option>
@@ -297,18 +371,30 @@ export default function Settings() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <label className="flex items-center justify-between">
+              <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-gray-900">Email alerts for high-priority recommendations</span>
-                <input type="checkbox" defaultChecked className="toggle" />
-              </label>
-              <label className="flex items-center justify-between">
+                <Checkbox
+                  checked={emailAlerts}
+                  onCheckedChange={(checked) => setEmailAlerts(checked as boolean)}
+                  className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                />
+              </div>
+              <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-gray-900">Daily performance summaries</span>
-                <input type="checkbox" className="toggle" />
-              </label>
-              <label className="flex items-center justify-between">
+                <Checkbox
+                  checked={dailySummaries}
+                  onCheckedChange={(checked) => setDailySummaries(checked as boolean)}
+                  className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                />
+              </div>
+              <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-gray-900">Budget alerts</span>
-                <input type="checkbox" defaultChecked className="toggle" />
-              </label>
+                <Checkbox
+                  checked={budgetAlerts}
+                  onCheckedChange={(checked) => setBudgetAlerts(checked as boolean)}
+                  className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                />
+              </div>
             </CardContent>
           </Card>
 
@@ -368,15 +454,18 @@ export default function Settings() {
           {/* Save Changes */}
           <div className="flex justify-end">
             <Button 
-              onClick={() => {
-                toast({
-                  title: "Settings Saved",
-                  description: "Your AI and notification preferences have been saved.",
-                });
-              }}
+              onClick={handleSaveSettings}
+              disabled={isSaving}
               data-testid="button-save-changes"
             >
-              Save Changes
+              {isSaving ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
+                  Saving...
+                </>
+              ) : (
+                'Save Changes'
+              )}
             </Button>
           </div>
         </div>
