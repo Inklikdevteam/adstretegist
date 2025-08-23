@@ -77,9 +77,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      console.log('Dashboard summary for user:', { replitUserId, dbUserId, userEmail: user.email, selectedAccounts });
+      // Parse date range parameters
+      const dateFromParam = req.query.dateFrom as string;
+      const dateToParam = req.query.dateTo as string;
+      const dateFrom = dateFromParam ? new Date(dateFromParam) : undefined;
+      const dateTo = dateToParam ? new Date(dateToParam) : undefined;
       
-      const summary = await aiService.getDashboardSummary(dbUserId, selectedAccounts);
+      console.log('Dashboard summary for user:', { replitUserId, dbUserId, userEmail: user.email, selectedAccounts, dateFrom, dateTo });
+      
+      const summary = await aiService.getDashboardSummary(dbUserId, selectedAccounts, dateFrom, dateTo);
       res.json(summary);
     } catch (error) {
       console.error("Error fetching dashboard summary:", error);
@@ -112,7 +118,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      let campaigns = await campaignService.getUserCampaigns(dbUserId, selectedAccounts);
+      // Parse date range parameters
+      const dateFromParam = req.query.dateFrom as string;
+      const dateToParam = req.query.dateTo as string;
+      const dateFrom = dateFromParam ? new Date(dateFromParam) : undefined;
+      const dateTo = dateToParam ? new Date(dateToParam) : undefined;
+      
+      let campaigns = await campaignService.getUserCampaigns(dbUserId, selectedAccounts, dateFrom, dateTo);
       
       // Filter to only show active campaigns
       const activeCampaigns = campaigns.filter(campaign => 
@@ -298,8 +310,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      // Parse date range parameters for filtering campaigns
+      const dateFromParam = req.query.dateFrom as string;
+      const dateToParam = req.query.dateTo as string;
+      const dateFrom = dateFromParam ? new Date(dateFromParam) : undefined;
+      const dateTo = dateToParam ? new Date(dateToParam) : undefined;
+      
       // Get user campaigns first to filter recommendations
-      const userCampaigns = await new CampaignService().getUserCampaigns(dbUserId, selectedAccounts.length > 0 ? selectedAccounts : undefined);
+      const userCampaigns = await new CampaignService().getUserCampaigns(dbUserId, selectedAccounts.length > 0 ? selectedAccounts : undefined, dateFrom, dateTo);
       const campaignIds = userCampaigns.map(c => c.id);
 
       if (campaignIds.length === 0) {
@@ -658,8 +676,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Finally delete campaigns
       await db.delete(campaigns).where(eq(campaigns.userId, dbUserId));
       
+      // Parse date range parameters for refresh
+      const dateFromParam = req.query.dateFrom as string;
+      const dateToParam = req.query.dateTo as string;
+      const dateFrom = dateFromParam ? new Date(dateFromParam) : undefined;
+      const dateTo = dateToParam ? new Date(dateToParam) : undefined;
+      
       // Get fresh campaigns (this will trigger real data fetch) with account filtering
-      const freshCampaigns = await campaignService.getUserCampaigns(dbUserId.toString(), selectedAccounts);
+      const freshCampaigns = await campaignService.getUserCampaigns(dbUserId.toString(), selectedAccounts, dateFrom, dateTo);
       
       res.json({ 
         message: `Refreshed ${freshCampaigns.length} campaigns from Google Ads`,

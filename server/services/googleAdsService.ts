@@ -49,6 +49,17 @@ export class GoogleAdsService {
   private oauth2Client: OAuth2Client;
   private config: GoogleAdsConfig;
 
+  // Helper function to format date for Google Ads query
+  private formatDateForQuery(date?: Date): string {
+    if (!date) {
+      // Default to last 7 days if no date provided
+      const defaultDate = new Date();
+      defaultDate.setDate(defaultDate.getDate() - 7);
+      return defaultDate.toISOString().split('T')[0];
+    }
+    return date.toISOString().split('T')[0];
+  }
+
   constructor(config: GoogleAdsConfig) {
     this.config = config;
     
@@ -76,7 +87,7 @@ export class GoogleAdsService {
     });
   }
 
-  async getCampaigns(selectedAccountIds?: string[]): Promise<GoogleAdsCampaign[]> {
+  async getCampaigns(selectedAccountIds?: string[], dateFrom?: Date, dateTo?: Date): Promise<GoogleAdsCampaign[]> {
     try {
       // First check if this is a manager account
       const clientAccounts = await this.getClientAccounts();
@@ -133,7 +144,7 @@ export class GoogleAdsService {
                 metrics.conversions_from_interactions_rate
               FROM campaign 
               WHERE campaign.status = 'ENABLED'
-              AND segments.date DURING LAST_7_DAYS
+              AND segments.date BETWEEN '${this.formatDateForQuery(dateFrom)}' AND '${this.formatDateForQuery(dateTo)}'
             `);
 
             const clientCampaigns = campaigns.map((row: any) => {

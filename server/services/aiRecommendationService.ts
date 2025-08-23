@@ -187,8 +187,8 @@ export class AIRecommendationService {
     await db.insert(auditLogs).values(eventData);
   }
 
-  async getDashboardSummary(userId: string, selectedAccounts?: string[]) {
-    const campaigns = await this.campaignService.getUserCampaigns(userId, selectedAccounts);
+  async getDashboardSummary(userId: string, selectedAccounts?: string[], dateFrom?: Date, dateTo?: Date) {
+    const campaigns = await this.campaignService.getUserCampaigns(userId, selectedAccounts, dateFrom, dateTo);
     const pendingRecommendations = await this.getRecommendationsByUser(userId);
     
     // If specific accounts are selected, filter recommendations to only those for campaigns from those accounts
