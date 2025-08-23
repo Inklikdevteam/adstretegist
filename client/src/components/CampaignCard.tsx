@@ -157,10 +157,6 @@ export default function CampaignCard({ campaign, onUpdate }: CampaignCardProps) 
           
           <div className="grid grid-cols-3 gap-4 mb-4">
             <div>
-              <p className="text-sm text-gray-600">Campaign Type</p>
-              <p className="font-semibold text-gray-900 capitalize">{campaign.type}</p>
-            </div>
-            <div>
               <p className="text-sm text-gray-600">Daily Budget</p>
               <p className="font-semibold text-gray-900">₹{parseFloat(campaign.dailyBudget).toLocaleString()}</p>
             </div>
@@ -168,7 +164,6 @@ export default function CampaignCard({ campaign, onUpdate }: CampaignCardProps) 
               <p className="text-sm text-gray-600">Cost (7d)</p>
               <p className="font-semibold text-gray-900">₹{parseFloat(campaign.spend7d || '0').toLocaleString()}</p>
             </div>
-            
             <div>
               <p className="text-sm text-gray-600">Conversions</p>
               <p className="font-semibold text-gray-900">{campaign.conversions7d || campaign.conversions || 0}</p>
