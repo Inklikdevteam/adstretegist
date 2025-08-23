@@ -151,7 +151,7 @@ export class CampaignService {
           goalDescription: existingCampaign?.goalDescription || `Real Google Ads campaign - ${googleCampaign.bidStrategy || 'Auto bidding'}`
         };
 
-        // Create the final campaign object with all Google Ads metrics
+        // Create the final campaign object with all Google Ads metrics and campaign age data
         const finalCampaign = {
           ...campaignData,
           // Real Google Ads metrics
@@ -161,7 +161,11 @@ export class CampaignService {
           avgCpc: googleCampaign.avgCpc || 0, // Already converted from micros in the service
           conversions: googleCampaign.conversions || 0,
           conversionValue: conversionValue, // Real conversion value from Google Ads
-          conversionRate: googleCampaign.conversionRate || 0
+          conversionRate: googleCampaign.conversionRate || 0,
+          // Campaign age data for AI analysis
+          startDate: googleCampaign.startDate,
+          campaignAgeInDays: googleCampaign.campaignAgeInDays,
+          actualDataDays: googleCampaign.actualDataDays
         };
         
         if (existingCampaign) {
