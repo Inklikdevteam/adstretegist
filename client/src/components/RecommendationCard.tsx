@@ -126,6 +126,45 @@ export default function RecommendationCard({
             {formatAIContent(recommendation.reasoning)}
           </div>
         </div>
+
+        {/* Campaign Metrics Section */}
+        <div className="bg-blue-50 rounded-lg p-4 mb-4">
+          <h4 className="font-semibold text-gray-900 mb-3 text-sm">Campaign Performance (7 days)</h4>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <div className="flex justify-between text-xs">
+                <span className="text-gray-600">Spend:</span>
+                <span className="font-medium">
+                  ₹{recommendation.campaignSpend7d ? parseFloat(recommendation.campaignSpend7d).toLocaleString() : '0'}
+                </span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-gray-600">Conversions:</span>
+                <span className="font-medium">{recommendation.campaignConversions7d || 0}</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-gray-600">Daily Budget:</span>
+                <span className="font-medium">
+                  ₹{recommendation.campaignDailyBudget ? parseFloat(recommendation.campaignDailyBudget).toLocaleString() : 'N/A'}
+                </span>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between text-xs">
+                <span className="text-gray-600">CPA:</span>
+                <span className="font-medium">
+                  {recommendation.campaignActualCpa ? `₹${parseFloat(recommendation.campaignActualCpa).toLocaleString()}` : 'No data'}
+                </span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-gray-600">ROAS:</span>
+                <span className="font-medium">
+                  {recommendation.campaignActualRoas ? `${parseFloat(recommendation.campaignActualRoas).toFixed(1)}x` : 'No data'}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
         
         <div className="flex items-center justify-between">
           <div className="text-sm text-gray-600">

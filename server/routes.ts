@@ -306,7 +306,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json([]);
       }
 
-      // Get recommendations with campaign names, filtered by selected campaigns
+      // Get recommendations with campaign names and metrics, filtered by selected campaigns
       const userRecommendations = await db
         .select({
           id: recommendations.id,
@@ -325,6 +325,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           actionData: recommendations.actionData,
           createdAt: recommendations.createdAt,
           appliedAt: recommendations.appliedAt,
+          // Campaign metrics for display in recommendation cards
+          campaignSpend7d: campaigns.spend7d,
+          campaignConversions7d: campaigns.conversions7d,
+          campaignActualCpa: campaigns.actualCpa,
+          campaignActualRoas: campaigns.actualRoas,
+          campaignDailyBudget: campaigns.dailyBudget,
         })
         .from(recommendations)
         .leftJoin(campaigns, eq(recommendations.campaignId, campaigns.id))
