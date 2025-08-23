@@ -207,7 +207,7 @@ export default function Dashboard() {
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Refresh Real Data
               </Button>
-              <Button onClick={handleRunEvaluation} className="bg-primary hover:bg-blue-600">
+              <Button onClick={handleRunEvaluation} className="bg-primary hover:bg-blue-600 animate-pulse hover:animate-none">
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Run Evaluation
               </Button>

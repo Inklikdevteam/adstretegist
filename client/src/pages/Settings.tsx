@@ -135,7 +135,7 @@ export default function Settings() {
                         size="sm" 
                         onClick={handleUpdateAccounts}
                         data-testid="button-update-accounts"
-                        className="ml-auto"
+                        className="ml-auto animate-pulse hover:animate-none"
                       >
                         Update
                       </Button>

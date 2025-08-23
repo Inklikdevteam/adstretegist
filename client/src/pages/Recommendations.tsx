@@ -87,7 +87,7 @@ export default function Recommendations() {
               <Button 
                 onClick={handleRunEvaluation} 
                 disabled={isGenerating}
-                className="bg-primary hover:bg-blue-600"
+                className={`bg-primary hover:bg-blue-600 ${!isGenerating ? 'animate-pulse hover:animate-none' : ''}`}
               >
                 <RefreshCw className={`w-4 h-4 mr-2 ${isGenerating ? 'animate-spin' : ''}`} />
                 {isGenerating ? 'Generating...' : 'Generate New Recommendations'}
@@ -123,7 +123,10 @@ export default function Recommendations() {
               <Brain className="w-16 h-16 mx-auto mb-4 text-gray-300" />
               <p className="text-lg">No recommendations available</p>
               <p className="text-sm mt-2 mb-4">Run an evaluation to generate new AI insights</p>
-              <Button onClick={handleRunEvaluation}>
+              <Button 
+                onClick={handleRunEvaluation}
+                className="animate-pulse hover:animate-none"
+              >
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Generate Recommendations
               </Button>
