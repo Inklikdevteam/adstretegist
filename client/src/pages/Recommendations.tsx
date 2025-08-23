@@ -1,10 +1,11 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useEffect, useState } from "react";
 import Sidebar from "@/components/Sidebar";
 import RecommendationCard from "@/components/RecommendationCard";
+import AccountSelector from "@/components/AccountSelector";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, Brain, Clock } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -14,11 +15,48 @@ export default function Recommendations() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
   const [isGenerating, setIsGenerating] = useState(false);
+  const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
+
+  // Fetch user settings to get saved account selection
+  const { data: userSettings, isLoading: isLoadingSettings } = useQuery({
+    queryKey: ['/api/user/settings'],
+    enabled: isAuthenticated,
+  });
+
+  // Update user settings mutation
+  const updateSettingsMutation = useMutation({
+    mutationFn: (settings: any) => apiRequest('PATCH', '/api/user/settings', settings),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/user/settings'] });
+    }
+  });
+
+  // Load saved account selection from user settings
+  useEffect(() => {
+    if (userSettings && userSettings.selectedGoogleAdsAccounts) {
+      setSelectedAccounts(userSettings.selectedGoogleAdsAccounts);
+    }
+  }, [userSettings]);
+
+  // Save account selection when it changes
+  const handleAccountsChange = async (newSelectedAccounts: string[]) => {
+    setSelectedAccounts(newSelectedAccounts);
+    
+    // Save to database immediately
+    try {
+      await updateSettingsMutation.mutateAsync({
+        selectedGoogleAdsAccounts: newSelectedAccounts
+      });
+    } catch (error) {
+      console.error('Failed to save account selection:', error);
+    }
+  };
 
   // Authentication is handled by the Router component
 
   const { data: recommendations = [], isLoading: recommendationsLoading } = useQuery<any[]>({
-    queryKey: ["/api/recommendations"],
+    queryKey: ["/api/recommendations", selectedAccounts],
+    queryFn: () => apiRequest("GET", `/api/recommendations?selectedAccounts=${encodeURIComponent(JSON.stringify(selectedAccounts))}`),
     enabled: isAuthenticated,
   });
 
@@ -30,9 +68,6 @@ export default function Recommendations() {
   const handleRunEvaluation = async () => {
     try {
       setIsGenerating(true);
-      
-      // Get selected accounts from localStorage
-      const selectedAccounts = JSON.parse(localStorage.getItem('selectedGoogleAdsAccounts') || '[]');
       
       await apiRequest("POST", "/api/recommendations/generate", { selectedAccounts });
       await queryClient.invalidateQueries({ queryKey: ["/api/recommendations"] });
@@ -73,9 +108,16 @@ export default function Recommendations() {
       <main className="flex-1 overflow-auto">
         <header className="bg-white shadow-sm border-b border-gray-200 px-6 py-4">
           <div className="flex items-center justify-between">
-            <div>
+            <div className="flex-1">
               <h2 className="text-2xl font-semibold text-gray-900">AI Recommendations</h2>
               <p className="text-gray-600 mt-1">Smart insights and optimization suggestions</p>
+              <div className="mt-3">
+                <AccountSelector
+                  selectedAccounts={selectedAccounts}
+                  onAccountsChange={handleAccountsChange}
+                  className="flex-wrap"
+                />
+              </div>
             </div>
             <div className="flex items-center space-x-4">
               {lastGeneratedData?.lastGenerated && (

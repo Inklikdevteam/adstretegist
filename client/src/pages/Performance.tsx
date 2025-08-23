@@ -1,24 +1,64 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { useQuery } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import Sidebar from "@/components/Sidebar";
 import MetricsCard from "@/components/MetricsCard";
+import AccountSelector from "@/components/AccountSelector";
 import { TrendingUp, Target, DollarSign, BarChart3, Users, Clock } from "lucide-react";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 
 export default function Performance() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
+  const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
+
+  // Fetch user settings to get saved account selection
+  const { data: userSettings, isLoading: isLoadingSettings } = useQuery({
+    queryKey: ['/api/user/settings'],
+    enabled: isAuthenticated,
+  });
+
+  // Update user settings mutation
+  const updateSettingsMutation = useMutation({
+    mutationFn: (settings: any) => apiRequest('PATCH', '/api/user/settings', settings),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/user/settings'] });
+    }
+  });
+
+  // Load saved account selection from user settings
+  useEffect(() => {
+    if (userSettings && userSettings.selectedGoogleAdsAccounts) {
+      setSelectedAccounts(userSettings.selectedGoogleAdsAccounts);
+    }
+  }, [userSettings]);
+
+  // Save account selection when it changes
+  const handleAccountsChange = async (newSelectedAccounts: string[]) => {
+    setSelectedAccounts(newSelectedAccounts);
+    
+    // Save to database immediately
+    try {
+      await updateSettingsMutation.mutateAsync({
+        selectedGoogleAdsAccounts: newSelectedAccounts
+      });
+    } catch (error) {
+      console.error('Failed to save account selection:', error);
+    }
+  };
 
   // Authentication is handled by the Router component
 
   const { data: dashboardSummary, isLoading: summaryLoading } = useQuery<any>({
-    queryKey: ["/api/dashboard/summary"],
+    queryKey: ["/api/dashboard/summary", selectedAccounts],
+    queryFn: () => apiRequest("GET", `/api/dashboard/summary?selectedAccounts=${encodeURIComponent(JSON.stringify(selectedAccounts))}`),
     enabled: isAuthenticated,
   });
 
   const { data: campaigns = [] } = useQuery<any[]>({
-    queryKey: ["/api/campaigns"],
+    queryKey: ["/api/campaigns", selectedAccounts],
+    queryFn: () => apiRequest("GET", `/api/campaigns?selectedAccounts=${encodeURIComponent(JSON.stringify(selectedAccounts))}`),
     enabled: isAuthenticated,
   });
 
@@ -39,9 +79,16 @@ export default function Performance() {
       <main className="flex-1 overflow-auto">
         <header className="bg-white shadow-sm border-b border-gray-200 px-6 py-4">
           <div className="flex items-center justify-between">
-            <div>
+            <div className="flex-1">
               <h2 className="text-2xl font-semibold text-gray-900">Performance Analytics</h2>
               <p className="text-gray-600 mt-1">Track your campaign metrics and KPIs</p>
+              <div className="mt-3">
+                <AccountSelector
+                  selectedAccounts={selectedAccounts}
+                  onAccountsChange={handleAccountsChange}
+                  className="flex-wrap"
+                />
+              </div>
             </div>
           </div>
         </header>
