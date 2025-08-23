@@ -26,6 +26,9 @@ export async function analyzeCampaignPerformance(
     const metricsJson = JSON.stringify({
       name: campaign.name,
       type: campaign.type,
+      startDate: campaign.startDate,
+      campaignAgeInDays: campaign.campaignAgeInDays || 'unknown',
+      actualDataDays: campaign.actualDataDays || 'unknown',
       dailyBudget: campaign.dailyBudget,
       spend7d: campaign.spend7d || 0,
       conversions7d: campaign.conversions7d || 0,
@@ -40,7 +43,12 @@ export async function analyzeCampaignPerformance(
 
     const goals = `${campaign.targetCpa ? `Target CPA: ₹${campaign.targetCpa}` : ''} ${campaign.targetRoas ? `Target ROAS: ${campaign.targetRoas}x` : ''} ${campaign.goalDescription || ''}`.trim() || 'No specific goals set';
     
-    const context = `Daily evaluation of campaign "${campaign.name}" for optimization opportunities. Historical data: ${JSON.stringify(historicalData)}`;
+    const campaignAge = campaign.campaignAgeInDays || 'unknown';
+    const dataAvailability = campaign.actualDataDays || 'unknown';
+    const context = `Daily evaluation of campaign "${campaign.name}" for optimization opportunities. 
+    IMPORTANT: This campaign is ${campaignAge} days old and has ${dataAvailability} days of actual performance data available. 
+    Only analyze the data from the actual days the campaign was running. If the campaign is very new (less than 7 days), 
+    be more conservative with recommendations and note the limited data availability. Historical data: ${JSON.stringify(historicalData)}`;
 
     const prompt = buildPrompt({
       metrics_json: metricsJson,

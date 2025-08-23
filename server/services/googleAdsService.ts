@@ -117,6 +117,7 @@ export class GoogleAdsService {
                 campaign.id,
                 campaign.name,
                 campaign.status,
+                campaign.start_date,
                 campaign.advertising_channel_type,
                 campaign_budget.amount_micros,
                 campaign.bidding_strategy_type,
@@ -135,10 +136,19 @@ export class GoogleAdsService {
               AND segments.date DURING LAST_7_DAYS
             `);
 
-            const clientCampaigns = campaigns.map((row: any) => ({
+            const clientCampaigns = campaigns.map((row: any) => {
+              const campaignStartDate = new Date(row.campaign.start_date);
+              const today = new Date();
+              const campaignAgeInDays = Math.ceil((today.getTime() - campaignStartDate.getTime()) / (1000 * 60 * 60 * 24));
+              const actualDataDays = Math.min(campaignAgeInDays, 7); // Use actual campaign age or 7 days, whichever is smaller
+              
+              return {
                 id: row.campaign.id.toString(),
                 name: `${clientAccount.name} - ${row.campaign.name}`,
                 status: row.campaign.status,
+                startDate: row.campaign.start_date,
+                campaignAgeInDays: campaignAgeInDays,
+                actualDataDays: actualDataDays,
                 type: this.mapChannelType(row.campaign.advertising_channel_type),
                 budget: row.campaign_budget.amount_micros / 1000000,
                 bidStrategy: row.campaign.bidding_strategy_type,
@@ -152,7 +162,8 @@ export class GoogleAdsService {
                 ctr: row.metrics.ctr || 0,
                 avgCpc: (row.metrics.average_cpc || 0) / 1000000, // Convert from micros to actual currency
                 conversionRate: row.metrics.conversions_from_interactions_rate || 0,
-            }));
+              };
+            });
             
             allCampaigns.push(...clientCampaigns);
             console.log(`Found ${clientCampaigns.length} campaigns from client account: ${clientAccount.name}`);
@@ -169,6 +180,7 @@ export class GoogleAdsService {
             campaign.id,
             campaign.name,
             campaign.status,
+            campaign.start_date,
             campaign.advertising_channel_type,
             campaign_budget.amount_micros,
             campaign.bidding_strategy_type,
@@ -187,24 +199,34 @@ export class GoogleAdsService {
           AND segments.date DURING LAST_7_DAYS
         `);
 
-        return campaigns.map((row: any) => ({
-          id: row.campaign.id.toString(),
-          name: row.campaign.name,
-          status: row.campaign.status,
-          type: this.mapChannelType(row.campaign.advertising_channel_type),
-          budget: row.campaign_budget.amount_micros / 1000000,
-          bidStrategy: row.campaign.bidding_strategy_type,
-          targetCpa: row.campaign.target_cpa?.target_cpa_micros / 1000000,
-          targetRoas: row.campaign.target_roas?.target_roas,
-          impressions: row.metrics.impressions || 0,
-          clicks: row.metrics.clicks || 0,
-          conversions: row.metrics.conversions || 0,
-          conversionsValue: row.metrics.conversions_value || 0,
-          cost: row.metrics.cost_micros / 1000000,
-          ctr: row.metrics.ctr || 0,
-          avgCpc: (row.metrics.average_cpc || 0) / 1000000, // Convert from micros to actual currency
-          conversionRate: row.metrics.conversions_from_interactions_rate || 0,
-        }));
+        return campaigns.map((row: any) => {
+          const campaignStartDate = new Date(row.campaign.start_date);
+          const today = new Date();
+          const campaignAgeInDays = Math.ceil((today.getTime() - campaignStartDate.getTime()) / (1000 * 60 * 60 * 24));
+          const actualDataDays = Math.min(campaignAgeInDays, 7); // Use actual campaign age or 7 days, whichever is smaller
+          
+          return {
+            id: row.campaign.id.toString(),
+            name: row.campaign.name,
+            status: row.campaign.status,
+            startDate: row.campaign.start_date,
+            campaignAgeInDays: campaignAgeInDays,
+            actualDataDays: actualDataDays,
+            type: this.mapChannelType(row.campaign.advertising_channel_type),
+            budget: row.campaign_budget.amount_micros / 1000000,
+            bidStrategy: row.campaign.bidding_strategy_type,
+            targetCpa: row.campaign.target_cpa?.target_cpa_micros / 1000000,
+            targetRoas: row.campaign.target_roas?.target_roas,
+            impressions: row.metrics.impressions || 0,
+            clicks: row.metrics.clicks || 0,
+            conversions: row.metrics.conversions || 0,
+            conversionsValue: row.metrics.conversions_value || 0,
+            cost: row.metrics.cost_micros / 1000000,
+            ctr: row.metrics.ctr || 0,
+            avgCpc: (row.metrics.average_cpc || 0) / 1000000, // Convert from micros to actual currency
+            conversionRate: row.metrics.conversions_from_interactions_rate || 0,
+          };
+        });
       }
     } catch (error) {
       console.error('Error fetching campaigns from Google Ads:', error);
