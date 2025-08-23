@@ -209,9 +209,24 @@ export class CampaignService {
   }
 
   private mapCampaignType(googleAdsType: string): string {
+    // Updated to handle the actual mapped types from GoogleAdsService
     const typeMap: { [key: string]: string } = {
+      // New format from GoogleAdsService.mapChannelType()
+      'Search': 'search',
+      'Display': 'display', 
+      'Shopping': 'shopping',
+      'Video': 'video',
+      'Hotel': 'hotel',
+      'App': 'app',
+      'Local': 'local',
+      'Smart': 'smart',
+      'Performance Max': 'performance_max',
+      'Local Services': 'local_services',
+      'Discovery': 'discovery',
+      'Travel': 'travel',
+      // Legacy format for backwards compatibility
       'SEARCH': 'search',
-      'DISPLAY': 'display', 
+      'DISPLAY': 'display',
       'SHOPPING': 'shopping',
       'VIDEO': 'video',
       'DISCOVERY': 'discovery',
