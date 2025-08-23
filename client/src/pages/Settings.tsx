@@ -214,7 +214,7 @@ export default function Settings() {
                           checked={selectedAccounts.includes(account.id)}
                           onCheckedChange={(checked) => handleAccountToggle(account.id, checked as boolean)}
                           data-testid={`checkbox-account-${account.id}`}
-                          className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                          className="data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded-sm border-2 border-gray-300 w-5 h-5"
                         />
                         <label 
                           htmlFor={`account-${account.id}`} 
@@ -376,7 +376,7 @@ export default function Settings() {
                 <Checkbox
                   checked={emailAlerts}
                   onCheckedChange={(checked) => setEmailAlerts(checked as boolean)}
-                  className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                  className="data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded-sm border-2 border-gray-300 w-5 h-5"
                 />
               </div>
               <div className="flex items-center justify-between">
@@ -384,7 +384,7 @@ export default function Settings() {
                 <Checkbox
                   checked={dailySummaries}
                   onCheckedChange={(checked) => setDailySummaries(checked as boolean)}
-                  className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                  className="data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded-sm border-2 border-gray-300 w-5 h-5"
                 />
               </div>
               <div className="flex items-center justify-between">
@@ -392,7 +392,7 @@ export default function Settings() {
                 <Checkbox
                   checked={budgetAlerts}
                   onCheckedChange={(checked) => setBudgetAlerts(checked as boolean)}
-                  className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                  className="data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded-sm border-2 border-gray-300 w-5 h-5"
                 />
               </div>
             </CardContent>
