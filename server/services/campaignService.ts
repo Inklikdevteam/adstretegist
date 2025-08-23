@@ -119,15 +119,16 @@ export class CampaignService {
       const updatedCampaigns: Campaign[] = [];
       
       for (const googleCampaign of activeCampaigns) {
-        // Find existing campaign by name (since Google Ads doesn't provide a stable ID we can use)
+        // Find existing campaign by exact name match first, with more robust matching
+        const campaignName = googleCampaign.name || 'Unnamed Campaign';
         const existingCampaign = existingCampaigns.find(ec => 
-          ec.name === googleCampaign.name || 
-          ec.name === (googleCampaign.name || 'Unnamed Campaign')
+          ec.name === campaignName
         );
         
-        console.log(`DEBUG: Matching campaign "${googleCampaign.name}" - Found existing:`, !!existingCampaign);
+        console.log(`DEBUG: Matching campaign "${campaignName}" - Found existing:`, !!existingCampaign);
         if (existingCampaign) {
           console.log(`DEBUG: Preserving goals - CPA: ${existingCampaign.targetCpa}, ROAS: ${existingCampaign.targetRoas}`);
+          console.log(`DEBUG: Existing campaign ID: ${existingCampaign.id}`);
         }
         
         // Use actual conversion value from Google Ads API and calculate ROAS
