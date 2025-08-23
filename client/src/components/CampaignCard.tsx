@@ -155,10 +155,14 @@ export default function CampaignCard({ campaign, onUpdate }: CampaignCardProps) 
             </div>
           </div>
           
-          <div className="grid grid-cols-3 gap-4 mb-4">
+          <div className="grid grid-cols-4 gap-4 mb-4">
             <div>
               <p className="text-sm text-gray-600">Daily Budget</p>
               <p className="font-semibold text-gray-900">₹{parseFloat(campaign.dailyBudget).toLocaleString()}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Cost Yesterday</p>
+              <p className="font-semibold text-gray-900">₹{parseFloat(campaign.costYesterday || campaign.spend7d / 7 || '0').toLocaleString()}</p>
             </div>
             <div>
               <p className="text-sm text-gray-600">Cost (7d)</p>
