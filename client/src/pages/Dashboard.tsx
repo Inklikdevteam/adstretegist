@@ -13,6 +13,7 @@ import { RefreshCw, TrendingUp, Target, DollarSign, BarChart3, Activity, Message
 import ChatInterface from "@/components/ChatInterface";
 import { queryClient } from "@/lib/queryClient";
 import { apiRequest } from "@/lib/queryClient";
+import { formatDistanceToNow } from "date-fns";
 
 export default function Dashboard() {
   const { toast } = useToast();
@@ -43,6 +44,23 @@ export default function Dashboard() {
     queryKey: ["/api/audit-trail"],
     enabled: isAuthenticated,
   });
+
+  // Calculate the most recent update time from campaigns
+  const getLastUpdateTime = () => {
+    if (!campaigns || campaigns.length === 0) return null;
+    
+    const timestamps = campaigns
+      .map(campaign => campaign.lastModified || campaign.updatedAt || campaign.createdAt)
+      .filter(Boolean)
+      .map(timestamp => new Date(timestamp));
+    
+    if (timestamps.length === 0) return null;
+    
+    const mostRecent = new Date(Math.max(...timestamps.map(date => date.getTime())));
+    return mostRecent;
+  };
+
+  const lastUpdateTime = getLastUpdateTime();
 
   const handleConnectGoogleAds = async () => {
     try {
@@ -217,7 +235,12 @@ export default function Dashboard() {
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2 text-sm text-gray-600">
                 <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <span>Last updated: 2 minutes ago</span>
+                <span>
+                  Last updated: {lastUpdateTime 
+                    ? formatDistanceToNow(lastUpdateTime, { addSuffix: true })
+                    : 'Never'
+                  }
+                </span>
               </div>
               <Button 
                 onClick={handleRefreshGoogleAds} 
