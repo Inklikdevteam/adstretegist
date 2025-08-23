@@ -2,7 +2,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Sidebar from "@/components/Sidebar";
 import RecommendationCard from "@/components/RecommendationCard";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import { formatDistanceToNow } from "date-fns";
 export default function Recommendations() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
+  const [isGenerating, setIsGenerating] = useState(false);
 
   // Authentication is handled by the Router component
 
@@ -28,7 +29,12 @@ export default function Recommendations() {
 
   const handleRunEvaluation = async () => {
     try {
-      await apiRequest("POST", "/api/recommendations/generate");
+      setIsGenerating(true);
+      
+      // Get selected accounts from localStorage
+      const selectedAccounts = JSON.parse(localStorage.getItem('selectedAccounts') || '[]');
+      
+      await apiRequest("POST", "/api/recommendations/generate", { selectedAccounts });
       await queryClient.invalidateQueries({ queryKey: ["/api/recommendations"] });
       await queryClient.invalidateQueries({ queryKey: ["/api/recommendations/last-generated"] });
       
@@ -53,6 +59,8 @@ export default function Recommendations() {
         description: "Failed to run evaluation. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -76,9 +84,13 @@ export default function Recommendations() {
                   <span>Last generated {formatDistanceToNow(new Date(lastGeneratedData.lastGenerated), { addSuffix: true })}</span>
                 </div>
               )}
-              <Button onClick={handleRunEvaluation} className="bg-primary hover:bg-blue-600">
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Generate New Recommendations
+              <Button 
+                onClick={handleRunEvaluation} 
+                disabled={isGenerating}
+                className="bg-primary hover:bg-blue-600"
+              >
+                <RefreshCw className={`w-4 h-4 mr-2 ${isGenerating ? 'animate-spin' : ''}`} />
+                {isGenerating ? 'Generating...' : 'Generate New Recommendations'}
               </Button>
             </div>
           </div>

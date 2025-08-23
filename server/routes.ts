@@ -297,9 +297,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "User not found" });
       }
       
+      const { selectedAccounts } = req.body;
       const dbUserId = user.id.toString();
-      console.log(`DEBUG: Generating recommendations for user ${dbUserId} (Replit: ${replitUserId})`);
-      const recommendations = await aiService.generateRecommendationsForUser(dbUserId);
+      console.log(`DEBUG: Generating recommendations for user ${dbUserId} (Replit: ${replitUserId}) with selected accounts:`, selectedAccounts);
+      const recommendations = await aiService.generateRecommendationsForUser(dbUserId, selectedAccounts);
       console.log(`DEBUG: Generated ${recommendations.length} recommendations`);
       res.json({ 
         message: "Recommendations generated successfully",

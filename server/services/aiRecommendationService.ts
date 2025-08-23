@@ -26,8 +26,8 @@ export class AIRecommendationService {
     return parseFloat(cleanValue).toString();
   }
 
-  async generateRecommendationsForUser(userId: string): Promise<Recommendation[]> {
-    const userCampaigns = await this.campaignService.getUserCampaigns(userId);
+  async generateRecommendationsForUser(userId: string, selectedAccountIds?: string[]): Promise<Recommendation[]> {
+    const userCampaigns = await this.campaignService.getUserCampaigns(userId, selectedAccountIds);
     const newRecommendations: Recommendation[] = [];
 
     // If no campaigns available, return empty array
