@@ -8,7 +8,7 @@ import { CampaignService } from "./services/campaignService";
 import { MultiAIService } from "./services/multiAIService";
 import { GoogleAdsService } from "./services/googleAdsService";
 import { insertCampaignSchema, campaigns, googleAdsAccounts, auditLogs, recommendations } from "@shared/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import { db } from "./db";
 import { buildPrompt } from "./prompts/corePrompt";
 
@@ -225,13 +225,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user) {
         return res.status(401).json({ message: "User not found" });
       }
-      
+
       const dbUserId = user.id.toString();
-      const recommendations = await aiService.getRecommendationsByUser(dbUserId);
-      res.json(recommendations);
+
+      // Get recommendations with campaign names
+      const userRecommendations = await db
+        .select({
+          id: recommendations.id,
+          userId: recommendations.userId,
+          campaignId: recommendations.campaignId,
+          campaignName: campaigns.name,
+          type: recommendations.type,
+          priority: recommendations.priority,
+          title: recommendations.title,
+          description: recommendations.description,
+          reasoning: recommendations.reasoning,
+          aiModel: recommendations.aiModel,
+          confidence: recommendations.confidence,
+          status: recommendations.status,
+          potentialSavings: recommendations.potentialSavings,
+          actionData: recommendations.actionData,
+          createdAt: recommendations.createdAt,
+          appliedAt: recommendations.appliedAt,
+        })
+        .from(recommendations)
+        .leftJoin(campaigns, eq(recommendations.campaignId, campaigns.id))
+        .where(eq(recommendations.userId, dbUserId))
+        .orderBy(desc(recommendations.createdAt));
+
+      res.json(userRecommendations);
     } catch (error) {
       console.error("Error fetching recommendations:", error);
       res.status(500).json({ message: "Failed to fetch recommendations" });
+    }
+  });
+
+  // Get last generation timestamp
+  app.get('/api/recommendations/last-generated', isAuthenticated, async (req: any, res) => {
+    try {
+      const replitUserId = req.user.claims.sub;
+      const user = await storage.getUser(replitUserId);
+      
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+
+      const dbUserId = user.id.toString();
+
+      const lastGenerated = await db
+        .select({ createdAt: recommendations.createdAt })
+        .from(recommendations)
+        .where(eq(recommendations.userId, dbUserId))
+        .orderBy(desc(recommendations.createdAt))
+        .limit(1);
+
+      res.json({ 
+        lastGenerated: lastGenerated.length > 0 ? lastGenerated[0].createdAt : null 
+      });
+    } catch (error) {
+      console.error("Error fetching last generation time:", error);
+      res.status(500).json({ message: "Failed to fetch last generation time" });
     }
   });
 

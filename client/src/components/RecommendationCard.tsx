@@ -103,6 +103,9 @@ export default function RecommendationCard({
             <div>
               <h4 className="font-semibold text-gray-900">{recommendation.title}</h4>
               <p className="text-sm text-gray-600">{recommendation.priority} Priority</p>
+              {recommendation.campaignName && (
+                <p className="text-sm text-blue-600 font-medium">Campaign: {recommendation.campaignName}</p>
+              )}
             </div>
           </div>
           <div className="text-right">

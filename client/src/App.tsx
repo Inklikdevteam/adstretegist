@@ -36,7 +36,6 @@ function Router() {
     );
   }
 
-  console.log('Rendering authenticated routes');
   
   return (
     <Switch>

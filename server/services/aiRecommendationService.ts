@@ -35,14 +35,14 @@ export class AIRecommendationService {
       return [];
     }
 
-    // Clear old pending recommendations safely by first deleting audit logs
-    const pendingRecommendations = await db.select({ id: recommendations.id }).from(recommendations).where(eq(recommendations.status, 'pending'));
+    // Clear old recommendations for this user (delete all old ones, not just pending)
+    const oldRecommendations = await db.select({ id: recommendations.id }).from(recommendations).where(eq(recommendations.userId, userId));
     
-    for (const rec of pendingRecommendations) {
+    for (const rec of oldRecommendations) {
       await db.delete(auditLogs).where(eq(auditLogs.recommendationId, rec.id));
     }
     
-    await db.delete(recommendations).where(eq(recommendations.status, 'pending'));
+    await db.delete(recommendations).where(eq(recommendations.userId, userId));
 
     for (const campaign of userCampaigns) {
       try {
@@ -56,6 +56,7 @@ export class AIRecommendationService {
         const analysis = await analyzeCampaignPerformance(campaign);
         
         const recommendationData: InsertRecommendation = {
+          userId: userId,
           campaignId: campaign.id,
           type: analysis.recommendation_type,
           priority: analysis.priority,

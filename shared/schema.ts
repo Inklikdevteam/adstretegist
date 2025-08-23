@@ -29,7 +29,7 @@ export const sessions = pgTable(
 // User storage table.
 // (IMPORTANT) This table is mandatory for Replit Auth, don't drop it.
 export const users = pgTable("users", {
-  id: integer("id").primaryKey(),
+  id: varchar("id").primaryKey(),
   email: varchar("email").unique(),
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
@@ -78,6 +78,7 @@ export const campaigns = pgTable("campaigns", {
 
 export const recommendations = pgTable("recommendations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(), // Track which user generated these recommendations
   campaignId: varchar("campaign_id").notNull().references(() => campaigns.id),
   type: varchar("type").notNull(), // 'actionable', 'monitor', 'clarification'
   priority: varchar("priority").notNull(), // 'high', 'medium', 'low'

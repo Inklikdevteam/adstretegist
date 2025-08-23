@@ -6,8 +6,9 @@ import { useEffect } from "react";
 import Sidebar from "@/components/Sidebar";
 import RecommendationCard from "@/components/RecommendationCard";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Brain } from "lucide-react";
+import { RefreshCw, Brain, Clock } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { formatDistanceToNow } from "date-fns";
 
 export default function Recommendations() {
   const { toast } = useToast();
@@ -20,10 +21,16 @@ export default function Recommendations() {
     enabled: isAuthenticated,
   });
 
+  const { data: lastGeneratedData } = useQuery<{ lastGenerated: string | null }>({
+    queryKey: ["/api/recommendations/last-generated"],
+    enabled: isAuthenticated,
+  });
+
   const handleRunEvaluation = async () => {
     try {
       await apiRequest("POST", "/api/recommendations/generate");
       await queryClient.invalidateQueries({ queryKey: ["/api/recommendations"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/recommendations/last-generated"] });
       
       toast({
         title: "Evaluation Complete",
@@ -62,10 +69,18 @@ export default function Recommendations() {
               <h2 className="text-2xl font-semibold text-gray-900">AI Recommendations</h2>
               <p className="text-gray-600 mt-1">Smart insights and optimization suggestions</p>
             </div>
-            <Button onClick={handleRunEvaluation} className="bg-primary hover:bg-blue-600">
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Generate New Recommendations
-            </Button>
+            <div className="flex items-center space-x-4">
+              {lastGeneratedData?.lastGenerated && (
+                <div className="flex items-center text-sm text-gray-500">
+                  <Clock className="w-4 h-4 mr-1" />
+                  <span>Last generated {formatDistanceToNow(new Date(lastGeneratedData.lastGenerated), { addSuffix: true })}</span>
+                </div>
+              )}
+              <Button onClick={handleRunEvaluation} className="bg-primary hover:bg-blue-600">
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Generate New Recommendations
+              </Button>
+            </div>
           </div>
         </header>
 
