@@ -32,7 +32,7 @@ export default function Recommendations() {
       setIsGenerating(true);
       
       // Get selected accounts from localStorage
-      const selectedAccounts = JSON.parse(localStorage.getItem('selectedAccounts') || '[]');
+      const selectedAccounts = JSON.parse(localStorage.getItem('selectedGoogleAdsAccounts') || '[]');
       
       await apiRequest("POST", "/api/recommendations/generate", { selectedAccounts });
       await queryClient.invalidateQueries({ queryKey: ["/api/recommendations"] });

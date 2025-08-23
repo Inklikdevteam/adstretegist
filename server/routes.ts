@@ -227,8 +227,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const dbUserId = user.id.toString();
+      const selectedAccountsParam = req.query.selectedAccounts;
+      let selectedAccounts: string[] = [];
+      
+      if (selectedAccountsParam) {
+        try {
+          selectedAccounts = JSON.parse(decodeURIComponent(selectedAccountsParam as string));
+        } catch (e) {
+          console.log('Failed to parse selectedAccounts:', e);
+        }
+      }
 
-      // Get recommendations with campaign names
+      // Get user campaigns first to filter recommendations
+      const userCampaigns = await new CampaignService().getUserCampaigns(dbUserId, selectedAccounts.length > 0 ? selectedAccounts : undefined);
+      const campaignIds = userCampaigns.map(c => c.id);
+
+      if (campaignIds.length === 0) {
+        return res.json([]);
+      }
+
+      // Get recommendations with campaign names, filtered by selected campaigns
       const userRecommendations = await db
         .select({
           id: recommendations.id,
@@ -253,7 +271,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(eq(recommendations.userId, dbUserId))
         .orderBy(desc(recommendations.createdAt));
 
-      res.json(userRecommendations);
+      // Filter results by campaign IDs if specific accounts are selected
+      const filteredRecommendations = selectedAccounts.length > 0 
+        ? userRecommendations.filter(rec => campaignIds.includes(rec.campaignId))
+        : userRecommendations;
+
+      res.json(filteredRecommendations);
     } catch (error) {
       console.error("Error fetching recommendations:", error);
       res.status(500).json({ message: "Failed to fetch recommendations" });
