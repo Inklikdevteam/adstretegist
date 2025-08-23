@@ -1,8 +1,8 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Sidebar from "@/components/Sidebar";
 import AccountSelector from "@/components/AccountSelector";
 import CampaignCard from "@/components/CampaignCard";
@@ -12,6 +12,41 @@ export default function Campaigns() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
   const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
+
+  // Fetch user settings to get saved account selection
+  const { data: userSettings, isLoading: isLoadingSettings } = useQuery({
+    queryKey: ['/api/user/settings'],
+    enabled: isAuthenticated,
+  });
+
+  // Update user settings mutation
+  const updateSettingsMutation = useMutation({
+    mutationFn: (settings: any) => apiRequest('PATCH', '/api/user/settings', settings),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/user/settings'] });
+    }
+  });
+
+  // Load saved account selection from user settings
+  useEffect(() => {
+    if (userSettings && userSettings.selectedGoogleAdsAccounts) {
+      setSelectedAccounts(userSettings.selectedGoogleAdsAccounts);
+    }
+  }, [userSettings]);
+
+  // Save account selection when it changes
+  const handleAccountsChange = async (newSelectedAccounts: string[]) => {
+    setSelectedAccounts(newSelectedAccounts);
+    
+    // Save to database immediately
+    try {
+      await updateSettingsMutation.mutateAsync({
+        selectedGoogleAdsAccounts: newSelectedAccounts
+      });
+    } catch (error) {
+      console.error('Failed to save account selection:', error);
+    }
+  };
 
   // Authentication is handled by the Router component
 
@@ -36,7 +71,7 @@ export default function Campaigns() {
               <div className="mt-3">
                 <AccountSelector
                   selectedAccounts={selectedAccounts}
-                  onAccountsChange={setSelectedAccounts}
+                  onAccountsChange={handleAccountsChange}
                   className="flex-wrap"
                 />
               </div>
