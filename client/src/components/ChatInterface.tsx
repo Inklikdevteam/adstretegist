@@ -332,7 +332,11 @@ export default function ChatInterface({ campaigns = [], isOpen, onClose }: ChatI
               disabled={!input.trim() || isLoading}
               size="sm"
             >
-              <Send className="w-4 h-4" />
+              {isLoading ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
+              ) : (
+                <Send className="w-4 h-4" />
+              )}
             </Button>
           </div>
           <p className="text-xs text-gray-500 mt-1">

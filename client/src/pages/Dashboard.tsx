@@ -19,6 +19,8 @@ export default function Dashboard() {
   const { isAuthenticated, isLoading } = useAuth();
   const [showAuditModal, setShowAuditModal] = useState(false);
   const [showChatInterface, setShowChatInterface] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isEvaluating, setIsEvaluating] = useState(false);
 
   // Authentication is handled by the Router component
 
@@ -114,6 +116,7 @@ export default function Dashboard() {
 
   const handleRefreshGoogleAds = async () => {
     try {
+      setIsRefreshing(true);
       const response = await apiRequest("POST", "/api/google-ads/refresh");
       await queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
       await queryClient.invalidateQueries({ queryKey: ["/api/dashboard/summary"] });
@@ -139,11 +142,14 @@ export default function Dashboard() {
         description: "Failed to refresh Google Ads data. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
   const handleRunEvaluation = async () => {
     try {
+      setIsEvaluating(true);
       await apiRequest("POST", "/api/recommendations/generate");
       await queryClient.invalidateQueries({ queryKey: ["/api/recommendations"] });
       await queryClient.invalidateQueries({ queryKey: ["/api/dashboard/summary"] });
@@ -169,6 +175,8 @@ export default function Dashboard() {
         description: "Failed to run evaluation. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsEvaluating(false);
     }
   };
 
@@ -203,13 +211,22 @@ export default function Dashboard() {
                 <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                 <span>Last updated: 2 minutes ago</span>
               </div>
-              <Button onClick={handleRefreshGoogleAds} variant="outline" className="border-blue-500 text-blue-600 hover:bg-blue-50">
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Refresh Real Data
+              <Button 
+                onClick={handleRefreshGoogleAds} 
+                disabled={isRefreshing}
+                variant="outline" 
+                className="border-blue-500 text-blue-600 hover:bg-blue-50"
+              >
+                <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+                {isRefreshing ? 'Refreshing...' : 'Refresh Real Data'}
               </Button>
-              <Button onClick={handleRunEvaluation} className="bg-primary hover:bg-blue-600 animate-pulse hover:animate-none">
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Run Evaluation
+              <Button 
+                onClick={handleRunEvaluation} 
+                disabled={isEvaluating}
+                className="bg-primary hover:bg-blue-600"
+              >
+                <RefreshCw className={`w-4 h-4 mr-2 ${isEvaluating ? 'animate-spin' : ''}`} />
+                {isEvaluating ? 'Evaluating...' : 'Run Evaluation'}
               </Button>
             </div>
           </div>

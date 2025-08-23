@@ -259,6 +259,7 @@ export default function CampaignCard({ campaign, onUpdate }: CampaignCardProps) 
                   <Button 
                     size="sm"
                     onClick={() => setIsGoalModalOpen(true)}
+                    className="animate-pulse hover:animate-none"
                   >
                     Set Goals
                   </Button>
@@ -435,7 +436,12 @@ export default function CampaignCard({ campaign, onUpdate }: CampaignCardProps) 
             <div className="flex justify-end space-x-3">
               <Button variant="outline" onClick={() => setShowDetails(false)}>Close</Button>
               {!hasGoals && (
-                <Button onClick={() => { setShowDetails(false); setIsGoalModalOpen(true); }}>Set Goals</Button>
+                <Button 
+                  onClick={() => { setShowDetails(false); setIsGoalModalOpen(true); }}
+                  className="animate-pulse hover:animate-none"
+                >
+                  Set Goals
+                </Button>
               )}
               {hasGoals && (
                 <Button onClick={() => { setShowDetails(false); setIsGoalModalOpen(true); }}>Edit Goals</Button>

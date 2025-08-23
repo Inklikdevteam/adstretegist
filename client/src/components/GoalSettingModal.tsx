@@ -145,7 +145,14 @@ export default function GoalSettingModal({
               Cancel
             </Button>
             <Button onClick={handleSave} disabled={isLoading}>
-              {isLoading ? "Saving..." : "Save Goals"}
+              {isLoading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
+                  Saving...
+                </>
+              ) : (
+                "Save Goals"
+              )}
             </Button>
           </div>
         </div>

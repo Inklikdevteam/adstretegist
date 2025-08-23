@@ -21,6 +21,8 @@ export default function RecommendationCard({
 }: RecommendationCardProps) {
   const { toast } = useToast();
   const [showDetails, setShowDetails] = useState(false);
+  const [isApplying, setIsApplying] = useState(false);
+  const [isDismissing, setIsDismissing] = useState(false);
 
   const getRecommendationEmoji = (type: string) => {
     switch (type) {
@@ -39,6 +41,7 @@ export default function RecommendationCard({
 
   const handleApply = async () => {
     try {
+      setIsApplying(true);
       await apiRequest("POST", `/api/recommendations/${recommendation.id}/apply`);
       toast({
         title: "Recommendation Applied",
@@ -62,11 +65,14 @@ export default function RecommendationCard({
         description: "Failed to apply recommendation. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsApplying(false);
     }
   };
 
   const handleDismiss = async () => {
     try {
+      setIsDismissing(true);
       await apiRequest("POST", `/api/recommendations/${recommendation.id}/dismiss`);
       toast({
         title: "Recommendation Dismissed",
@@ -90,6 +96,8 @@ export default function RecommendationCard({
         description: "Failed to dismiss recommendation. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsDismissing(false);
     }
   };
 
@@ -135,15 +143,31 @@ export default function RecommendationCard({
               variant="ghost" 
               size="sm"
               onClick={handleDismiss}
+              disabled={isDismissing || isApplying}
             >
-              Dismiss
+              {isDismissing ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
+                  Dismissing...
+                </>
+              ) : (
+                'Dismiss'
+              )}
             </Button>
             {recommendation.type === 'actionable' && (
               <Button 
                 size="sm"
                 onClick={handleApply}
+                disabled={isApplying || isDismissing}
               >
-                Apply Changes
+                {isApplying ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
+                    Applying...
+                  </>
+                ) : (
+                  'Apply Changes'
+                )}
               </Button>
             )}
             {recommendation.type === 'clarification' && (

@@ -15,6 +15,7 @@ export default function Settings() {
   const { isAuthenticated, isLoading, user } = useAuth();
   const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
   const [appliedAccounts, setAppliedAccounts] = useState<string[]>([]);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   // Get available Google Ads accounts
   const { data: accountsData, isLoading: accountsLoading } = useQuery<any>({
@@ -59,19 +60,25 @@ export default function Settings() {
     setSelectedAccounts([]);
   };
 
-  const handleUpdateAccounts = () => {
-    localStorage.setItem('selectedGoogleAdsAccounts', JSON.stringify(selectedAccounts));
-    setAppliedAccounts(selectedAccounts);
-    
-    toast({
-      title: "Accounts Updated",
-      description: `${selectedAccounts.length === 0 ? 'All accounts' : selectedAccounts.length + ' account(s)'} selected. Campaign data will refresh.`,
-    });
+  const handleUpdateAccounts = async () => {
+    try {
+      setIsUpdating(true);
+      localStorage.setItem('selectedGoogleAdsAccounts', JSON.stringify(selectedAccounts));
+      setAppliedAccounts(selectedAccounts);
+      
+      toast({
+        title: "Accounts Updated",
+        description: `${selectedAccounts.length === 0 ? 'All accounts' : selectedAccounts.length + ' account(s)'} selected. Campaign data will refresh.`,
+      });
 
-    // Force refresh of campaign data
-    setTimeout(() => {
+      // Add delay to show loading state
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Force refresh of campaign data
       window.location.reload();
-    }, 1000);
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   const hasChanges = JSON.stringify(selectedAccounts.sort()) !== JSON.stringify(appliedAccounts.sort());
@@ -134,10 +141,18 @@ export default function Settings() {
                         variant="default" 
                         size="sm" 
                         onClick={handleUpdateAccounts}
+                        disabled={isUpdating}
                         data-testid="button-update-accounts"
-                        className="ml-auto animate-pulse hover:animate-none"
+                        className="ml-auto"
                       >
-                        Update
+                        {isUpdating ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
+                            Updating...
+                          </>
+                        ) : (
+                          'Update'
+                        )}
                       </Button>
                     )}
                   </div>
