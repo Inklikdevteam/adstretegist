@@ -137,18 +137,13 @@ export class GoogleAdsService {
             `);
 
             const clientCampaigns = campaigns.map((row: any) => {
-              const campaignStartDate = new Date(row.campaign.start_date);
-              const today = new Date();
-              const campaignAgeInDays = Math.ceil((today.getTime() - campaignStartDate.getTime()) / (1000 * 60 * 60 * 24));
-              const actualDataDays = Math.min(campaignAgeInDays, 7); // Use actual campaign age or 7 days, whichever is smaller
-              
               return {
                 id: row.campaign.id.toString(),
                 name: `${clientAccount.name} - ${row.campaign.name}`,
                 status: row.campaign.status,
                 startDate: row.campaign.start_date,
-                campaignAgeInDays: campaignAgeInDays,
-                actualDataDays: actualDataDays,
+                campaignAgeInDays: 7, // Always use 7 days
+                actualDataDays: 7, // Always use 7 days
                 type: this.mapChannelType(row.campaign.advertising_channel_type),
                 budget: row.campaign_budget.amount_micros / 1000000,
                 bidStrategy: row.campaign.bidding_strategy_type,
@@ -200,18 +195,13 @@ export class GoogleAdsService {
         `);
 
         return campaigns.map((row: any) => {
-          const campaignStartDate = new Date(row.campaign.start_date);
-          const today = new Date();
-          const campaignAgeInDays = Math.ceil((today.getTime() - campaignStartDate.getTime()) / (1000 * 60 * 60 * 24));
-          const actualDataDays = Math.min(campaignAgeInDays, 7); // Use actual campaign age or 7 days, whichever is smaller
-          
           return {
             id: row.campaign.id.toString(),
             name: row.campaign.name,
             status: row.campaign.status,
             startDate: row.campaign.start_date,
-            campaignAgeInDays: campaignAgeInDays,
-            actualDataDays: actualDataDays,
+            campaignAgeInDays: 7, // Always use 7 days
+            actualDataDays: 7, // Always use 7 days
             type: this.mapChannelType(row.campaign.advertising_channel_type),
             budget: row.campaign_budget.amount_micros / 1000000,
             bidStrategy: row.campaign.bidding_strategy_type,
