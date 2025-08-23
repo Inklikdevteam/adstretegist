@@ -22,23 +22,26 @@ export async function analyzeCampaignPerformance(
   historicalData: any = {}
 ): Promise<CampaignAnalysis> {
   try {
-    // Build campaign metrics JSON
+    // Build campaign metrics JSON with actual data period labeling
+    const actualDays = campaign.actualDataDays || 'unknown';
     const metricsJson = JSON.stringify({
       name: campaign.name,
       type: campaign.type,
       startDate: campaign.startDate,
       campaignAgeInDays: campaign.campaignAgeInDays || 'unknown',
-      actualDataDays: campaign.actualDataDays || 'unknown',
+      actualDataDays: actualDays,
       dailyBudget: campaign.dailyBudget,
-      spend7d: campaign.spend7d || 0,
-      conversions7d: campaign.conversions7d || 0,
+      [`spend_${actualDays}d`]: campaign.spend7d || 0,
+      [`conversions_${actualDays}d`]: campaign.conversions7d || 0,
+      [`actual_data_period`]: `${actualDays} days only`,
       targetCpa: campaign.targetCpa,
       actualCpa: campaign.actualCpa,
       targetRoas: campaign.targetRoas,
       actualRoas: campaign.actualRoas,
       lastModified: campaign.lastModified,
       burnInUntil: campaign.burnInUntil,
-      goalDescription: campaign.goalDescription
+      goalDescription: campaign.goalDescription,
+      dataAvailabilityNote: `Performance data reflects only ${actualDays} days of campaign operation`
     });
 
     const goals = `${campaign.targetCpa ? `Target CPA: ₹${campaign.targetCpa}` : ''} ${campaign.targetRoas ? `Target ROAS: ${campaign.targetRoas}x` : ''} ${campaign.goalDescription || ''}`.trim() || 'No specific goals set';
@@ -46,9 +49,10 @@ export async function analyzeCampaignPerformance(
     const campaignAge = campaign.campaignAgeInDays || 'unknown';
     const dataAvailability = campaign.actualDataDays || 'unknown';
     const context = `Daily evaluation of campaign "${campaign.name}" for optimization opportunities. 
-    IMPORTANT: This campaign is ${campaignAge} days old and has ${dataAvailability} days of actual performance data available. 
-    Only analyze the data from the actual days the campaign was running. If the campaign is very new (less than 7 days), 
-    be more conservative with recommendations and note the limited data availability. Historical data: ${JSON.stringify(historicalData)}`;
+    CRITICAL: This campaign is only ${campaignAge} days old and has exactly ${dataAvailability} days of actual performance data available. 
+    DO NOT reference "7 days" or "last 7 days" in your analysis. Only analyze data from the ${dataAvailability} days this campaign has been running.
+    If the campaign is very new (less than 7 days), be more conservative with recommendations and explicitly note the limited data availability in your reasoning.
+    Always mention the actual number of days of data in your analysis (${dataAvailability} days). Historical data: ${JSON.stringify(historicalData)}`;
 
     const prompt = buildPrompt({
       metrics_json: metricsJson,
@@ -66,7 +70,7 @@ export async function analyzeCampaignPerformance(
       messages: [
         {
           role: "system",
-          content: "You are a senior Google Ads strategist with 10+ years of Indian market experience. Provide SPECIFIC recommendations with exact keywords, bid amounts in ₹, and measurable targets. Always respond with valid JSON only."
+          content: "You are a senior Google Ads strategist with 10+ years of Indian market experience. Provide SPECIFIC recommendations with exact keywords, bid amounts in ₹, and measurable targets. IMPORTANT: When analyzing campaigns, only reference the actual data period available (not 7 days unless explicitly stated). For new campaigns with limited data, be conservative and mention the limited data period in your reasoning. Always respond with valid JSON only."
         },
         {
           role: "user",
