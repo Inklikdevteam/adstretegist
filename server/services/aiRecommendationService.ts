@@ -27,11 +27,14 @@ export class AIRecommendationService {
   }
 
   async generateRecommendationsForUser(userId: string, selectedAccountIds?: string[]): Promise<Recommendation[]> {
+    console.log(`DEBUG: Starting recommendation generation for user ${userId}`);
     const userCampaigns = await this.campaignService.getUserCampaigns(userId, selectedAccountIds);
+    console.log(`DEBUG: Found ${userCampaigns.length} campaigns for user`);
     const newRecommendations: Recommendation[] = [];
 
     // If no campaigns available, return empty array
     if (!userCampaigns || userCampaigns.length === 0) {
+      console.log('DEBUG: No campaigns found, returning empty array');
       return [];
     }
 
@@ -46,6 +49,7 @@ export class AIRecommendationService {
 
     for (const campaign of userCampaigns) {
       try {
+        console.log(`DEBUG: Processing campaign: ${campaign.name} (ID: ${campaign.id})`);
         // Double-check campaign still exists before creating recommendation
         const campaignCheck = await db.select().from(campaigns).where(eq(campaigns.id, campaign.id)).limit(1);
         if (campaignCheck.length === 0) {
@@ -53,7 +57,13 @@ export class AIRecommendationService {
           continue;
         }
 
+        console.log(`DEBUG: Calling analyzeCampaignPerformance for campaign ${campaign.name}`);
         const analysis = await analyzeCampaignPerformance(campaign);
+        console.log(`DEBUG: Analysis completed for campaign ${campaign.name}:`, {
+          type: analysis.recommendation_type,
+          title: analysis.title,
+          confidence: analysis.confidence
+        });
         
         const recommendationData: InsertRecommendation = {
           userId: userId,
@@ -70,12 +80,17 @@ export class AIRecommendationService {
           status: 'pending'
         };
 
+        console.log(`DEBUG: Inserting recommendation data:`, recommendationData);
+        
         const [recommendation] = await db
           .insert(recommendations)
           .values(recommendationData)
           .returning();
+          
+        console.log(`DEBUG: Successfully inserted recommendation:`, recommendation);
         
         newRecommendations.push(recommendation);
+        console.log(`DEBUG: Total recommendations created so far: ${newRecommendations.length}`);
 
         // Log the AI analysis
         await this.logAuditEvent({
@@ -89,20 +104,28 @@ export class AIRecommendationService {
         });
 
       } catch (error) {
-        console.error(`Failed to generate recommendation for campaign ${campaign.id}:`, error);
+        console.error(`Failed to generate recommendation for campaign ${campaign.id} (${campaign.name}):`, error);
         console.error('Full error details:', JSON.stringify(error, null, 2));
+        if (error instanceof Error) {
+          console.error('Error message:', error.message);
+          console.error('Error stack:', error.stack);
+        }
       }
     }
 
+    console.log(`DEBUG: Finished processing all campaigns. Created ${newRecommendations.length} recommendations`);
     return newRecommendations;
   }
 
   async getRecommendationsByUser(userId: string): Promise<Recommendation[]> {
-    return await db
+    console.log(`DEBUG: Getting recommendations for user ${userId}`);
+    const userRecommendations = await db
       .select()
       .from(recommendations)
-      .where(eq(recommendations.status, 'pending'))
+      .where(and(eq(recommendations.userId, userId), eq(recommendations.status, 'pending')))
       .orderBy(desc(recommendations.createdAt));
+    console.log(`DEBUG: Found ${userRecommendations.length} recommendations for user ${userId}`);
+    return userRecommendations;
   }
 
   async applyRecommendation(recommendationId: string, userId: string): Promise<boolean> {
