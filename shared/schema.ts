@@ -143,6 +143,7 @@ export type UserSettings = typeof userSettings.$inferSelect;
 
 export const insertUserSettingsSchema = createInsertSchema(userSettings).omit({
   id: true,
+  userId: true, // userId comes from authenticated user, not request body
   createdAt: true,
   updatedAt: true,
 });
