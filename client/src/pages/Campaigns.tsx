@@ -27,24 +27,35 @@ export default function Campaigns() {
     }
   });
 
-  // Load saved account selection from user settings
+  // Load account selection from user settings with proper fallback
   useEffect(() => {
-    if (userSettings && userSettings.selectedGoogleAdsAccounts) {
-      setSelectedAccounts(userSettings.selectedGoogleAdsAccounts);
+    if (userSettings) {
+      // If currentViewAccounts exists and is not empty, use it (temporary view filter)
+      if (userSettings.currentViewAccounts && userSettings.currentViewAccounts.length > 0) {
+        setSelectedAccounts(userSettings.currentViewAccounts);
+      } 
+      // Otherwise, use selectedGoogleAdsAccounts from Settings (master configuration)
+      else if (userSettings.selectedGoogleAdsAccounts && userSettings.selectedGoogleAdsAccounts.length > 0) {
+        setSelectedAccounts(userSettings.selectedGoogleAdsAccounts);
+      }
+      // If no accounts are configured in Settings, use empty array (will show all accounts)
+      else {
+        setSelectedAccounts([]);
+      }
     }
   }, [userSettings]);
 
-  // Save account selection when it changes
+  // Save current view selection when it changes (NOT the active accounts config)
   const handleAccountsChange = async (newSelectedAccounts: string[]) => {
     setSelectedAccounts(newSelectedAccounts);
     
-    // Save to database immediately
+    // Save only the current view selection, preserve the active accounts configuration
     try {
       await updateSettingsMutation.mutateAsync({
-        selectedGoogleAdsAccounts: newSelectedAccounts
+        currentViewAccounts: newSelectedAccounts
       });
     } catch (error) {
-      console.error('Failed to save account selection:', error);
+      console.error('Failed to save current view selection:', error);
     }
   };
 
