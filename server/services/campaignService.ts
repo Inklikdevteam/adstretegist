@@ -59,7 +59,7 @@ export class CampaignService {
     
     if (connectedAccounts.length > 0) {
       // User has connected Google Ads - fetch real campaigns
-      return await this.fetchRealCampaigns(userId, connectedAccounts, selectedAccountIds);
+      return await this.fetchRealCampaigns(userId, connectedAccounts, selectedAccountIds, dateFrom, dateTo);
     }
     
     // No connected accounts - check for existing campaigns or create samples
@@ -76,7 +76,7 @@ export class CampaignService {
     return existingCampaigns;
   }
 
-  private async fetchRealCampaigns(userId: string, accounts: any[], selectedAccountIds?: string[]): Promise<Campaign[]> {
+  private async fetchRealCampaigns(userId: string, accounts: any[], selectedAccountIds?: string[], dateFrom?: Date, dateTo?: Date): Promise<Campaign[]> {
     try {
       const primaryAccount = accounts.find(acc => acc.isPrimary) || accounts[0];
       
