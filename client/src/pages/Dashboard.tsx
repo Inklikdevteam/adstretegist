@@ -117,7 +117,11 @@ export default function Dashboard() {
   const handleRefreshGoogleAds = async () => {
     try {
       setIsRefreshing(true);
-      const response = await apiRequest("POST", "/api/google-ads/refresh");
+      
+      // Get selected accounts from localStorage
+      const selectedAccounts = JSON.parse(localStorage.getItem('selectedGoogleAdsAccounts') || '[]');
+      
+      const response = await apiRequest("POST", "/api/google-ads/refresh", { selectedAccounts });
       await queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
       await queryClient.invalidateQueries({ queryKey: ["/api/dashboard/summary"] });
       
@@ -150,7 +154,11 @@ export default function Dashboard() {
   const handleRunEvaluation = async () => {
     try {
       setIsEvaluating(true);
-      await apiRequest("POST", "/api/recommendations/generate");
+      
+      // Get selected accounts from localStorage
+      const selectedAccounts = JSON.parse(localStorage.getItem('selectedGoogleAdsAccounts') || '[]');
+      
+      await apiRequest("POST", "/api/recommendations/generate", { selectedAccounts });
       await queryClient.invalidateQueries({ queryKey: ["/api/recommendations"] });
       await queryClient.invalidateQueries({ queryKey: ["/api/dashboard/summary"] });
       

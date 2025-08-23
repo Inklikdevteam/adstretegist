@@ -564,8 +564,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "User not found" });
       }
       
+      const { selectedAccounts } = req.body;
       const dbUserId = user.id;
-      console.log(`DEBUG: Refreshing Google Ads data for user ${dbUserId} (Replit: ${replitUserId})`);
+      console.log(`DEBUG: Refreshing Google Ads data for user ${dbUserId} (Replit: ${replitUserId}) with selected accounts:`, selectedAccounts);
       
       // Clear existing data to force refresh safely
       const userCampaigns = await db.select({ id: campaigns.id }).from(campaigns).where(eq(campaigns.userId, dbUserId));
@@ -580,8 +581,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Finally delete campaigns
       await db.delete(campaigns).where(eq(campaigns.userId, dbUserId));
       
-      // Get fresh campaigns (this will trigger real data fetch)
-      const freshCampaigns = await campaignService.getUserCampaigns(dbUserId.toString());
+      // Get fresh campaigns (this will trigger real data fetch) with account filtering
+      const freshCampaigns = await campaignService.getUserCampaigns(dbUserId.toString(), selectedAccounts);
       
       res.json({ 
         message: `Refreshed ${freshCampaigns.length} campaigns from Google Ads`,
