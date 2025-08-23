@@ -131,12 +131,25 @@ export class CampaignService {
           console.log(`DEBUG: Existing campaign ID: ${existingCampaign.id}`);
         }
         
+        // Debug: Log Google Ads data for this campaign
+        console.log(`DEBUG: Google Ads data for "${campaignName}":`, {
+          impressions: googleCampaign.impressions,
+          clicks: googleCampaign.clicks,
+          cost: googleCampaign.cost,
+          conversions: googleCampaign.conversions,
+          conversionsValue: googleCampaign.conversionsValue,
+          ctr: googleCampaign.ctr,
+          avgCpc: googleCampaign.avgCpc,
+          conversionRate: googleCampaign.conversionRate
+        });
+        
         // Use actual conversion value from Google Ads API and calculate ROAS
         const conversionValue = googleCampaign.conversionsValue || 0;
         const calculatedRoas = googleCampaign.cost > 0 ? (conversionValue / googleCampaign.cost) : 0;
         
         const campaignData = {
           userId,
+          googleAdsAccountId: accounts.find(acc => acc.isPrimary)?.id || accounts[0]?.id, // Set the account ID
           name: googleCampaign.name || 'Unnamed Campaign',
           type: this.mapCampaignType(googleCampaign.type),
           status: (googleCampaign.status === 2 || googleCampaign.status === 'ENABLED') ? 'active' : 'active' as 'active',
