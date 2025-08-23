@@ -10,7 +10,7 @@ import RecommendationCard from "@/components/RecommendationCard";
 import CampaignCard from "@/components/CampaignCard";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { RefreshCw, TrendingUp, Target, DollarSign, BarChart3, Activity, MessageSquare } from "lucide-react";
+import { RefreshCw, TrendingUp, Target, DollarSign, BarChart3, Activity, MessageSquare, Clock } from "lucide-react";
 import ChatInterface from "@/components/ChatInterface";
 import { queryClient } from "@/lib/queryClient";
 import { apiRequest } from "@/lib/queryClient";
