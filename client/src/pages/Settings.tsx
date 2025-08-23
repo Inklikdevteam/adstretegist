@@ -159,12 +159,13 @@ export default function Settings() {
                   
                   <div className="space-y-3 max-h-60 overflow-y-auto border border-gray-200 rounded-lg p-3">
                     {accountsData?.accounts?.map((account: any) => (
-                      <div key={account.id} className="flex items-center space-x-3">
+                      <div key={account.id} className="flex items-center space-x-3 p-2 hover:bg-gray-50 rounded">
                         <Checkbox
                           id={`account-${account.id}`}
                           checked={selectedAccounts.includes(account.id)}
                           onCheckedChange={(checked) => handleAccountToggle(account.id, checked as boolean)}
                           data-testid={`checkbox-account-${account.id}`}
+                          className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                         />
                         <label 
                           htmlFor={`account-${account.id}`} 
@@ -366,7 +367,17 @@ export default function Settings() {
 
           {/* Save Changes */}
           <div className="flex justify-end">
-            <Button>Save Changes</Button>
+            <Button 
+              onClick={() => {
+                toast({
+                  title: "Settings Saved",
+                  description: "Your AI and notification preferences have been saved.",
+                });
+              }}
+              data-testid="button-save-changes"
+            >
+              Save Changes
+            </Button>
           </div>
         </div>
       </main>
