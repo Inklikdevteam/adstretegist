@@ -135,24 +135,30 @@ export class GoogleAdsService {
               AND segments.date DURING LAST_7_DAYS
             `);
 
-            const clientCampaigns = campaigns.map((row: any) => ({
-              id: row.campaign.id.toString(),
-              name: `${clientAccount.name} - ${row.campaign.name}`,
-              status: row.campaign.status,
-              type: this.mapChannelType(row.campaign.advertising_channel_type),
-              budget: row.campaign_budget.amount_micros / 1000000,
-              bidStrategy: row.campaign.bidding_strategy_type,
-              targetCpa: row.campaign.target_cpa?.target_cpa_micros / 1000000,
-              targetRoas: row.campaign.target_roas?.target_roas,
-              impressions: row.metrics.impressions || 0,
-              clicks: row.metrics.clicks || 0,
-              conversions: row.metrics.conversions || 0,
-              conversionsValue: row.metrics.conversions_value || 0,
-              cost: row.metrics.cost_micros / 1000000,
-              ctr: row.metrics.ctr || 0,
-              avgCpc: (row.metrics.average_cpc || 0) / 1000000, // Convert from micros to actual currency
-              conversionRate: row.metrics.conversions_from_interactions_rate || 0,
-            }));
+            const clientCampaigns = campaigns.map((row: any) => {
+              const rawChannelType = row.campaign.advertising_channel_type;
+              const mappedType = this.mapChannelType(rawChannelType);
+              console.log(`DEBUG: Campaign "${row.campaign.name}" - Raw channel type: ${rawChannelType}, Mapped to: ${mappedType}`);
+              
+              return {
+                id: row.campaign.id.toString(),
+                name: `${clientAccount.name} - ${row.campaign.name}`,
+                status: row.campaign.status,
+                type: mappedType,
+                budget: row.campaign_budget.amount_micros / 1000000,
+                bidStrategy: row.campaign.bidding_strategy_type,
+                targetCpa: row.campaign.target_cpa?.target_cpa_micros / 1000000,
+                targetRoas: row.campaign.target_roas?.target_roas,
+                impressions: row.metrics.impressions || 0,
+                clicks: row.metrics.clicks || 0,
+                conversions: row.metrics.conversions || 0,
+                conversionsValue: row.metrics.conversions_value || 0,
+                cost: row.metrics.cost_micros / 1000000,
+                ctr: row.metrics.ctr || 0,
+                avgCpc: (row.metrics.average_cpc || 0) / 1000000, // Convert from micros to actual currency
+                conversionRate: row.metrics.conversions_from_interactions_rate || 0,
+              };
+            });
             
             allCampaigns.push(...clientCampaigns);
             console.log(`Found ${clientCampaigns.length} campaigns from client account: ${clientAccount.name}`);
@@ -339,8 +345,11 @@ export class GoogleAdsService {
   }
 
   private mapChannelType(channelType: string | number): string {
+    console.log(`DEBUG: mapChannelType called with:`, channelType, `(type: ${typeof channelType})`);
+    
     // Convert numeric values to strings based on Google Ads API enum
     const numericChannelType = typeof channelType === 'number' ? channelType : parseInt(channelType);
+    console.log(`DEBUG: numericChannelType:`, numericChannelType, `isNaN: ${isNaN(numericChannelType)}`);
     
     if (!isNaN(numericChannelType)) {
       switch (numericChannelType) {
