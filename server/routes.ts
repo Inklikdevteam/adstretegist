@@ -7,7 +7,7 @@ import { AIRecommendationService } from "./services/aiRecommendationService";
 import { CampaignService } from "./services/campaignService";
 import { MultiAIService } from "./services/multiAIService";
 import { GoogleAdsService } from "./services/googleAdsService";
-import { insertCampaignSchema, campaigns, googleAdsAccounts, auditLogs, recommendations } from "@shared/schema";
+import { insertCampaignSchema, insertUserSettingsSchema, campaigns, googleAdsAccounts, auditLogs, recommendations, userSettings } from "@shared/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { db } from "./db";
 import { buildPrompt } from "./prompts/corePrompt";
@@ -213,6 +213,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error updating campaign goals:", error);
       console.error('Full error details:', JSON.stringify(error, null, 2));
       res.status(500).json({ message: "Failed to update campaign goals" });
+    }
+  });
+
+  // User settings endpoints
+  app.get('/api/user/settings', isAuthenticated, async (req: any, res) => {
+    try {
+      const replitUserId = req.user.claims.sub;
+      const user = await storage.getUser(replitUserId);
+      
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+      
+      const dbUserId = user.id.toString();
+      const settings = await storage.getUserSettings(dbUserId);
+      
+      if (!settings) {
+        // Return default settings if none exist
+        const defaultSettings = {
+          aiFrequency: 'daily',
+          confidenceThreshold: 70,
+          emailAlerts: true,
+          dailySummaries: false,
+          budgetAlerts: true,
+          selectedGoogleAdsAccounts: []
+        };
+        res.json(defaultSettings);
+      } else {
+        res.json(settings);
+      }
+    } catch (error) {
+      console.error("Error fetching user settings:", error);
+      res.status(500).json({ message: "Failed to fetch user settings" });
+    }
+  });
+  
+  app.patch('/api/user/settings', isAuthenticated, async (req: any, res) => {
+    try {
+      const replitUserId = req.user.claims.sub;
+      const user = await storage.getUser(replitUserId);
+      
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+      
+      const dbUserId = user.id.toString();
+      
+      // Validate request body
+      const validatedSettings = insertUserSettingsSchema.parse(req.body);
+      
+      const updatedSettings = await storage.upsertUserSettings(dbUserId, validatedSettings);
+      
+      res.json({
+        message: "Settings updated successfully",
+        settings: updatedSettings
+      });
+    } catch (error) {
+      console.error("Error updating user settings:", error);
+      res.status(500).json({ message: "Failed to update user settings" });
     }
   });
 

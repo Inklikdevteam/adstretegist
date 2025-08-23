@@ -4,6 +4,7 @@ import {
   recommendations,
   auditLogs,
   googleAdsAccounts,
+  userSettings,
   type User,
   type UpsertUser,
   type Campaign,
@@ -14,6 +15,8 @@ import {
   type InsertAuditLog,
   type GoogleAdsAccount,
   type InsertGoogleAdsAccount,
+  type UserSettings,
+  type InsertUserSettings,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
@@ -44,6 +47,10 @@ export interface IStorage {
   // Audit log operations
   createAuditLog(auditLog: InsertAuditLog): Promise<AuditLog>;
   getAuditLogs(userId: string): Promise<AuditLog[]>;
+  
+  // User settings operations
+  getUserSettings(userId: string): Promise<UserSettings | undefined>;
+  upsertUserSettings(userId: string, settings: Partial<InsertUserSettings>): Promise<UserSettings>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -184,6 +191,34 @@ export class DatabaseStorage implements IStorage {
 
   async getAuditLogs(userId: string): Promise<AuditLog[]> {
     return await db.select().from(auditLogs).where(eq(auditLogs.userId, userId));
+  }
+  
+  // User settings operations
+  async getUserSettings(userId: string): Promise<UserSettings | undefined> {
+    const [settings] = await db.select().from(userSettings).where(eq(userSettings.userId, userId));
+    return settings;
+  }
+  
+  async upsertUserSettings(userId: string, settings: Partial<InsertUserSettings>): Promise<UserSettings> {
+    // Check if settings exist for this user
+    const existing = await this.getUserSettings(userId);
+    
+    if (existing) {
+      // Update existing settings
+      const [updated] = await db
+        .update(userSettings)
+        .set({ ...settings, updatedAt: new Date() })
+        .where(eq(userSettings.userId, userId))
+        .returning();
+      return updated;
+    } else {
+      // Create new settings
+      const [created] = await db
+        .insert(userSettings)
+        .values({ userId, ...settings })
+        .returning();
+      return created;
+    }
   }
 }
 

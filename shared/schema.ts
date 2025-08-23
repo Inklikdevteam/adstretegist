@@ -106,6 +106,23 @@ export const auditLogs = pgTable("audit_logs", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// User settings and preferences
+export const userSettings = pgTable("user_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  // AI Recommendation Preferences
+  aiFrequency: varchar("ai_frequency").default('daily'), // 'daily', 'weekly', 'manual'
+  confidenceThreshold: integer("confidence_threshold").default(70), // 0-100
+  // Notification Settings
+  emailAlerts: boolean("email_alerts").default(true),
+  dailySummaries: boolean("daily_summaries").default(false),
+  budgetAlerts: boolean("budget_alerts").default(true),
+  // Google Ads Account Selection
+  selectedGoogleAdsAccounts: jsonb("selected_google_ads_accounts").default([]), // Array of account IDs
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 
@@ -120,6 +137,16 @@ export type Recommendation = typeof recommendations.$inferSelect;
 
 export type InsertAuditLog = typeof auditLogs.$inferInsert;
 export type AuditLog = typeof auditLogs.$inferSelect;
+
+export type InsertUserSettings = typeof userSettings.$inferInsert;
+export type UserSettings = typeof userSettings.$inferSelect;
+
+export const insertUserSettingsSchema = createInsertSchema(userSettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertUserSettingsInput = z.infer<typeof insertUserSettingsSchema>;
 
 export const insertCampaignSchema = createInsertSchema(campaigns).omit({
   id: true,

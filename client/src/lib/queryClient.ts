@@ -31,8 +31,9 @@ export const getQueryFn: <T>(options: {
   async ({ queryKey }) => {
     let url = queryKey.join("/") as string;
     
-    // Add selected accounts parameter to campaigns, dashboard, and recommendations API calls
+    // Add selected accounts parameter from user settings (fallback to localStorage)
     if (url === "/api/campaigns" || url === "/api/dashboard/summary" || url === "/api/recommendations") {
+      // Note: This is a simplified approach. In production, you'd want to cache settings to avoid API calls on every query
       const selectedAccountsString = localStorage.getItem('selectedGoogleAdsAccounts');
       if (selectedAccountsString) {
         try {

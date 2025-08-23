@@ -1,8 +1,9 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { isUnauthorizedError } from "@/lib/authUtils";
 import Sidebar from "@/components/Sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,34 +32,55 @@ export default function Settings() {
     enabled: isAuthenticated,
   });
 
-  // Load selected accounts and settings from localStorage on mount
-  useEffect(() => {
-    const saved = localStorage.getItem('selectedGoogleAdsAccounts');
-    if (saved) {
-      try {
-        const parsedAccounts = JSON.parse(saved);
-        const accounts = Array.isArray(parsedAccounts) ? parsedAccounts : [];
-        setSelectedAccounts(accounts);
-        setAppliedAccounts(accounts);
-      } catch {
-        setSelectedAccounts([]);
-        setAppliedAccounts([]);
+  // Fetch user settings from database
+  const { data: userSettings, isLoading: isLoadingSettings } = useQuery({
+    queryKey: ['/api/user/settings'],
+    onSuccess: (settings: any) => {
+      setSelectedAccounts(settings.selectedGoogleAdsAccounts || []);
+      setAppliedAccounts(settings.selectedGoogleAdsAccounts || []);
+      setFrequency(settings.aiFrequency || 'daily');
+      setConfidenceThreshold(settings.confidenceThreshold?.toString() || '70');
+      setEmailAlerts(settings.emailAlerts !== false);
+      setDailySummaries(settings.dailySummaries === true);
+      setBudgetAlerts(settings.budgetAlerts !== false);
+    },
+    onError: (error: any) => {
+      console.error('Failed to load user settings:', error);
+      // Fallback to localStorage if database fails
+      const saved = localStorage.getItem('selectedGoogleAdsAccounts');
+      if (saved) {
+        try {
+          const parsedAccounts = JSON.parse(saved);
+          const accounts = Array.isArray(parsedAccounts) ? parsedAccounts : [];
+          setSelectedAccounts(accounts);
+          setAppliedAccounts(accounts);
+        } catch {
+          setSelectedAccounts([]);
+          setAppliedAccounts([]);
+        }
       }
+      
+      const savedFrequency = localStorage.getItem('aiFrequency') || 'daily';
+      const savedConfidence = localStorage.getItem('confidenceThreshold') || '70';
+      const savedEmailAlerts = localStorage.getItem('emailAlerts') !== 'false';
+      const savedDailySummaries = localStorage.getItem('dailySummaries') === 'true';
+      const savedBudgetAlerts = localStorage.getItem('budgetAlerts') !== 'false';
+      
+      setFrequency(savedFrequency);
+      setConfidenceThreshold(savedConfidence);
+      setEmailAlerts(savedEmailAlerts);
+      setDailySummaries(savedDailySummaries);
+      setBudgetAlerts(savedBudgetAlerts);
     }
-    
-    // Load AI preferences
-    const savedFrequency = localStorage.getItem('aiFrequency') || 'daily';
-    const savedConfidence = localStorage.getItem('confidenceThreshold') || '70';
-    const savedEmailAlerts = localStorage.getItem('emailAlerts') !== 'false';
-    const savedDailySummaries = localStorage.getItem('dailySummaries') === 'true';
-    const savedBudgetAlerts = localStorage.getItem('budgetAlerts') !== 'false';
-    
-    setFrequency(savedFrequency);
-    setConfidenceThreshold(savedConfidence);
-    setEmailAlerts(savedEmailAlerts);
-    setDailySummaries(savedDailySummaries);
-    setBudgetAlerts(savedBudgetAlerts);
-  }, []);
+  });
+  
+  // Update user settings mutation
+  const updateSettingsMutation = useMutation({
+    mutationFn: (settings: any) => apiRequest('PATCH', '/api/user/settings', settings),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/user/settings'] });
+    }
+  });
 
   const handleAccountToggle = (accountId: string, checked: boolean) => {
     let newSelectedAccounts: string[];
@@ -84,6 +106,13 @@ export default function Settings() {
   const handleUpdateAccounts = async () => {
     try {
       setIsUpdating(true);
+      
+      // Save to database instead of localStorage
+      await updateSettingsMutation.mutateAsync({
+        selectedGoogleAdsAccounts: selectedAccounts
+      });
+      
+      // Fallback to localStorage for immediate use
       localStorage.setItem('selectedGoogleAdsAccounts', JSON.stringify(selectedAccounts));
       setAppliedAccounts(selectedAccounts);
       
@@ -91,12 +120,29 @@ export default function Settings() {
         title: "Accounts Updated",
         description: `${selectedAccounts.length === 0 ? 'All accounts' : selectedAccounts.length + ' account(s)'} selected. Campaign data will refresh.`,
       });
-
-      // Add delay to show loading state
-      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Force refresh of campaign data
-      window.location.reload();
+      // Invalidate all relevant queries to trigger refresh
+      await queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/dashboard/summary"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/recommendations"] });
+      
+    } catch (error) {
+      if (isUnauthorizedError(error as Error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to update account selection. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsUpdating(false);
     }
@@ -108,20 +154,39 @@ export default function Settings() {
     try {
       setIsSaving(true);
       
-      // Save AI preferences to localStorage
+      // Save all preferences to database
+      await updateSettingsMutation.mutateAsync({
+        aiFrequency: frequency,
+        confidenceThreshold: parseInt(confidenceThreshold),
+        emailAlerts,
+        dailySummaries,
+        budgetAlerts,
+        selectedGoogleAdsAccounts: appliedAccounts // Preserve current account selection
+      });
+      
+      // Fallback to localStorage for immediate use
       localStorage.setItem('aiFrequency', frequency);
       localStorage.setItem('confidenceThreshold', confidenceThreshold);
       localStorage.setItem('emailAlerts', emailAlerts.toString());
       localStorage.setItem('dailySummaries', dailySummaries.toString());
       localStorage.setItem('budgetAlerts', budgetAlerts.toString());
       
-      await new Promise(resolve => setTimeout(resolve, 800)); // Show loading state
-      
       toast({
         title: "Settings Saved",
         description: "Your AI and notification preferences have been saved successfully.",
       });
     } catch (error) {
+      if (isUnauthorizedError(error as Error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
       toast({
         title: "Error",
         description: "Failed to save settings. Please try again.",
