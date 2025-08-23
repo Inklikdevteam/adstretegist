@@ -325,12 +325,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
           actionData: recommendations.actionData,
           createdAt: recommendations.createdAt,
           appliedAt: recommendations.appliedAt,
-          // Campaign metrics for display in recommendation cards
+          // Campaign metrics for display in recommendation cards (all parameters like campaign cards)
           campaignSpend7d: campaigns.spend7d,
           campaignConversions7d: campaigns.conversions7d,
           campaignActualCpa: campaigns.actualCpa,
           campaignActualRoas: campaigns.actualRoas,
           campaignDailyBudget: campaigns.dailyBudget,
+          campaignTargetCpa: campaigns.targetCpa,
+          campaignTargetRoas: campaigns.targetRoas,
+          campaignType: campaigns.type,
+          campaignStatus: campaigns.status,
+          // Additional metrics now stored in database
+          campaignImpressions7d: campaigns.impressions7d,
+          campaignClicks7d: campaigns.clicks7d,
+          campaignCtr7d: campaigns.ctr7d,
+          campaignConversionValue7d: campaigns.conversionValue7d,
+          campaignAvgCpc7d: campaigns.avgCpc7d,
+          campaignConversionRate7d: campaigns.conversionRate7d,
         })
         .from(recommendations)
         .leftJoin(campaigns, eq(recommendations.campaignId, campaigns.id))

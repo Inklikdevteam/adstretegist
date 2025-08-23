@@ -127,41 +127,102 @@ export default function RecommendationCard({
           </div>
         </div>
 
-        {/* Campaign Metrics Section */}
+        {/* Campaign Metrics Section - All Available Parameters */}
         <div className="bg-blue-50 rounded-lg p-4 mb-4">
-          <h4 className="font-semibold text-gray-900 mb-3 text-sm">Campaign Performance (7 days)</h4>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <div className="flex justify-between text-xs">
-                <span className="text-gray-600">Spend:</span>
-                <span className="font-medium">
-                  ₹{recommendation.campaignSpend7d ? parseFloat(recommendation.campaignSpend7d).toLocaleString() : '0'}
-                </span>
-              </div>
-              <div className="flex justify-between text-xs">
-                <span className="text-gray-600">Conversions:</span>
-                <span className="font-medium">{recommendation.campaignConversions7d || 0}</span>
-              </div>
-              <div className="flex justify-between text-xs">
-                <span className="text-gray-600">Daily Budget:</span>
-                <span className="font-medium">
-                  ₹{recommendation.campaignDailyBudget ? parseFloat(recommendation.campaignDailyBudget).toLocaleString() : 'N/A'}
-                </span>
-              </div>
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="font-semibold text-gray-900 text-sm">Campaign Performance (7 days)</h4>
+            <div className="flex items-center space-x-2">
+              <div className="w-2 h-2 rounded-full bg-green-500"></div>
+              <span className="text-xs text-gray-600 capitalize">{recommendation.campaignType}</span>
             </div>
-            <div className="space-y-2">
-              <div className="flex justify-between text-xs">
-                <span className="text-gray-600">CPA:</span>
-                <span className="font-medium">
-                  {recommendation.campaignActualCpa ? `₹${parseFloat(recommendation.campaignActualCpa).toLocaleString()}` : 'No data'}
-                </span>
-              </div>
-              <div className="flex justify-between text-xs">
-                <span className="text-gray-600">ROAS:</span>
-                <span className="font-medium">
-                  {recommendation.campaignActualRoas ? `${parseFloat(recommendation.campaignActualRoas).toFixed(1)}x` : 'No data'}
-                </span>
-              </div>
+          </div>
+          
+          {/* Main Metrics Grid - 4 columns like campaign cards */}
+          <div className="grid grid-cols-4 gap-3 mb-3">
+            <div>
+              <p className="text-xs text-gray-600">Daily Budget</p>
+              <p className="font-semibold text-gray-900 text-sm">
+                ₹{recommendation.campaignDailyBudget ? parseFloat(recommendation.campaignDailyBudget).toLocaleString() : 'N/A'}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-600">Cost (7d)</p>
+              <p className="font-semibold text-gray-900 text-sm">
+                ₹{recommendation.campaignSpend7d ? parseFloat(recommendation.campaignSpend7d).toLocaleString() : '0'}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-600">Conversions</p>
+              <p className="font-semibold text-gray-900 text-sm">{recommendation.campaignConversions7d || 0}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-600">Conv. Value</p>
+              <p className="font-semibold text-gray-900 text-sm">
+                {recommendation.campaignConversionValue7d && parseFloat(recommendation.campaignConversionValue7d) > 0 ? 
+                  `₹${parseFloat(recommendation.campaignConversionValue7d).toLocaleString()}` : 
+                  'No data'
+                }
+              </p>
+            </div>
+          </div>
+
+          {/* Performance Metrics Grid */}
+          <div className="grid grid-cols-4 gap-3 mb-3">
+            <div>
+              <p className="text-xs text-gray-600">CPA</p>
+              <p className="font-semibold text-gray-900 text-sm">
+                {recommendation.campaignActualCpa ? `₹${parseFloat(recommendation.campaignActualCpa).toLocaleString()}` : 'No data'}
+              </p>
+              {recommendation.campaignTargetCpa && (
+                <p className="text-xs text-gray-500">Target: ₹{parseFloat(recommendation.campaignTargetCpa).toLocaleString()}</p>
+              )}
+            </div>
+            <div>
+              <p className="text-xs text-gray-600">ROAS</p>
+              <p className="font-semibold text-gray-900 text-sm">
+                {recommendation.campaignActualRoas ? `${parseFloat(recommendation.campaignActualRoas).toFixed(1)}x` : 'No data'}
+              </p>
+              {recommendation.campaignTargetRoas && (
+                <p className="text-xs text-gray-500">Target: {parseFloat(recommendation.campaignTargetRoas).toFixed(1)}x</p>
+              )}
+            </div>
+            <div>
+              <p className="text-xs text-gray-600">Impressions</p>
+              <p className="font-semibold text-gray-900 text-sm">
+                {recommendation.campaignImpressions7d ? parseInt(recommendation.campaignImpressions7d).toLocaleString() : 'No data'}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-600">Clicks</p>
+              <p className="font-semibold text-gray-900 text-sm">
+                {recommendation.campaignClicks7d ? parseInt(recommendation.campaignClicks7d).toLocaleString() : 'No data'}
+              </p>
+            </div>
+          </div>
+
+          {/* Additional Traffic Metrics Grid */}
+          <div className="grid grid-cols-4 gap-3">
+            <div>
+              <p className="text-xs text-gray-600">CTR</p>
+              <p className="font-semibold text-gray-900 text-sm">
+                {recommendation.campaignCtr7d ? `${(parseFloat(recommendation.campaignCtr7d) * 100).toFixed(2)}%` : 'No data'}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-600">Avg. CPC</p>
+              <p className="font-semibold text-gray-900 text-sm">
+                {recommendation.campaignAvgCpc7d ? `₹${parseFloat(recommendation.campaignAvgCpc7d).toFixed(2)}` : 'No data'}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-600">Conv. Rate</p>
+              <p className="font-semibold text-gray-900 text-sm">
+                {recommendation.campaignConversionRate7d ? `${(parseFloat(recommendation.campaignConversionRate7d) * 100).toFixed(2)}%` : 'No data'}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-600">Status</p>
+              <p className="font-semibold text-gray-900 text-sm capitalize">{recommendation.campaignStatus || 'Active'}</p>
             </div>
           </div>
         </div>

@@ -145,6 +145,13 @@ export class CampaignService {
           conversions7d: Math.round(googleCampaign.conversions || 0),
           actualCpa: googleCampaign.conversions > 0 ? this.parseCurrencyValue(googleCampaign.cost / googleCampaign.conversions).toString() : null,
           actualRoas: calculatedRoas > 0 ? this.parseCurrencyValue(calculatedRoas).toString() : null,
+          // Additional metrics from Google Ads API
+          impressions7d: Math.round(googleCampaign.impressions || 0),
+          clicks7d: Math.round(googleCampaign.clicks || 0),
+          ctr7d: this.parseCurrencyValue(googleCampaign.ctr || 0).toString(),
+          conversionValue7d: this.parseCurrencyValue(conversionValue).toString(),
+          avgCpc7d: this.parseCurrencyValue(googleCampaign.avgCpc || 0).toString(),
+          conversionRate7d: this.parseCurrencyValue(googleCampaign.conversionRate || 0).toString(),
           // Preserve existing goals if they exist
           targetCpa: existingCampaign?.targetCpa || (googleCampaign.targetCpa ? this.parseCurrencyValue(googleCampaign.targetCpa).toString() : null),
           targetRoas: existingCampaign?.targetRoas || (googleCampaign.targetRoas ? this.parseCurrencyValue(googleCampaign.targetRoas).toString() : null),

@@ -69,6 +69,13 @@ export const campaigns = pgTable("campaigns", {
   conversions7d: integer("conversions_7d").default(0),
   actualCpa: decimal("actual_cpa", { precision: 10, scale: 2 }),
   actualRoas: decimal("actual_roas", { precision: 8, scale: 2 }),
+  // Additional metrics like campaign cards
+  impressions7d: integer("impressions_7d").default(0),
+  clicks7d: integer("clicks_7d").default(0),
+  ctr7d: decimal("ctr_7d", { precision: 8, scale: 4 }).default('0'), // CTR as decimal (0.0234 = 2.34%)
+  conversionValue7d: decimal("conversion_value_7d", { precision: 12, scale: 2 }).default('0'),
+  avgCpc7d: decimal("avg_cpc_7d", { precision: 10, scale: 2 }).default('0'),
+  conversionRate7d: decimal("conversion_rate_7d", { precision: 8, scale: 4 }).default('0'),
   lastModified: timestamp("last_modified").defaultNow(),
   burnInUntil: timestamp("burn_in_until"),
   goalDescription: text("goal_description"),
