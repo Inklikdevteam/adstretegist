@@ -12,6 +12,7 @@ import Campaigns from "@/pages/Campaigns";
 import Recommendations from "@/pages/Recommendations";
 import Performance from "@/pages/Performance";
 import Settings from "@/pages/Settings";
+import FloatingChatButton from "@/components/FloatingChatButton";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -38,14 +39,17 @@ function Router() {
 
   
   return (
-    <Switch>
-      <Route path="/" component={Dashboard} />
-      <Route path="/campaigns" component={Campaigns} />
-      <Route path="/recommendations" component={Recommendations} />
-      <Route path="/performance" component={Performance} />
-      <Route path="/settings" component={Settings} />
-      <Route component={NotFound} />
-    </Switch>
+    <>
+      <Switch>
+        <Route path="/" component={Dashboard} />
+        <Route path="/campaigns" component={Campaigns} />
+        <Route path="/recommendations" component={Recommendations} />
+        <Route path="/performance" component={Performance} />
+        <Route path="/settings" component={Settings} />
+        <Route component={NotFound} />
+      </Switch>
+      <FloatingChatButton />
+    </>
   );
 }
 
