@@ -201,7 +201,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      console.log('Dashboard summary for user:', { replitUserId, dbUserId, userEmail: user.email, selectedAccounts });
+      console.log('Dashboard summary for user:', { userId: user.id, dbUserId, userEmail: user.email, selectedAccounts });
       
       const summary = await aiService.getDashboardSummary(dbUserId, selectedAccounts);
       res.json(summary);
@@ -222,7 +222,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const dbUserId = user.id.toString();
-      console.log('Campaigns for user:', { replitUserId, dbUserId, userEmail: user.email });
+      console.log('Campaigns for user:', { userId: user.id, dbUserId, userEmail: user.email });
       
       const selectedAccountsParam = req.query.selectedAccounts as string;
       let selectedAccounts: string[] = [];
@@ -514,7 +514,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const { selectedAccounts } = req.body;
       const dbUserId = user.id.toString();
-      console.log(`DEBUG: Generating recommendations for user ${dbUserId} (Replit: ${replitUserId}) with selected accounts:`, selectedAccounts);
+      console.log(`DEBUG: Generating recommendations for user ${dbUserId} (User ID: ${user.id}) with selected accounts:`, selectedAccounts);
       const recommendations = await aiService.generateRecommendationsForUser(dbUserId, selectedAccounts);
       console.log(`DEBUG: Generated ${recommendations.length} recommendations`);
       res.json({ 
@@ -750,7 +750,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const { selectedAccounts } = req.body;
       const dbUserId = user.id;
-      console.log(`DEBUG: Refreshing Google Ads data for user ${dbUserId} (Replit: ${replitUserId}) with selected accounts:`, selectedAccounts);
+      console.log(`DEBUG: Refreshing Google Ads data for user ${dbUserId} (User ID: ${user.id}) with selected accounts:`, selectedAccounts);
       
       // Clear existing data to force refresh safely
       const userCampaigns = await db.select({ id: campaigns.id }).from(campaigns).where(eq(campaigns.userId, dbUserId));
