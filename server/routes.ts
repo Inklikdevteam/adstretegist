@@ -25,47 +25,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const multiAIService = new MultiAIService();
   const centralGoogleAdsService = new CentralGoogleAdsService();
 
-  // Centralized Google Ads configuration routes
-  app.get('/api/admin/google-ads/status', isAuthenticated, async (req: any, res) => {
-    try {
-      const isConfigured = await centralGoogleAdsService.isConfigured();
-      const availableAccounts = await centralGoogleAdsService.getAvailableAccounts();
-      
-      res.json({
-        isConfigured,
-        availableAccounts: availableAccounts.length,
-        accounts: availableAccounts
-      });
-    } catch (error) {
-      console.error("Error checking Google Ads configuration status:", error);
-      res.status(500).json({ message: "Failed to check configuration status" });
-    }
-  });
-
-  app.post('/api/admin/google-ads/setup', isAuthenticated, async (req: any, res) => {
-    try {
-      const { customerId, customerName, refreshToken } = req.body;
-      
-      if (!customerId || !customerName || !refreshToken) {
-        return res.status(400).json({ message: "Missing required fields" });
-      }
-
-      const config = await centralGoogleAdsService.setCentralConfig({
-        customerId,
-        customerName,
-        refreshToken,
-        isActive: true
-      });
-
-      res.json({ 
-        message: "Centralized Google Ads configuration set up successfully",
-        config: { id: config.id, customerId: config.customerId, customerName: config.customerName }
-      });
-    } catch (error) {
-      console.error("Error setting up centralized Google Ads configuration:", error);
-      res.status(500).json({ message: "Failed to set up configuration" });
-    }
-  });
 
   app.get('/api/google-ads/accounts', isAuthenticated, async (req: any, res) => {
     try {
@@ -799,7 +758,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get available Google Ads accounts for selection
-  app.get('/api/google-ads/available-accounts', isAuthenticated, async (req: any, res) => {
+  // Admin middleware
+  const isAdmin: RequestHandler = async (req, res, next) => {
+    const user = req.user as any;
+    if (!req.isAuthenticated() || !user.claims?.sub) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    try {
+      const replitUserId = user.claims.sub;
+      const dbUser = await storage.getUser(replitUserId);
+      
+      if (!dbUser || dbUser.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      next();
+    } catch (error) {
+      console.error("Error checking admin status:", error);
+      res.status(500).json({ message: "Failed to verify admin access" });
+    }
+  };
+
+  // Updated admin routes with proper access control
+  app.get('/api/admin/google-ads/status', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const isConfigured = await centralGoogleAdsService.isConfigured();
+      const availableAccounts = await centralGoogleAdsService.getAvailableAccounts();
+      
+      res.json({
+        isConfigured,
+        availableAccounts: availableAccounts.length,
+        accounts: availableAccounts
+      });
+    } catch (error) {
+      console.error("Error checking Google Ads configuration status:", error);
+      res.status(500).json({ message: "Failed to check configuration status" });
+    }
+  });
+
+  app.post('/api/admin/google-ads/setup', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { customerId, customerName, refreshToken } = req.body;
+      
+      if (!customerId || !customerName || !refreshToken) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+
+      const config = await centralGoogleAdsService.setCentralConfig({
+        customerId,
+        customerName,
+        refreshToken,
+        isActive: true
+      });
+
+      res.json({ 
+        message: "Centralized Google Ads configuration set up successfully",
+        config: { id: config.id, customerId: config.customerId, customerName: config.customerName }
+      });
+    } catch (error) {
+      console.error("Error setting up centralized Google Ads configuration:", error);
+      res.status(500).json({ message: "Failed to set up configuration" });
+    }
+  });
+
+  // Make current user admin (for initial setup)
+  app.post('/api/admin/make-admin', isAuthenticated, async (req: any, res) => {
     try {
       const replitUserId = req.user.claims.sub;
       const user = await storage.getUser(replitUserId);
@@ -808,48 +832,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "User not found" });
       }
 
-      const dbUserId = user.id.toString();
+      // Check if there are any existing admins
+      const existingAdmins = await storage.getAdminUsers();
       
-      // Get the user's connected Google Ads accounts
-      const connectedAccounts = await db
-        .select()
-        .from(googleAdsAccounts)
-        .where(and(eq(googleAdsAccounts.userId, dbUserId), eq(googleAdsAccounts.isActive, true)));
-
-      if (connectedAccounts.length === 0) {
-        return res.json({ accounts: [], hasConnection: false });
+      if (existingAdmins.length === 0) {
+        // No admins exist, make this user an admin
+        await storage.updateUserRole(user.id, 'admin');
+        res.json({ message: "You are now an admin", role: "admin" });
+      } else {
+        res.status(403).json({ message: "Admin users already exist. Only existing admins can create new admins." });
       }
-
-      const primaryAccount = connectedAccounts.find(acc => acc.isPrimary) || connectedAccounts[0];
-      
-      if (!primaryAccount.refreshToken || !primaryAccount.customerId || primaryAccount.customerId === 'no-customer-found') {
-        return res.json({ accounts: [], hasConnection: false });
-      }
-
-      const googleAdsService = new GoogleAdsService({
-        clientId: process.env.GOOGLE_OAUTH_CLIENT_ID!,
-        clientSecret: process.env.GOOGLE_OAUTH_CLIENT_SECRET!,
-        refreshToken: primaryAccount.refreshToken,
-        customerId: primaryAccount.customerId,
-        developerToken: process.env.GOOGLE_ADS_DEVELOPER_TOKEN!
-      });
-
-      const clientAccounts = await googleAdsService.getClientAccounts();
-      
-      const accountsWithNames = clientAccounts.map(account => ({
-        id: account.id,
-        name: account.name || `Account ${account.id}`,
-        customerId: account.id
-      }));
-
-      res.json({ 
-        accounts: accountsWithNames,
-        hasConnection: true,
-        selectedAccount: req.query.selectedAccount || null
-      });
     } catch (error) {
-      console.error("Error fetching available Google Ads accounts:", error);
-      res.status(500).json({ message: "Failed to fetch accounts" });
+      console.error("Error making user admin:", error);
+      res.status(500).json({ message: "Failed to update user role" });
     }
   });
 

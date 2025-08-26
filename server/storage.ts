@@ -33,6 +33,8 @@ export interface IStorage {
   // (IMPORTANT) these user operations are mandatory for Replit Auth.
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
+  updateUserRole(userId: string, role: string): Promise<User>;
+  getAdminUsers(): Promise<User[]>;
   
   // Google Ads account operations (now centralized)
   getAvailableGoogleAdsAccounts(): Promise<GoogleAdsAccount[]>;
@@ -129,6 +131,22 @@ export class DatabaseStorage implements IStorage {
       console.error('Error in upsertUser:', error);
       throw error;
     }
+  }
+
+  async updateUserRole(userId: string, role: string): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({ role, updatedAt: new Date() })
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
+  }
+
+  async getAdminUsers(): Promise<User[]> {
+    return await db
+      .select()
+      .from(users)
+      .where(eq(users.role, 'admin'));
   }
 
   // Google Ads account operations (now centralized)
