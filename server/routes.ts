@@ -7,6 +7,7 @@ import { AIRecommendationService } from "./services/aiRecommendationService";
 import { CampaignService } from "./services/campaignService";
 import { MultiAIService } from "./services/multiAIService";
 import { GoogleAdsService } from "./services/googleAdsService";
+import { CentralGoogleAdsService } from "./services/centralGoogleAdsService";
 import { insertCampaignSchema, insertUserSettingsSchema, campaigns, googleAdsAccounts, auditLogs, recommendations, userSettings } from "@shared/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { db } from "./db";
@@ -22,6 +23,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const aiService = new AIRecommendationService();
   const campaignService = new CampaignService();
   const multiAIService = new MultiAIService();
+  const centralGoogleAdsService = new CentralGoogleAdsService();
+
+  // Centralized Google Ads configuration routes
+  app.get('/api/admin/google-ads/status', isAuthenticated, async (req: any, res) => {
+    try {
+      const isConfigured = await centralGoogleAdsService.isConfigured();
+      const availableAccounts = await centralGoogleAdsService.getAvailableAccounts();
+      
+      res.json({
+        isConfigured,
+        availableAccounts: availableAccounts.length,
+        accounts: availableAccounts
+      });
+    } catch (error) {
+      console.error("Error checking Google Ads configuration status:", error);
+      res.status(500).json({ message: "Failed to check configuration status" });
+    }
+  });
+
+  app.post('/api/admin/google-ads/setup', isAuthenticated, async (req: any, res) => {
+    try {
+      const { customerId, customerName, refreshToken } = req.body;
+      
+      if (!customerId || !customerName || !refreshToken) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+
+      const config = await centralGoogleAdsService.setCentralConfig({
+        customerId,
+        customerName,
+        refreshToken,
+        isActive: true
+      });
+
+      res.json({ 
+        message: "Centralized Google Ads configuration set up successfully",
+        config: { id: config.id, customerId: config.customerId, customerName: config.customerName }
+      });
+    } catch (error) {
+      console.error("Error setting up centralized Google Ads configuration:", error);
+      res.status(500).json({ message: "Failed to set up configuration" });
+    }
+  });
+
+  app.get('/api/google-ads/accounts', isAuthenticated, async (req: any, res) => {
+    try {
+      const availableAccounts = await centralGoogleAdsService.getAvailableAccounts();
+      res.json(availableAccounts);
+    } catch (error) {
+      console.error("Error fetching available Google Ads accounts:", error);
+      res.status(500).json({ message: "Failed to fetch accounts" });
+    }
+  });
 
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
@@ -195,7 +249,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Since user logged in with Google Ads, they should have campaigns or we initialize sample ones
       if (activeCampaigns.length === 0) {
         console.log('No active campaigns found, initializing sample campaigns for user:', dbUserId);
-        campaigns = await campaignService.initializeSampleCampaigns(dbUserId);
+        campaigns = await campaignService.initializeSampleCampaigns();
         res.json(campaigns);
         return;
       }

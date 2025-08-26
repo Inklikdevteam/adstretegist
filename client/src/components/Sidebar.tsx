@@ -13,6 +13,7 @@ export default function Sidebar() {
     { icon: Brain, label: "AI Recommendations", href: "/recommendations", active: location === "/recommendations" },
     { icon: TrendingUp, label: "Performance", href: "/performance", active: location === "/performance" },
     { icon: Settings, label: "Settings", href: "/settings", active: location === "/settings" },
+    { icon: Settings, label: "Admin", href: "/admin", active: location === "/admin" },
   ];
 
   return (

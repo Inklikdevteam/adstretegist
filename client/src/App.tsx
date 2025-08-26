@@ -12,6 +12,7 @@ import Campaigns from "@/pages/Campaigns";
 import Recommendations from "@/pages/Recommendations";
 import Performance from "@/pages/Performance";
 import Settings from "@/pages/Settings";
+import AdminSettings from "@/pages/AdminSettings";
 import FloatingChatButton from "@/components/FloatingChatButton";
 
 function Router() {
@@ -46,6 +47,7 @@ function Router() {
         <Route path="/recommendations" component={Recommendations} />
         <Route path="/performance" component={Performance} />
         <Route path="/settings" component={Settings} />
+        <Route path="/admin" component={AdminSettings} />
         <Route component={NotFound} />
       </Switch>
       <FloatingChatButton />

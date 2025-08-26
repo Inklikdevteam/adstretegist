@@ -5,6 +5,8 @@ import {
   auditLogs,
   googleAdsAccounts,
   userSettings,
+  centralGoogleAdsConfig,
+  userCampaignGoals,
   type User,
   type UpsertUser,
   type Campaign,
@@ -15,6 +17,10 @@ import {
   type InsertAuditLog,
   type GoogleAdsAccount,
   type InsertGoogleAdsAccount,
+  type CentralGoogleAdsConfig,
+  type InsertCentralGoogleAdsConfig,
+  type UserCampaignGoals,
+  type InsertUserCampaignGoals,
   type UserSettings,
   type InsertUserSettings,
 } from "@shared/schema";
@@ -28,14 +34,21 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
   
-  // Google Ads account operations
-  createGoogleAdsAccount(account: InsertGoogleAdsAccount): Promise<GoogleAdsAccount>;
-  getGoogleAdsAccounts(userId: string): Promise<GoogleAdsAccount[]>;
+  // Google Ads account operations (now centralized)
+  getAvailableGoogleAdsAccounts(): Promise<GoogleAdsAccount[]>;
   updateGoogleAdsAccount(id: string, updates: Partial<GoogleAdsAccount>): Promise<GoogleAdsAccount | undefined>;
-  deleteGoogleAdsAccount(id: string, userId: string): Promise<boolean>;
+
+  // Central Google Ads configuration
+  getCentralGoogleAdsConfig(): Promise<CentralGoogleAdsConfig | undefined>;
+  setCentralGoogleAdsConfig(config: InsertCentralGoogleAdsConfig): Promise<CentralGoogleAdsConfig>;
+
+  // User campaign goals
+  getUserCampaignGoals(userId: string, campaignId?: string): Promise<UserCampaignGoals[]>;
+  upsertUserCampaignGoal(userId: string, campaignId: string, goals: Partial<InsertUserCampaignGoals>): Promise<UserCampaignGoals>;
   
-  // Campaign operations
-  getCampaigns(userId: string): Promise<Campaign[]>;
+  // Campaign operations (no longer user-specific for data)
+  getAllCampaigns(): Promise<Campaign[]>;
+  getCampaignById(campaignId: string): Promise<Campaign | undefined>;
   createCampaign(campaign: InsertCampaign): Promise<Campaign>;
   updateCampaign(id: string, updates: Partial<Campaign>): Promise<Campaign | undefined>;
   
@@ -118,14 +131,9 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  // Google Ads account operations
-  async createGoogleAdsAccount(account: InsertGoogleAdsAccount): Promise<GoogleAdsAccount> {
-    const [created] = await db.insert(googleAdsAccounts).values(account).returning();
-    return created;
-  }
-
-  async getGoogleAdsAccounts(userId: string): Promise<GoogleAdsAccount[]> {
-    return await db.select().from(googleAdsAccounts).where(eq(googleAdsAccounts.userId, userId));
+  // Google Ads account operations (now centralized)
+  async getAvailableGoogleAdsAccounts(): Promise<GoogleAdsAccount[]> {
+    return await db.select().from(googleAdsAccounts).where(eq(googleAdsAccounts.isActive, true));
   }
 
   async updateGoogleAdsAccount(id: string, updates: Partial<GoogleAdsAccount>): Promise<GoogleAdsAccount | undefined> {
@@ -137,17 +145,75 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
-  async deleteGoogleAdsAccount(id: string, userId: string): Promise<boolean> {
-    const result = await db
-      .delete(googleAdsAccounts)
-      .where(eq(googleAdsAccounts.id, id))
-      .returning();
-    return result.length > 0;
+  // Central Google Ads configuration
+  async getCentralGoogleAdsConfig(): Promise<CentralGoogleAdsConfig | undefined> {
+    const [config] = await db
+      .select()
+      .from(centralGoogleAdsConfig)
+      .where(eq(centralGoogleAdsConfig.isActive, true))
+      .limit(1);
+    return config;
   }
 
-  // Campaign operations
-  async getCampaigns(userId: string): Promise<Campaign[]> {
-    return await db.select().from(campaigns).where(eq(campaigns.userId, userId));
+  async setCentralGoogleAdsConfig(config: InsertCentralGoogleAdsConfig): Promise<CentralGoogleAdsConfig> {
+    // Deactivate existing configurations
+    await db
+      .update(centralGoogleAdsConfig)
+      .set({ isActive: false });
+    
+    // Insert new configuration
+    const [newConfig] = await db
+      .insert(centralGoogleAdsConfig)
+      .values({ ...config, isActive: true })
+      .returning();
+    return newConfig;
+  }
+
+  // User campaign goals
+  async getUserCampaignGoals(userId: string, campaignId?: string): Promise<UserCampaignGoals[]> {
+    const query = db.select().from(userCampaignGoals).where(eq(userCampaignGoals.userId, userId));
+    
+    if (campaignId) {
+      return await query.where(eq(userCampaignGoals.campaignId, campaignId));
+    }
+    
+    return await query;
+  }
+
+  async upsertUserCampaignGoal(userId: string, campaignId: string, goals: Partial<InsertUserCampaignGoals>): Promise<UserCampaignGoals> {
+    // Check if goal exists
+    const [existing] = await db
+      .select()
+      .from(userCampaignGoals)
+      .where(eq(userCampaignGoals.userId, userId))
+      .where(eq(userCampaignGoals.campaignId, campaignId));
+    
+    if (existing) {
+      // Update existing goal
+      const [updated] = await db
+        .update(userCampaignGoals)
+        .set({ ...goals, updatedAt: new Date() })
+        .where(eq(userCampaignGoals.id, existing.id))
+        .returning();
+      return updated;
+    } else {
+      // Create new goal
+      const [created] = await db
+        .insert(userCampaignGoals)
+        .values({ userId, campaignId, ...goals })
+        .returning();
+      return created;
+    }
+  }
+
+  // Campaign operations (no longer user-specific for data)
+  async getAllCampaigns(): Promise<Campaign[]> {
+    return await db.select().from(campaigns);
+  }
+
+  async getCampaignById(campaignId: string): Promise<Campaign | undefined> {
+    const [campaign] = await db.select().from(campaigns).where(eq(campaigns.id, campaignId));
+    return campaign;
   }
 
   async createCampaign(campaign: InsertCampaign): Promise<Campaign> {

@@ -38,11 +38,10 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Google Ads account connections
-export const googleAdsAccounts = pgTable("google_ads_accounts", {
+// Centralized Google Ads configuration (server-wide)
+export const centralGoogleAdsConfig = pgTable("central_google_ads_config", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull(),
-  customerId: varchar("customer_id").notNull(),
+  customerId: varchar("customer_id").notNull().unique(),
   customerName: varchar("customer_name").notNull(),
   refreshToken: text("refresh_token").notNull(),
   accessToken: text("access_token"),
@@ -54,17 +53,27 @@ export const googleAdsAccounts = pgTable("google_ads_accounts", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Available Google Ads accounts (read-only reference data)
+export const googleAdsAccounts = pgTable("google_ads_accounts", {
+  id: varchar("id").primaryKey(),
+  customerId: varchar("customer_id").notNull().unique(),
+  customerName: varchar("customer_name").notNull(),
+  isActive: boolean("is_active").default(true),
+  isPrimary: boolean("is_primary").default(false), // For MCC support
+  parentCustomerId: varchar("parent_customer_id"), // For MCC child accounts
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Campaigns table - shared data with per-user goals
 export const campaigns = pgTable("campaigns", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull(),
   googleAdsAccountId: varchar("google_ads_account_id").references(() => googleAdsAccounts.id),
-  googleAdsCampaignId: varchar("google_ads_campaign_id"), // The actual Google Ads campaign ID
+  googleAdsCampaignId: varchar("google_ads_campaign_id").unique(), // The actual Google Ads campaign ID
   name: varchar("name").notNull(),
   type: varchar("type").notNull(), // 'search', 'display', 'shopping'
   status: varchar("status").notNull().default('active'), // 'active', 'paused', 'removed'
   dailyBudget: decimal("daily_budget", { precision: 10, scale: 2 }).notNull(),
-  targetCpa: decimal("target_cpa", { precision: 10, scale: 2 }),
-  targetRoas: decimal("target_roas", { precision: 8, scale: 2 }),
   spend7d: decimal("spend_7d", { precision: 10, scale: 2 }).default('0'),
   conversions7d: integer("conversions_7d").default(0),
   actualCpa: decimal("actual_cpa", { precision: 10, scale: 2 }),
@@ -78,6 +87,17 @@ export const campaigns = pgTable("campaigns", {
   conversionRate7d: decimal("conversion_rate_7d", { precision: 8, scale: 4 }).default('0'),
   lastModified: timestamp("last_modified").defaultNow(),
   burnInUntil: timestamp("burn_in_until"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// User-specific campaign goals and preferences
+export const userCampaignGoals = pgTable("user_campaign_goals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  campaignId: varchar("campaign_id").notNull().references(() => campaigns.id),
+  targetCpa: decimal("target_cpa", { precision: 10, scale: 2 }),
+  targetRoas: decimal("target_roas", { precision: 8, scale: 2 }),
   goalDescription: text("goal_description"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -135,8 +155,14 @@ export const userSettings = pgTable("user_settings", {
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 
+export type InsertCentralGoogleAdsConfig = typeof centralGoogleAdsConfig.$inferInsert;
+export type CentralGoogleAdsConfig = typeof centralGoogleAdsConfig.$inferSelect;
+
 export type InsertGoogleAdsAccount = typeof googleAdsAccounts.$inferInsert;
 export type GoogleAdsAccount = typeof googleAdsAccounts.$inferSelect;
+
+export type InsertUserCampaignGoals = typeof userCampaignGoals.$inferInsert;
+export type UserCampaignGoals = typeof userCampaignGoals.$inferSelect;
 
 export type InsertCampaign = typeof campaigns.$inferInsert;
 export type Campaign = typeof campaigns.$inferSelect;
