@@ -26,15 +26,17 @@ export default function LoginPage() {
       const data = await response.json();
       
       if (response.ok) {
-        // Clear auth cache and refetch
-        queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+        // Clear auth cache and refetch user data
+        queryClient.setQueryData(["/api/auth/user"], data.user);
+        await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
         
         toast({
           title: "Login successful",
           description: "Welcome back!",
         });
         
-        // The App component will handle the redirect when authenticated
+        // Force a page refresh to ensure clean authenticated state
+        window.location.href = "/";
       } else {
         toast({
           title: "Login failed",
