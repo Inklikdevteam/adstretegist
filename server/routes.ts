@@ -1,13 +1,13 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupAuth, isAuthenticated, isAdmin } from "./localAuth";
 // Note: Google Ads authentication is now integrated with main authentication
 import { AIRecommendationService } from "./services/aiRecommendationService";
 import { CampaignService } from "./services/campaignService";
 import { MultiAIService } from "./services/multiAIService";
 import { GoogleAdsService } from "./services/googleAdsService";
-import { insertCampaignSchema, insertUserSettingsSchema, campaigns, googleAdsAccounts, auditLogs, recommendations, userSettings } from "@shared/schema";
+import { insertCampaignSchema, insertUserSettingsSchema, campaigns, googleAdsAccounts, auditLogs, recommendations, userSettings, users } from "@shared/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { db } from "./db";
 import { buildPrompt } from "./prompts/corePrompt";
@@ -23,26 +23,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const campaignService = new CampaignService();
   const multiAIService = new MultiAIService();
 
+  // User management routes (admin only)
+  app.get('/api/admin/users', isAdmin, async (req: any, res) => {
+    try {
+      const users = await db
+        .select({
+          id: users.id,
+          username: users.username,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          email: users.email,
+          role: users.role,
+          isActive: users.isActive,
+          createdBy: users.createdBy,
+          lastLoginAt: users.lastLoginAt,
+          createdAt: users.createdAt
+        })
+        .from(users)
+        .orderBy(desc(users.createdAt));
+
+      res.json(users);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      res.status(500).json({ message: 'Failed to fetch users' });
+    }
+  });
+
+  app.patch('/api/admin/users/:id/status', isAdmin, async (req: any, res) => {
+    try {
+      const { isActive } = req.body;
+      const userId = req.params.id;
+
+      const [updatedUser] = await db
+        .update(users)
+        .set({ isActive, updatedAt: new Date() })
+        .where(eq(users.id, userId))
+        .returning({
+          id: users.id,
+          username: users.username,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          email: users.email,
+          role: users.role,
+          isActive: users.isActive
+        });
+
+      if (!updatedUser) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      res.json({ 
+        message: `User ${isActive ? 'activated' : 'deactivated'} successfully`,
+        user: updatedUser 
+      });
+    } catch (error) {
+      console.error('Error updating user status:', error);
+      res.status(500).json({ message: 'Failed to update user status' });
+    }
+  });
+
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
-      const replitUserId = req.user.claims.sub;
-      console.log('Auth user request for:', replitUserId);
-      
-      const user = await storage.getUser(replitUserId);
-      console.log('User from storage:', user);
-      
-      if (!user) {
-        console.log('No user found in database for Replit user:', replitUserId);
-        return res.status(401).json({ message: "User not found" });
-      }
+      const user = req.user;
+      console.log('Auth user request for:', user.id);
       
       // Return the actual user data
       const userResponse = {
         id: user.id,
-        firstName: user.firstName || 'User',
+        username: user.username,
+        firstName: user.firstName || '',
         lastName: user.lastName || '',
         email: user.email || '',
+        role: user.role,
+        isActive: user.isActive,
         profileImageUrl: user.profileImageUrl || null
       };
       
@@ -57,8 +111,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Performance-specific endpoint with date range filtering
   app.get('/api/performance/campaigns', isAuthenticated, async (req: any, res) => {
     try {
-      const replitUserId = req.user.claims.sub;
-      const user = await storage.getUser(replitUserId);
+      const user = req.user;
       
       if (!user) {
         return res.status(401).json({ message: "User not found" });
@@ -94,8 +147,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Performance-specific dashboard summary with date range filtering
   app.get('/api/performance/summary', isAuthenticated, async (req: any, res) => {
     try {
-      const replitUserId = req.user.claims.sub;
-      const user = await storage.getUser(replitUserId);
+      const user = req.user;
       
       if (!user) {
         return res.status(401).json({ message: "User not found" });
@@ -130,8 +182,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Dashboard summary endpoint
   app.get('/api/dashboard/summary', isAuthenticated, async (req: any, res) => {
     try {
-      const replitUserId = req.user.claims.sub;
-      const user = await storage.getUser(replitUserId);
+      const user = req.user;
       
       if (!user) {
         console.log('No user found for dashboard summary');
@@ -163,8 +214,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Campaigns endpoints
   app.get('/api/campaigns', isAuthenticated, async (req: any, res) => {
     try {
-      const replitUserId = req.user.claims.sub;
-      const user = await storage.getUser(replitUserId);
+      const user = req.user;
       
       if (!user) {
         console.log('No user found for campaigns');
@@ -209,8 +259,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/campaigns/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const replitUserId = req.user.claims.sub;
-      const user = await storage.getUser(replitUserId);
+      const user = req.user;
       
       if (!user) {
         return res.status(401).json({ message: "User not found" });
@@ -232,8 +281,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/campaigns', isAuthenticated, async (req: any, res) => {
     try {
-      const replitUserId = req.user.claims.sub;
-      const user = await storage.getUser(replitUserId);
+      const user = req.user;
       
       if (!user) {
         return res.status(401).json({ message: "User not found" });
@@ -255,8 +303,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/campaigns/:id/goals', isAuthenticated, async (req: any, res) => {
     try {
-      const replitUserId = req.user.claims.sub;
-      const user = await storage.getUser(replitUserId);
+      const user = req.user;
       
       if (!user) {
         return res.status(401).json({ message: "User not found" });
@@ -292,8 +339,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // User settings endpoints
   app.get('/api/user/settings', isAuthenticated, async (req: any, res) => {
     try {
-      const replitUserId = req.user.claims.sub;
-      const user = await storage.getUser(replitUserId);
+      const user = req.user;
       
       if (!user) {
         return res.status(401).json({ message: "User not found" });
@@ -325,8 +371,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.patch('/api/user/settings', isAuthenticated, async (req: any, res) => {
     try {
-      const replitUserId = req.user.claims.sub;
-      const user = await storage.getUser(replitUserId);
+      const user = req.user;
       
       if (!user) {
         return res.status(401).json({ message: "User not found" });
@@ -352,8 +397,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Recommendations endpoints
   app.get('/api/recommendations', isAuthenticated, async (req: any, res) => {
     try {
-      const replitUserId = req.user.claims.sub;
-      const user = await storage.getUser(replitUserId);
+      const user = req.user;
       
       if (!user) {
         return res.status(401).json({ message: "User not found" });
@@ -436,8 +480,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get last generation timestamp
   app.get('/api/recommendations/last-generated', isAuthenticated, async (req: any, res) => {
     try {
-      const replitUserId = req.user.claims.sub;
-      const user = await storage.getUser(replitUserId);
+      const user = req.user;
       
       if (!user) {
         return res.status(401).json({ message: "User not found" });
@@ -463,8 +506,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/recommendations/generate', isAuthenticated, async (req: any, res) => {
     try {
-      const replitUserId = req.user.claims.sub;
-      const user = await storage.getUser(replitUserId);
+      const user = req.user;
       
       if (!user) {
         return res.status(401).json({ message: "User not found" });
@@ -489,8 +531,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/recommendations/:id/apply', isAuthenticated, async (req: any, res) => {
     try {
-      const replitUserId = req.user.claims.sub;
-      const user = await storage.getUser(replitUserId);
+      const user = req.user;
       
       if (!user) {
         return res.status(401).json({ message: "User not found" });
@@ -512,8 +553,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/recommendations/:id/dismiss', isAuthenticated, async (req: any, res) => {
     try {
-      const replitUserId = req.user.claims.sub;
-      const user = await storage.getUser(replitUserId);
+      const user = req.user;
       
       if (!user) {
         return res.status(401).json({ message: "User not found" });
@@ -536,8 +576,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Enhanced 1-click apply with real campaign changes
   app.post('/api/recommendations/:id/apply-live', isAuthenticated, async (req: any, res) => {
     try {
-      const replitUserId = req.user.claims.sub;
-      const user = await storage.getUser(replitUserId);
+      const user = req.user;
       
       if (!user) {
         return res.status(401).json({ message: "User not found" });
@@ -567,8 +606,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Multi-AI consensus recommendations
   app.post('/api/recommendations/generate-consensus', isAuthenticated, async (req: any, res) => {
     try {
-      const replitUserId = req.user.claims.sub;
-      const user = await storage.getUser(replitUserId);
+      const user = req.user;
       
       if (!user) {
         return res.status(401).json({ message: "User not found" });
@@ -619,8 +657,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Generate recommendations with specific AI provider
   app.post('/api/recommendations/generate-with-provider', isAuthenticated, async (req: any, res) => {
     try {
-      const replitUserId = req.user.claims.sub;
-      const user = await storage.getUser(replitUserId);
+      const user = req.user;
       
       if (!user) {
         return res.status(401).json({ message: "User not found" });
@@ -652,8 +689,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Real-time campaign monitoring endpoint
   app.get('/api/campaigns/:id/monitor', isAuthenticated, async (req: any, res) => {
     try {
-      const replitUserId = req.user.claims.sub;
-      const user = await storage.getUser(replitUserId);
+      const user = req.user;
       
       if (!user) {
         return res.status(401).json({ message: "User not found" });
@@ -687,8 +723,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Audit trail endpoint
   app.get('/api/audit-trail', isAuthenticated, async (req: any, res) => {
     try {
-      const replitUserId = req.user.claims.sub;
-      const user = await storage.getUser(replitUserId);
+      const user = req.user;
       
       if (!user) {
         return res.status(401).json({ message: "User not found" });
@@ -707,8 +742,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Google Ads data refresh endpoint
   app.post('/api/google-ads/refresh', isAuthenticated, async (req: any, res) => {
     try {
-      const replitUserId = req.user.claims.sub;
-      const user = await storage.getUser(replitUserId);
+      const user = req.user;
       
       if (!user) {
         return res.status(401).json({ message: "User not found" });
@@ -747,8 +781,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get available Google Ads accounts for selection
   app.get('/api/google-ads/available-accounts', isAuthenticated, async (req: any, res) => {
     try {
-      const replitUserId = req.user.claims.sub;
-      const user = await storage.getUser(replitUserId);
+      const user = req.user;
       
       if (!user) {
         return res.status(401).json({ message: "User not found" });
@@ -802,8 +835,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update Google Ads customer ID endpoint
   app.post('/api/google-ads/update-customer-id', isAuthenticated, async (req: any, res) => {
     try {
-      const replitUserId = req.user.claims.sub;
-      const user = await storage.getUser(replitUserId);
+      const user = req.user;
       
       if (!user) {
         return res.status(401).json({ message: "User not found" });
@@ -846,8 +878,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // General chat query endpoint
   app.post('/api/chat/query', isAuthenticated, async (req: any, res) => {
     try {
-      const replitUserId = req.user.claims.sub;
-      const user = await storage.getUser(replitUserId);
+      const user = req.user;
       
       if (!user) {
         return res.status(401).json({ message: "User not found" });
@@ -920,8 +951,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Chat consensus endpoint for multi-AI responses
   app.post('/api/chat/consensus', isAuthenticated, async (req: any, res) => {
     try {
-      const replitUserId = req.user.claims.sub;
-      const user = await storage.getUser(replitUserId);
+      const user = req.user;
       
       if (!user) {
         return res.status(401).json({ message: "User not found" });

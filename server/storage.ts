@@ -6,7 +6,6 @@ import {
   googleAdsAccounts,
   userSettings,
   type User,
-  type UpsertUser,
   type Campaign,
   type InsertCampaign,
   type Recommendation,
@@ -17,22 +16,24 @@ import {
   type InsertGoogleAdsAccount,
   type UserSettings,
   type InsertUserSettings,
+  type CreateUserInput
 } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 
 // Interface for storage operations
 export interface IStorage {
-  // User operations
-  // (IMPORTANT) these user operations are mandatory for Replit Auth.
+  // User operations for local authentication
   getUser(id: string): Promise<User | undefined>;
-  upsertUser(user: UpsertUser): Promise<User>;
+  getUserByUsername(username: string): Promise<User | undefined>;
+  createUser(userData: Partial<User>): Promise<User>;
+  updateUserLastLogin(id: string): Promise<void>;
   
-  // Google Ads account operations
+  // Google Ads account operations (admin-only)
   createGoogleAdsAccount(account: InsertGoogleAdsAccount): Promise<GoogleAdsAccount>;
-  getGoogleAdsAccounts(userId: string): Promise<GoogleAdsAccount[]>;
+  getGoogleAdsAccounts(adminUserId: string): Promise<GoogleAdsAccount[]>;
   updateGoogleAdsAccount(id: string, updates: Partial<GoogleAdsAccount>): Promise<GoogleAdsAccount | undefined>;
-  deleteGoogleAdsAccount(id: string, userId: string): Promise<boolean>;
+  deleteGoogleAdsAccount(id: string, adminUserId: string): Promise<boolean>;
   
   // Campaign operations
   getCampaigns(userId: string): Promise<Campaign[]>;
@@ -54,78 +55,72 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
-  // User operations
-  // (IMPORTANT) these user operations are mandatory for Replit Auth.
-
-  async getUser(replit_user_id: string): Promise<User | undefined> {
+  // User operations for local authentication
+  async getUser(id: string): Promise<User | undefined> {
     try {
-      // Find the user with adwords@inklik.com email (the correct account)
-      const [user] = await db.select().from(users).where(eq(users.email, 'adwords@inklik.com'));
-      if (user) {
-        console.log('Found adwords user:', user);
-        return user;
-      }
-      
-      console.log('No adwords user found, checking all users...');
-      const allUsers = await db.select().from(users);
-      console.log('All users in database:', allUsers);
-      
-      // Return null so we handle this properly in the routes
-      return undefined;
+      const [user] = await db.select().from(users).where(eq(users.id, id));
+      return user;
     } catch (error) {
-      console.error('Error getting user from database:', error);
+      console.error('Error fetching user:', error);
       return undefined;
     }
   }
 
-  async upsertUser(userData: UpsertUser): Promise<User> {
+  async getUserByUsername(username: string): Promise<User | undefined> {
     try {
-      // First try to find existing user by email or ID
-      let existingUser = null;
-      if (userData.email) {
-        const [userByEmail] = await db.select().from(users).where(eq(users.email, userData.email));
-        existingUser = userByEmail;
-      }
-      
-      if (!existingUser && userData.id) {
-        const [userById] = await db.select().from(users).where(eq(users.id, userData.id));
-        existingUser = userById;
-      }
-
-      if (existingUser) {
-        // Update existing user (exclude ID from updates to prevent foreign key issues)
-        const { id, ...updateData } = userData;
-        const [updatedUser] = await db
-          .update(users)
-          .set({
-            ...updateData,
-            updatedAt: new Date(),
-          })
-          .where(eq(users.id, existingUser.id))
-          .returning();
-        return updatedUser;
-      } else {
-        // Create new user
-        const [newUser] = await db
-          .insert(users)
-          .values(userData)
-          .returning();
-        return newUser;
-      }
+      const [user] = await db.select().from(users).where(eq(users.username, username));
+      return user;
     } catch (error) {
-      console.error('Error in upsertUser:', error);
+      console.error('Error fetching user by username:', error);
+      return undefined;
+    }
+  }
+
+  async createUser(userData: Partial<User>): Promise<User> {
+    try {
+      const [newUser] = await db
+        .insert(users)
+        .values({
+          username: userData.username!,
+          password: userData.password!,
+          email: userData.email || null,
+          firstName: userData.firstName || null,
+          lastName: userData.lastName || null,
+          role: userData.role || 'sub_account',
+          isActive: userData.isActive ?? true,
+          createdBy: userData.createdBy || null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning();
+      
+      return newUser;
+    } catch (error) {
+      console.error('Error creating user:', error);
       throw error;
     }
   }
 
-  // Google Ads account operations
+  async updateUserLastLogin(id: string): Promise<void> {
+    try {
+      await db
+        .update(users)
+        .set({ lastLoginAt: new Date(), updatedAt: new Date() })
+        .where(eq(users.id, id));
+    } catch (error) {
+      console.error('Error updating user last login:', error);
+      throw error;
+    }
+  }
+
+  // Google Ads account operations (admin-only)
   async createGoogleAdsAccount(account: InsertGoogleAdsAccount): Promise<GoogleAdsAccount> {
     const [created] = await db.insert(googleAdsAccounts).values(account).returning();
     return created;
   }
 
-  async getGoogleAdsAccounts(userId: string): Promise<GoogleAdsAccount[]> {
-    return await db.select().from(googleAdsAccounts).where(eq(googleAdsAccounts.userId, userId));
+  async getGoogleAdsAccounts(adminUserId: string): Promise<GoogleAdsAccount[]> {
+    return await db.select().from(googleAdsAccounts).where(eq(googleAdsAccounts.adminUserId, adminUserId));
   }
 
   async updateGoogleAdsAccount(id: string, updates: Partial<GoogleAdsAccount>): Promise<GoogleAdsAccount | undefined> {
@@ -137,7 +132,7 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
-  async deleteGoogleAdsAccount(id: string, userId: string): Promise<boolean> {
+  async deleteGoogleAdsAccount(id: string, adminUserId: string): Promise<boolean> {
     const result = await db
       .delete(googleAdsAccounts)
       .where(eq(googleAdsAccounts.id, id))
@@ -177,7 +172,7 @@ export class DatabaseStorage implements IStorage {
   async updateRecommendation(id: string, updates: Partial<Recommendation>): Promise<Recommendation | undefined> {
     const [updated] = await db
       .update(recommendations)
-      .set(updates)
+      .set({ ...updates, updatedAt: new Date() })
       .where(eq(recommendations.id, id))
       .returning();
     return updated;
@@ -192,22 +187,22 @@ export class DatabaseStorage implements IStorage {
   async getAuditLogs(userId: string): Promise<AuditLog[]> {
     return await db.select().from(auditLogs).where(eq(auditLogs.userId, userId));
   }
-  
+
   // User settings operations
   async getUserSettings(userId: string): Promise<UserSettings | undefined> {
     const [settings] = await db.select().from(userSettings).where(eq(userSettings.userId, userId));
     return settings;
   }
-  
-  async upsertUserSettings(userId: string, settings: Partial<InsertUserSettings>): Promise<UserSettings> {
-    // Check if settings exist for this user
-    const existing = await this.getUserSettings(userId);
+
+  async upsertUserSettings(userId: string, settingsData: Partial<InsertUserSettings>): Promise<UserSettings> {
+    // Check if settings exist
+    const existingSettings = await this.getUserSettings(userId);
     
-    if (existing) {
+    if (existingSettings) {
       // Update existing settings
       const [updated] = await db
         .update(userSettings)
-        .set({ ...settings, updatedAt: new Date() })
+        .set({ ...settingsData, updatedAt: new Date() })
         .where(eq(userSettings.userId, userId))
         .returning();
       return updated;
@@ -215,7 +210,7 @@ export class DatabaseStorage implements IStorage {
       // Create new settings
       const [created] = await db
         .insert(userSettings)
-        .values({ userId, ...settings })
+        .values({ userId, ...settingsData } as InsertUserSettings)
         .returning();
       return created;
     }

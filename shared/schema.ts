@@ -26,22 +26,27 @@ export const sessions = pgTable(
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
-// User storage table.
-// (IMPORTANT) This table is mandatory for Replit Auth, don't drop it.
+// User storage table for username/password authentication
 export const users = pgTable("users", {
-  id: varchar("id").primaryKey(),
-  email: varchar("email").unique(),
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  username: varchar("username").unique().notNull(),
+  password: varchar("password").notNull(), // Hashed password
+  email: varchar("email"),
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
+  role: varchar("role").notNull().default("sub_account"), // 'admin' or 'sub_account'
+  isActive: boolean("is_active").default(true),
+  createdBy: varchar("created_by"), // ID of admin who created this sub-account
+  lastLoginAt: timestamp("last_login_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Google Ads account connections
+// Google Ads account connections (admin-level only)
 export const googleAdsAccounts = pgTable("google_ads_accounts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull(),
+  adminUserId: varchar("admin_user_id").notNull(), // Only admins can connect Google Ads
   customerId: varchar("customer_id").notNull(),
   customerName: varchar("customer_name").notNull(),
   refreshToken: text("refresh_token").notNull(),
@@ -56,7 +61,7 @@ export const googleAdsAccounts = pgTable("google_ads_accounts", {
 
 export const campaigns = pgTable("campaigns", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull(),
+  userId: varchar("user_id").notNull(), // Can belong to any user (admin or sub-account)
   googleAdsAccountId: varchar("google_ads_account_id").references(() => googleAdsAccounts.id),
   googleAdsCampaignId: varchar("google_ads_campaign_id"), // The actual Google Ads campaign ID
   name: varchar("name").notNull(),
@@ -157,6 +162,29 @@ export const insertUserSettingsSchema = createInsertSchema(userSettings).omit({
   updatedAt: true,
 });
 export type InsertUserSettingsInput = z.infer<typeof insertUserSettingsSchema>;
+
+// Authentication schemas
+export const loginSchema = z.object({
+  username: z.string().min(1, "Username is required"),
+  password: z.string().min(1, "Password is required"),
+});
+export type LoginInput = z.infer<typeof loginSchema>;
+
+export const createUserSchema = z.object({
+  username: z.string().min(3, "Username must be at least 3 characters").max(50),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  email: z.string().email().optional(),
+  firstName: z.string().max(100).optional(),
+  lastName: z.string().max(100).optional(),
+});
+export type CreateUserInput = z.infer<typeof createUserSchema>;
+
+export const insertUserSchema = createInsertSchema(users).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  lastLoginAt: true,
+});
 
 export const insertCampaignSchema = createInsertSchema(campaigns).omit({
   id: true,

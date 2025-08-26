@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Settings as SettingsIcon, User, Bell, Shield, HelpCircle, ExternalLink } from "lucide-react";
+import UserManagement from "@/components/UserManagement";
 
 export default function Settings() {
   const { toast } = useToast();
@@ -494,6 +495,11 @@ export default function Settings() {
               </div>
             </CardContent>
           </Card>
+
+          {/* User Management - Admin Only */}
+          {user?.role === 'admin' && (
+            <UserManagement />
+          )}
 
           {/* Save Changes */}
           <div className="flex justify-end">

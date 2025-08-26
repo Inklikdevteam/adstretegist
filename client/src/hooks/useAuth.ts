@@ -1,6 +1,10 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "./use-toast";
 
 export function useAuth() {
+  const { toast } = useToast();
+
   const { data: user, isLoading, error, refetch } = useQuery({
     queryKey: ["/api/auth/user"],
     staleTime: 0,
@@ -23,12 +27,40 @@ export function useAuth() {
         }
         
         const data = await res.json();
-        console.log('Auth Success:', !!data);
+        console.log('Auth Success:', !!data, { 
+          username: data?.username, 
+          role: data?.role 
+        });
         return data;
       } catch (err) {
         console.error('Auth Error:', err);
         return null;
       }
+    },
+  });
+
+  const logoutMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/auth/logout");
+      if (!response.ok) {
+        throw new Error("Logout failed");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.setQueryData(["/api/auth/user"], null);
+      queryClient.clear(); // Clear all cached data
+      toast({
+        title: "Logout successful",
+        description: "You have been logged out successfully.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Logout failed",
+        description: error.message,
+        variant: "destructive",
+      });
     },
   });
 
@@ -39,5 +71,7 @@ export function useAuth() {
     isLoading,
     isAuthenticated,
     refetch,
+    logout: logoutMutation.mutate,
+    isLoggingOut: logoutMutation.isPending,
   };
 }
