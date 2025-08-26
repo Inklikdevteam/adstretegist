@@ -50,6 +50,10 @@ export function useAuth() {
     onSuccess: () => {
       queryClient.setQueryData(["/api/auth/user"], null);
       queryClient.clear(); // Clear all cached data
+      
+      // Force a page reload to ensure clean state
+      window.location.href = "/";
+      
       toast({
         title: "Logout successful",
         description: "You have been logged out successfully.",
