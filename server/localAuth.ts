@@ -151,12 +151,28 @@ export async function setupAuth(app: Express) {
 
   // Logout endpoint
   app.post("/api/auth/logout", (req, res, next) => {
+    console.log('Processing logout request');
+    
     req.logout((err) => {
-      if (err) return next(err);
+      if (err) {
+        console.error('Passport logout error:', err);
+        return res.status(500).json({ message: "Logout error", error: err.message });
+      }
+      
       req.session.destroy((destroyErr) => {
-        if (destroyErr) return next(destroyErr);
-        res.clearCookie('connect.sid');
-        res.json({ message: "Logout successful" });
+        if (destroyErr) {
+          console.error('Session destroy error:', destroyErr);
+          return res.status(500).json({ message: "Session destroy error", error: destroyErr.message });
+        }
+        
+        res.clearCookie('connect.sid', {
+          path: '/',
+          httpOnly: true,
+          secure: false
+        });
+        
+        console.log('Logout completed successfully');
+        res.json({ message: "Logout successful", success: true });
       });
     });
   });

@@ -41,13 +41,20 @@ export function useAuth() {
 
   const logoutMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/auth/logout");
-      if (!response.ok) {
-        throw new Error("Logout failed");
+      try {
+        const response = await apiRequest("POST", "/api/auth/logout");
+        if (!response.ok) {
+          throw new Error(`Logout failed: ${response.status}`);
+        }
+        const data = await response.json();
+        return data;
+      } catch (error) {
+        console.error('Logout error:', error);
+        throw error;
       }
-      return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('Logout successful:', data);
       queryClient.setQueryData(["/api/auth/user"], null);
       queryClient.clear(); // Clear all cached data
       
@@ -56,10 +63,8 @@ export function useAuth() {
         description: "You have been logged out successfully.",
       });
       
-      // Small delay to ensure toast is visible, then force reload
-      setTimeout(() => {
-        window.location.href = "/";
-      }, 500);
+      // Immediate redirect to clear state
+      window.location.href = "/";
     },
     onError: (error: Error) => {
       toast({
