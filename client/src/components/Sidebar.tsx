@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Link, useLocation } from "wouter";
 
 export default function Sidebar() {
-  const { user } = useAuth() as { user: any };
+  const { user, logout } = useAuth() as { user: any; logout: () => void };
   const [location] = useLocation();
 
   const navigationItems = [
@@ -76,7 +76,7 @@ export default function Sidebar() {
           variant="ghost" 
           size="sm" 
           className="w-full justify-start text-gray-600 hover:text-gray-900"
-          onClick={() => window.location.href = '/api/logout'}
+          onClick={() => logout()}
         >
           <LogOut className="w-4 h-4 mr-2" />
           Sign out

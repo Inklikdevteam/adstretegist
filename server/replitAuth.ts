@@ -222,11 +222,7 @@ export async function setupAuth(app: Express) {
     }
   );
 
-  app.get("/api/logout", (req, res) => {
-    req.logout(() => {
-      res.redirect('/');
-    });
-  });
+  // Logout is now handled by local auth system at POST /api/auth/logout
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
