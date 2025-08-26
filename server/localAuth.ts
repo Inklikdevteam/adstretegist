@@ -2,8 +2,7 @@ import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import { Express } from "express";
 import session from "express-session";
-import { scrypt, randomBytes, timingSafeEqual } from "crypto";
-import { promisify } from "util";
+import bcrypt from "bcryptjs";
 import { storage } from "./storage";
 import { User, loginSchema, createUserSchema } from "@shared/schema";
 import connectPg from "connect-pg-simple";
@@ -14,19 +13,13 @@ declare global {
   }
 }
 
-const scryptAsync = promisify(scrypt);
-
 async function hashPassword(password: string): Promise<string> {
-  const salt = randomBytes(16).toString("hex");
-  const buf = (await scryptAsync(password, salt, 64)) as Buffer;
-  return `${buf.toString("hex")}.${salt}`;
+  const saltRounds = 10;
+  return await bcrypt.hash(password, saltRounds);
 }
 
 async function comparePasswords(supplied: string, stored: string): Promise<boolean> {
-  const [hashed, salt] = stored.split(".");
-  const hashedBuf = Buffer.from(hashed, "hex");
-  const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
-  return timingSafeEqual(hashedBuf, suppliedBuf);
+  return await bcrypt.compare(supplied, stored);
 }
 
 export function getSession() {
@@ -39,7 +32,7 @@ export function getSession() {
     tableName: "sessions",
   });
   return session({
-    secret: process.env.SESSION_SECRET || 'your-secret-key',
+    secret: process.env.SESSION_SECRET || 'development-secret-key-change-in-production',
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
@@ -72,21 +65,31 @@ export async function setupAuth(app: Express) {
   passport.use(
     new LocalStrategy(async (username, password, done) => {
       try {
+        console.log(`Login attempt for username: ${username}`);
         const user = await storage.getUserByUsername(username);
+        console.log(`User found:`, user ? { id: user.id, username: user.username, isActive: user.isActive } : 'null');
+        
         if (!user || !user.isActive) {
+          console.log(`User not found or inactive`);
           return done(null, false, { message: 'Invalid username or password' });
         }
         
+        console.log(`Comparing passwords...`);
         const isValidPassword = await comparePasswords(password, user.password);
+        console.log(`Password valid: ${isValidPassword}`);
+        
         if (!isValidPassword) {
+          console.log(`Password comparison failed`);
           return done(null, false, { message: 'Invalid username or password' });
         }
 
+        console.log(`Login successful, updating last login time`);
         // Update last login time
         await storage.updateUserLastLogin(user.id);
         
         return done(null, user);
       } catch (error) {
+        console.error(`Login error:`, error);
         return done(error);
       }
     })
@@ -111,10 +114,14 @@ export async function setupAuth(app: Express) {
       }
 
       passport.authenticate('local', (err: any, user: any, info: any) => {
+        console.log(`Authentication result - Error: ${err}, User: ${user ? user.username : 'null'}, Info: ${info ? info.message : 'none'}`);
+        
         if (err) {
+          console.error('Authentication error:', err);
           return res.status(500).json({ message: "Authentication error" });
         }
         if (!user) {
+          console.log('Authentication failed - no user returned');
           return res.status(401).json({ message: info.message || "Invalid credentials" });
         }
 
