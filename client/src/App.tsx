@@ -31,8 +31,11 @@ function Router() {
     return (
       <Switch>
         <Route path="/" component={LoginPage} />
+        <Route path="/login" component={LoginPage} />
         <Route path="/login-error" component={LoginError} />
-        <Route component={NotFound} />
+        <Route>
+          <LoginPage />
+        </Route>
       </Switch>
     );
   }

@@ -55,7 +55,7 @@ export class CampaignService {
     const connectedAccounts = await db
       .select()
       .from(googleAdsAccounts)
-      .where(and(eq(googleAdsAccounts.admin_user_id, userId), eq(googleAdsAccounts.is_active, true)));
+      .where(and(eq(googleAdsAccounts.adminUserId, userId), eq(googleAdsAccounts.isActive, true)));
     
     if (connectedAccounts.length > 0) {
       // User has connected Google Ads - fetch real campaigns
@@ -84,7 +84,7 @@ export class CampaignService {
     const connectedAccounts = await db
       .select()
       .from(googleAdsAccounts)
-      .where(and(eq(googleAdsAccounts.admin_user_id, userId), eq(googleAdsAccounts.is_active, true)));
+      .where(and(eq(googleAdsAccounts.adminUserId, userId), eq(googleAdsAccounts.isActive, true)));
     
     if (connectedAccounts.length > 0) {
       // User has connected Google Ads - fetch real campaigns with date range
@@ -451,7 +451,7 @@ export class CampaignService {
     const connectedAccounts = await db
       .select()
       .from(googleAdsAccounts)
-      .where(and(eq(googleAdsAccounts.admin_user_id, userId), eq(googleAdsAccounts.is_active, true)));
+      .where(and(eq(googleAdsAccounts.adminUserId, userId), eq(googleAdsAccounts.isActive, true)));
     return connectedAccounts.length > 0;
   }
 

@@ -793,7 +793,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const connectedAccounts = await db
         .select()
         .from(googleAdsAccounts)
-        .where(and(eq(googleAdsAccounts.admin_user_id, dbUserId), eq(googleAdsAccounts.is_active, true)));
+        .where(and(eq(googleAdsAccounts.adminUserId, dbUserId), eq(googleAdsAccounts.isActive, true)));
 
       if (connectedAccounts.length === 0) {
         return res.json({ accounts: [], hasConnection: false });
