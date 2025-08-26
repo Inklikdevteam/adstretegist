@@ -2,14 +2,8 @@ import { db } from "../db";
 import { campaigns, users, googleAdsAccounts, auditLogs, recommendations, type Campaign, type InsertCampaign } from "@shared/schema";
 import { eq, and } from "drizzle-orm";
 import { GoogleAdsService } from "./googleAdsService";
-import { CentralGoogleAdsService } from "./centralGoogleAdsService";
 
 export class CampaignService {
-  private centralGoogleAdsService: CentralGoogleAdsService;
-
-  constructor() {
-    this.centralGoogleAdsService = new CentralGoogleAdsService();
-  }
   // Helper method to clean currency values for database insertion
   private parseCurrencyValue(value: string | number): number {
     if (typeof value === 'number') return value;
@@ -29,11 +23,11 @@ export class CampaignService {
   }
 
   // Safe cleanup method that handles foreign key constraints
-  private async cleanupAllCampaigns(): Promise<void> {
+  private async cleanupUserCampaigns(userId: string): Promise<void> {
     try {
-      // Get all campaign IDs
-      const allCampaigns = await db.select({ id: campaigns.id }).from(campaigns);
-      const campaignIds = allCampaigns.map(c => c.id);
+      // Get all campaign IDs for this user
+      const userCampaigns = await db.select({ id: campaigns.id }).from(campaigns).where(eq(campaigns.userId, userId));
+      const campaignIds = userCampaigns.map(c => c.id);
 
       if (campaignIds.length === 0) return;
 
@@ -48,32 +42,35 @@ export class CampaignService {
       }
 
       // Finally delete the campaigns themselves
-      await db.delete(campaigns);
+      await db.delete(campaigns).where(eq(campaigns.userId, userId));
     } catch (error) {
-      console.error('Error cleaning up campaigns:', error);
+      console.error('Error cleaning up user campaigns:', error);
       throw error;
     }
   }
   async getUserCampaigns(userId: string, selectedAccountIds?: string[]): Promise<Campaign[]> {
     console.log('CampaignService getUserCampaigns for userId:', userId, 'selectedAccounts:', selectedAccountIds);
     
-    // Check if we have centralized Google Ads configuration
-    const centralConfig = await this.centralGoogleAdsService.getCentralConfig();
+    // First check if user has connected Google Ads accounts
+    const connectedAccounts = await db
+      .select()
+      .from(googleAdsAccounts)
+      .where(and(eq(googleAdsAccounts.userId, userId), eq(googleAdsAccounts.isActive, true)));
     
-    if (centralConfig) {
-      // We have centralized Google Ads - fetch real campaigns
-      return await this.fetchRealCampaigns(selectedAccountIds);
+    if (connectedAccounts.length > 0) {
+      // User has connected Google Ads - fetch real campaigns
+      return await this.fetchRealCampaigns(userId, connectedAccounts, selectedAccountIds);
     }
     
-    // No centralized configuration - check for existing campaigns or create samples
+    // No connected accounts - check for existing campaigns or create samples
     const existingCampaigns = await db
       .select()
       .from(campaigns)
-      .where(eq(campaigns.status, 'active'));
+      .where(and(eq(campaigns.userId, userId), eq(campaigns.status, 'active')));
     
     if (existingCampaigns.length === 0) {
-      // Initialize sample campaigns
-      return await this.initializeSampleCampaigns();
+      // Initialize sample campaigns for users without Google Ads
+      return await this.initializeSampleCampaigns(userId);
     }
     
     return existingCampaigns;
@@ -83,15 +80,18 @@ export class CampaignService {
   async getPerformanceCampaigns(userId: string, selectedAccountIds?: string[], dateFrom?: Date, dateTo?: Date): Promise<Campaign[]> {
     console.log('CampaignService getPerformanceCampaigns for userId:', userId, 'selectedAccounts:', selectedAccountIds, 'dateRange:', { dateFrom, dateTo });
     
-    // Check if we have centralized Google Ads configuration
-    const centralConfig = await this.centralGoogleAdsService.getCentralConfig();
+    // First check if user has connected Google Ads accounts
+    const connectedAccounts = await db
+      .select()
+      .from(googleAdsAccounts)
+      .where(and(eq(googleAdsAccounts.userId, userId), eq(googleAdsAccounts.isActive, true)));
     
-    if (centralConfig) {
-      // We have centralized Google Ads - fetch real campaigns with date range
-      return await this.fetchRealCampaignsWithDateRange(selectedAccountIds, dateFrom, dateTo);
+    if (connectedAccounts.length > 0) {
+      // User has connected Google Ads - fetch real campaigns with date range
+      return await this.fetchRealCampaignsWithDateRange(userId, connectedAccounts, selectedAccountIds, dateFrom, dateTo);
     }
     
-    // No centralized configuration - return regular campaigns
+    // No connected accounts - return regular campaigns
     return await this.getUserCampaigns(userId, selectedAccountIds);
   }
 
@@ -129,10 +129,11 @@ export class CampaignService {
         campaign.status && (campaign.status === 2 || campaign.status === 'ENABLED' || campaign.status.toString().toUpperCase() === 'ENABLED')
       );
       
-      // Get existing campaigns
+      // Get existing campaigns for this user
       const existingCampaigns = await db
         .select()
-        .from(campaigns);
+        .from(campaigns)
+        .where(eq(campaigns.userId, userId));
       
       const updatedCampaigns: Campaign[] = [];
       
@@ -200,14 +201,32 @@ export class CampaignService {
     }
   }
 
-  private async fetchRealCampaigns(selectedAccountIds?: string[]): Promise<Campaign[]> {
+  private async fetchRealCampaigns(userId: string, accounts: any[], selectedAccountIds?: string[]): Promise<Campaign[]> {
     try {
-      const googleAdsService = await GoogleAdsService.createFromCentralConfig();
+      const primaryAccount = accounts.find(acc => acc.isPrimary) || accounts[0];
       
-      if (!googleAdsService) {
-        console.warn('No centralized Google Ads configuration available');
-        return await this.getFallbackCampaigns();
+      if (!primaryAccount.refreshToken) {
+        console.warn('No refresh token available for Google Ads account');
+        return await this.getFallbackCampaigns(userId);
       }
+
+      // Check for invalid customer ID
+      if (!primaryAccount.customerId || primaryAccount.customerId === 'no-customer-found' || primaryAccount.customerId === '') {
+        console.warn(`Invalid customer ID detected: ${primaryAccount.customerId}. Removing invalid account and using fallback.`);
+        
+        // Delete the invalid account record
+        await db.delete(googleAdsAccounts).where(eq(googleAdsAccounts.id, primaryAccount.id));
+        
+        return await this.getFallbackCampaigns(userId);
+      }
+
+      const googleAdsService = new GoogleAdsService({
+        clientId: process.env.GOOGLE_OAUTH_CLIENT_ID!,
+        clientSecret: process.env.GOOGLE_OAUTH_CLIENT_SECRET!,
+        refreshToken: primaryAccount.refreshToken,
+        customerId: primaryAccount.customerId,
+        developerToken: process.env.GOOGLE_ADS_DEVELOPER_TOKEN!
+      });
 
       const realCampaigns = await googleAdsService.getCampaigns(selectedAccountIds);
       
@@ -216,10 +235,11 @@ export class CampaignService {
         campaign.status && (campaign.status === 2 || campaign.status === 'ENABLED' || campaign.status.toString().toUpperCase() === 'ENABLED')
       );
       
-      // Get existing campaigns
+      // Get existing campaigns for this user
       const existingCampaigns = await db
         .select()
-        .from(campaigns);
+        .from(campaigns)
+        .where(eq(campaigns.userId, userId));
       
       const updatedCampaigns: Campaign[] = [];
       
@@ -393,13 +413,13 @@ export class CampaignService {
     return typeMap[googleAdsType] || 'search';
   }
 
-  private async getFallbackCampaigns(): Promise<Campaign[]> {
+  private async getFallbackCampaigns(userId: string): Promise<Campaign[]> {
     // Return existing campaigns or create samples as fallback
-    const existingCampaigns = await db.select().from(campaigns);
+    const existingCampaigns = await db.select().from(campaigns).where(eq(campaigns.userId, userId));
     if (existingCampaigns.length > 0) {
       return existingCampaigns;
     }
-    return await this.initializeSampleCampaigns();
+    return await this.initializeSampleCampaigns(userId);
   }
 
   async getCampaignById(id: string, userId: string): Promise<Campaign | undefined> {
@@ -435,7 +455,7 @@ export class CampaignService {
     return connectedAccounts.length > 0;
   }
 
-  async initializeSampleCampaigns(): Promise<Campaign[]> {
+  async initializeSampleCampaigns(userId: string): Promise<Campaign[]> {
     // Return empty array - only use real Google Ads data
     console.log("Skipping sample campaigns - only using real Google Ads data");
     return [];

@@ -13,8 +13,6 @@ export default function Sidebar() {
     { icon: Brain, label: "AI Recommendations", href: "/recommendations", active: location === "/recommendations" },
     { icon: TrendingUp, label: "Performance", href: "/performance", active: location === "/performance" },
     { icon: Settings, label: "Settings", href: "/settings", active: location === "/settings" },
-    // Only show Admin for admin users or show for all users (they'll see appropriate access control)
-    { icon: Settings, label: "Admin", href: "/admin", active: location === "/admin" },
   ];
 
   return (
@@ -71,7 +69,7 @@ export default function Sidebar() {
                 : user?.email || "User"
               }
             </p>
-            <p className="text-xs text-gray-500">{user?.role === 'admin' ? 'Admin' : 'User'}</p>
+            <p className="text-xs text-gray-500">Admin</p>
           </div>
         </div>
         <Button 

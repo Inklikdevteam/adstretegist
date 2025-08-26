@@ -1,7 +1,6 @@
 import { GoogleAdsApi, Customer } from 'google-ads-api';
 import { google } from 'googleapis';
 import { OAuth2Client } from 'google-auth-library';
-import { CentralGoogleAdsService } from './centralGoogleAdsService';
 
 interface GoogleAdsConfig {
   clientId: string;
@@ -49,27 +48,6 @@ export class GoogleAdsService {
   private customer: Customer;
   private oauth2Client: OAuth2Client;
   private config: GoogleAdsConfig;
-  private centralService: CentralGoogleAdsService;
-
-  // Factory method to create GoogleAdsService using centralized configuration
-  static async createFromCentralConfig(): Promise<GoogleAdsService | null> {
-    const centralService = new CentralGoogleAdsService();
-    const centralConfig = await centralService.getCentralConfig();
-    
-    if (!centralConfig) {
-      return null;
-    }
-
-    const config: GoogleAdsConfig = {
-      clientId: process.env.GOOGLE_OAUTH_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_OAUTH_CLIENT_SECRET!,
-      refreshToken: centralConfig.refreshToken,
-      customerId: centralConfig.customerId,
-      developerToken: process.env.GOOGLE_ADS_DEVELOPER_TOKEN!
-    };
-
-    return new GoogleAdsService(config);
-  }
 
   // Helper function to format date for Google Ads query
   private formatDateForQuery(date?: Date): string {
