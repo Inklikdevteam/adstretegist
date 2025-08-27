@@ -108,6 +108,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update user profile
+  app.patch('/api/auth/user/profile', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+      
+      const { firstName, lastName, email, profileImageUrl } = req.body;
+      
+      // Basic validation
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return res.status(400).json({ message: 'Invalid email format' });
+      }
+      
+      const [updatedUser] = await db
+        .update(users)
+        .set({ 
+          firstName: firstName || null,
+          lastName: lastName || null, 
+          email: email || null,
+          profileImageUrl: profileImageUrl || null,
+          updatedAt: new Date()
+        })
+        .where(eq(users.id, user.id))
+        .returning({
+          id: users.id,
+          username: users.username,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          email: users.email,
+          role: users.role,
+          isActive: users.isActive,
+          profileImageUrl: users.profileImageUrl
+        });
+
+      if (!updatedUser) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      res.json({ 
+        message: 'Profile updated successfully',
+        user: updatedUser 
+      });
+    } catch (error) {
+      console.error('Error updating user profile:', error);
+      res.status(500).json({ message: 'Failed to update profile' });
+    }
+  });
+
   // Performance-specific endpoint with date range filtering
   app.get('/api/performance/campaigns', isAuthenticated, async (req: any, res) => {
     try {

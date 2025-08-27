@@ -7,9 +7,11 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import Sidebar from "@/components/Sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Settings as SettingsIcon, User, Bell, Shield, HelpCircle, ExternalLink } from "lucide-react";
+import { Settings as SettingsIcon, User, Bell, Shield, HelpCircle, ExternalLink, Edit, Save, X } from "lucide-react";
 import UserManagement from "@/components/UserManagement";
 
 export default function Settings() {
@@ -26,6 +28,15 @@ export default function Settings() {
   const [emailAlerts, setEmailAlerts] = useState(true);
   const [dailySummaries, setDailySummaries] = useState(false);
   const [budgetAlerts, setBudgetAlerts] = useState(true);
+
+  // Profile editing state
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [profileData, setProfileData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    profileImageUrl: ''
+  });
 
   // Get available Google Ads accounts
   const { data: accountsData, isLoading: accountsLoading } = useQuery<any>({
@@ -51,12 +62,44 @@ export default function Settings() {
       setBudgetAlerts(userSettings.budgetAlerts !== false);
     }
   }, [userSettings]);
+
+  // Update profile data when user data changes
+  useEffect(() => {
+    if (user) {
+      setProfileData({
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
+        email: user.email || '',
+        profileImageUrl: user.profileImageUrl || ''
+      });
+    }
+  }, [user]);
   
   // Update user settings mutation
   const updateSettingsMutation = useMutation({
     mutationFn: (settings: any) => apiRequest('PATCH', '/api/user/settings', settings),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/user/settings'] });
+    }
+  });
+
+  // Update user profile mutation
+  const updateProfileMutation = useMutation({
+    mutationFn: (profile: any) => apiRequest('PATCH', '/api/auth/user/profile', profile),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+      setIsEditingProfile(false);
+      toast({
+        title: "Profile Updated",
+        description: "Your profile information has been saved successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update profile. Please try again.",
+        variant: "destructive",
+      });
     }
   });
 
@@ -177,6 +220,32 @@ export default function Settings() {
     }
   };
 
+  const handleProfileUpdate = () => {
+    if (!profileData.firstName.trim() && !profileData.lastName.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Please enter at least your first name or last name.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    updateProfileMutation.mutate(profileData);
+  };
+
+  const handleCancelEdit = () => {
+    // Reset to original user data
+    if (user) {
+      setProfileData({
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
+        email: user.email || '',
+        profileImageUrl: user.profileImageUrl || ''
+      });
+    }
+    setIsEditingProfile(false);
+  };
+
   const userInfo = user as any;
 
   return (
@@ -194,6 +263,140 @@ export default function Settings() {
         </header>
 
         <div className="p-6 space-y-6">
+          {/* Profile Information */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <User className="w-5 h-5" />
+                  <span>Profile Information</span>
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => isEditingProfile ? handleCancelEdit() : setIsEditingProfile(true)}
+                  data-testid="button-edit-profile"
+                >
+                  {isEditingProfile ? (
+                    <>
+                      <X className="w-4 h-4 mr-1" />
+                      Cancel
+                    </>
+                  ) : (
+                    <>
+                      <Edit className="w-4 h-4 mr-1" />
+                      Edit
+                    </>
+                  )}
+                </Button>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {isEditingProfile ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="firstName">First Name</Label>
+                      <Input
+                        id="firstName"
+                        value={profileData.firstName}
+                        onChange={(e) => setProfileData({ ...profileData, firstName: e.target.value })}
+                        placeholder="Enter your first name"
+                        data-testid="input-first-name"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="lastName">Last Name</Label>
+                      <Input
+                        id="lastName"
+                        value={profileData.lastName}
+                        onChange={(e) => setProfileData({ ...profileData, lastName: e.target.value })}
+                        placeholder="Enter your last name"
+                        data-testid="input-last-name"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={profileData.email}
+                      onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
+                      placeholder="Enter your email address"
+                      data-testid="input-email"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="profileImageUrl">Profile Image URL (Optional)</Label>
+                    <Input
+                      id="profileImageUrl"
+                      type="url"
+                      value={profileData.profileImageUrl}
+                      onChange={(e) => setProfileData({ ...profileData, profileImageUrl: e.target.value })}
+                      placeholder="Enter profile image URL"
+                      data-testid="input-profile-image"
+                    />
+                  </div>
+                  <div className="flex space-x-2 pt-2">
+                    <Button 
+                      onClick={handleProfileUpdate}
+                      disabled={updateProfileMutation.isPending}
+                      data-testid="button-save-profile"
+                    >
+                      {updateProfileMutation.isPending ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="w-4 h-4 mr-1" />
+                          Save Changes
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-sm font-medium text-gray-500">First Name</Label>
+                      <p className="text-sm text-gray-900" data-testid="text-first-name">
+                        {user?.firstName || 'Not set'}
+                      </p>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-gray-500">Last Name</Label>
+                      <p className="text-sm text-gray-900" data-testid="text-last-name">
+                        {user?.lastName || 'Not set'}
+                      </p>
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-gray-500">Email</Label>
+                    <p className="text-sm text-gray-900" data-testid="text-email">
+                      {user?.email || 'Not set'}
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-gray-500">Username</Label>
+                    <p className="text-sm text-gray-900" data-testid="text-username">
+                      {user?.username}
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-gray-500">Role</Label>
+                    <p className="text-sm text-gray-900" data-testid="text-role">
+                      {user?.role === 'admin' ? 'Administrator' : 'Sub Account'}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Google Ads Account Selection */}
           <Card>
             <CardHeader>
