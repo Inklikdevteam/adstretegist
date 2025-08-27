@@ -306,6 +306,7 @@ export default function Settings() {
                     onClick={() => {
                       // Generate a state parameter to identify the user during OAuth callback
                       const state = user?.id || 'unknown';
+                      console.log('Connecting Google Ads with user ID:', state, 'Full user:', user);
                       // Redirect to Google Ads OAuth flow
                       window.location.href = `/api/auth/google-ads-connect?state=${state}`;
                     }}

@@ -59,7 +59,10 @@ export async function setupGoogleAdsAuth(app: Express) {
     try {
       const { code, state } = req.query;
       
+      console.log('Google Ads OAuth callback received:', { code: !!code, state });
+      
       if (!code || !state) {
+        console.error('Missing authorization code or state:', { code: !!code, state });
         return res.status(400).json({ message: 'Missing authorization code or state' });
       }
 
@@ -72,6 +75,7 @@ export async function setupGoogleAdsAuth(app: Express) {
 
       // Store the tokens and account info
       const userId = state as string;
+      console.log('User ID from state parameter:', userId);
       
       // Get real customer info from Google Ads API
       const adsOAuth2Client = getOAuth2Client();
@@ -137,6 +141,14 @@ export async function setupGoogleAdsAuth(app: Express) {
         console.error('Full API error details:', JSON.stringify(apiError, null, 2));
         console.warn('Continuing with placeholder customer ID - user will see sample data until they properly connect Google Ads');
       }
+
+      console.log('About to create Google Ads account with:', {
+        adminUserId: userId,
+        customerId,
+        customerName,
+        hasRefreshToken: !!tokens.refresh_token,
+        hasAccessToken: !!tokens.access_token
+      });
 
       await storage.createGoogleAdsAccount({
         adminUserId: userId,
