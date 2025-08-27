@@ -28,8 +28,28 @@ function getOAuth2Client() {
 // These routes are kept for backward compatibility but may not be needed
 
 export async function setupGoogleAdsAuth(app: Express) {
-  // Legacy Google Ads OAuth endpoints - may be removed in future
-  // Authentication is now handled directly in main auth flow
+  // Google Ads OAuth initiation endpoint
+  app.get('/api/auth/google-ads-connect', async (req, res) => {
+    try {
+      const state = req.query.state as string;
+      if (!state) {
+        return res.status(400).json({ message: 'Missing state parameter' });
+      }
+
+      const oauth2Client = getOAuth2Client();
+      const authUrl = oauth2Client.generateAuthUrl({
+        access_type: 'offline',
+        scope: GOOGLE_ADS_SCOPES,
+        state: state,
+        prompt: 'consent'
+      });
+
+      res.redirect(authUrl);
+    } catch (error) {
+      console.error('Error initiating Google Ads OAuth:', error);
+      res.status(500).json({ message: 'Failed to initiate Google Ads connection' });
+    }
+  });
 
   // Handle OAuth callback
   app.get('/api/auth/google-ads-callback', async (req, res) => {

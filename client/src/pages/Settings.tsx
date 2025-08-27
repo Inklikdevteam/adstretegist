@@ -300,7 +300,17 @@ export default function Settings() {
                 <div>
                   <h4 className="font-medium text-gray-900 mb-2">No Google Ads Connection</h4>
                   <p className="text-sm text-gray-600 mb-3">Connect your Google Ads account to manage campaigns</p>
-                  <Button variant="outline" size="sm">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      // Generate a state parameter to identify the user during OAuth callback
+                      const state = user?.id || 'unknown';
+                      // Redirect to Google Ads OAuth flow
+                      window.location.href = `/api/auth/google-ads-connect?state=${state}`;
+                    }}
+                    data-testid="button-connect-google-ads"
+                  >
                     Connect Google Ads
                   </Button>
                 </div>
