@@ -44,10 +44,15 @@ export function useAuth() {
   const logoutMutation = useMutation({
     mutationFn: async () => {
       try {
-        const response = await apiRequest("POST", "/api/auth/logout");
+        const response = await fetch("/api/auth/logout", {
+          method: "POST",
+          credentials: "include",
+        });
+        
         if (!response.ok) {
           throw new Error(`Logout failed: ${response.status}`);
         }
+        
         const data = await response.json();
         return data;
       } catch (error) {
