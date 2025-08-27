@@ -34,7 +34,10 @@ export async function setupGoogleAdsAuth(app: Express) {
   app.get('/api/auth/google-ads-connect', async (req, res) => {
     try {
       const state = req.query.state as string;
+      console.log('CONNECT ENDPOINT - Received state parameter:', state);
+      
       if (!state) {
+        console.error('CONNECT ENDPOINT - Missing state parameter');
         return res.status(400).json({ message: 'Missing state parameter' });
       }
 
@@ -46,7 +49,7 @@ export async function setupGoogleAdsAuth(app: Express) {
         prompt: 'consent'
       });
 
-      console.log('Generated Google Ads Auth URL:', authUrl);
+      console.log('CONNECT ENDPOINT - Generated Google Ads Auth URL with state:', state);
       res.redirect(authUrl);
     } catch (error) {
       console.error('Error initiating Google Ads OAuth:', error);
