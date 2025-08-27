@@ -26,17 +26,24 @@ export default function LoginPage() {
       const data = await response.json();
       
       if (response.ok) {
-        // Clear auth cache and refetch user data
+        console.log("Login successful, updating auth state");
+        
+        // Update the query cache with user data
         queryClient.setQueryData(["/api/auth/user"], data.user);
-        await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+        
+        // Clear any cached 401 responses and refetch
+        queryClient.removeQueries({ queryKey: ["/api/auth/user"] });
+        await queryClient.refetchQueries({ queryKey: ["/api/auth/user"] });
         
         toast({
           title: "Login successful",
           description: "Welcome back!",
         });
         
-        // Force a page refresh to ensure clean authenticated state
-        window.location.href = "/";
+        // Small delay to ensure state update, then redirect
+        setTimeout(() => {
+          window.location.href = "/";
+        }, 100);
       } else {
         toast({
           title: "Login failed",

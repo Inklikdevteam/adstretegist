@@ -8,8 +8,10 @@ export function useAuth() {
   const { data: user, isLoading, error, refetch } = useQuery({
     queryKey: ["/api/auth/user"],
     staleTime: 0,
+    gcTime: 0,
     refetchOnWindowFocus: true,
     refetchOnMount: true,
+    retry: false,
     queryFn: async () => {
       try {
         const res = await fetch("/api/auth/user", {
@@ -55,15 +57,18 @@ export function useAuth() {
     },
     onSuccess: (data) => {
       console.log('Logout successful:', data);
+      
+      // Clear all auth-related data
       queryClient.setQueryData(["/api/auth/user"], null);
-      queryClient.clear(); // Clear all cached data
+      queryClient.removeQueries({ queryKey: ["/api/auth/user"] });
+      queryClient.clear();
       
       toast({
         title: "Logout successful",
         description: "You have been logged out successfully.",
       });
       
-      // Immediate redirect to clear state
+      // Force reload to clear all state
       window.location.href = "/";
     },
     onError: (error: Error) => {
