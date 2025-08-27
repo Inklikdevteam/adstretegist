@@ -17,6 +17,8 @@ function getOAuth2Client() {
 
   const redirectUri = `${process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}` : 'http://localhost:5000'}/api/auth/google-ads-callback`;
   
+  console.log('Google Ads OAuth Redirect URI:', redirectUri);
+  
   return new OAuth2Client(
     process.env.GOOGLE_OAUTH_CLIENT_ID,
     process.env.GOOGLE_OAUTH_CLIENT_SECRET,
@@ -44,6 +46,7 @@ export async function setupGoogleAdsAuth(app: Express) {
         prompt: 'consent'
       });
 
+      console.log('Generated Google Ads Auth URL:', authUrl);
       res.redirect(authUrl);
     } catch (error) {
       console.error('Error initiating Google Ads OAuth:', error);
