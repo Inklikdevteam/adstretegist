@@ -7,10 +7,11 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { UserPlus, Users, Calendar, Clock } from "lucide-react";
+import { UserPlus, Users, Calendar, Clock, Trash2 } from "lucide-react";
 
 interface User {
   id: string;
@@ -91,6 +92,31 @@ export default function UserManagement() {
     onError: (error: Error) => {
       toast({
         title: "Failed to update user status",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteUserMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const response = await apiRequest("DELETE", `/api/admin/users/${userId}`);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to delete user");
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      toast({
+        title: "User deleted successfully",
+        description: data.message,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to delete user",
         description: error.message,
         variant: "destructive",
       });
@@ -287,6 +313,47 @@ export default function UserManagement() {
                           data-testid={`switch-status-${user.username}`}
                         />
                       </div>
+                      
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            data-testid={`button-delete-${user.username}`}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Sub-Account</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to permanently delete the sub-account "{user.username}"?
+                              <br /><br />
+                              <strong>This action cannot be undone.</strong> All data associated with this account will be permanently removed, including:
+                              <ul className="list-disc list-inside mt-2 text-sm">
+                                <li>User profile and settings</li>
+                                <li>Campaign access and preferences</li>
+                                <li>AI recommendations history</li>
+                              </ul>
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel data-testid={`button-cancel-delete-${user.username}`}>
+                              Cancel
+                            </AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => deleteUserMutation.mutate(user.id)}
+                              className="bg-red-600 hover:bg-red-700"
+                              disabled={deleteUserMutation.isPending}
+                              data-testid={`button-confirm-delete-${user.username}`}
+                            >
+                              {deleteUserMutation.isPending ? "Deleting..." : "Delete Account"}
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   )}
                 </div>

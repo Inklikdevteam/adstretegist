@@ -108,6 +108,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete user (admin only, sub-accounts only)
+  app.delete('/api/admin/users/:id', isAdmin, async (req: any, res) => {
+    try {
+      const userId = req.params.id;
+      const adminUser = req.user;
+
+      // First, get the user to be deleted to check their role
+      const [userToDelete] = await db
+        .select({ role: users.role, username: users.username })
+        .from(users)
+        .where(eq(users.id, userId));
+
+      if (!userToDelete) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      // Prevent deleting admin accounts
+      if (userToDelete.role === 'admin') {
+        return res.status(403).json({ message: 'Cannot delete admin accounts' });
+      }
+
+      // Prevent admins from deleting themselves (extra safety)
+      if (userId === adminUser.id) {
+        return res.status(403).json({ message: 'Cannot delete your own account' });
+      }
+
+      // Delete the user
+      const [deletedUser] = await db
+        .delete(users)
+        .where(eq(users.id, userId))
+        .returning({ username: users.username });
+
+      if (!deletedUser) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      res.json({ 
+        message: `Sub-account "${deletedUser.username}" has been permanently deleted`
+      });
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      res.status(500).json({ message: 'Failed to delete user' });
+    }
+  });
+
   // Update user profile
   app.patch('/api/auth/user/profile', isAuthenticated, async (req: any, res) => {
     try {
