@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated, isAdmin } from "./localAuth";
-// Note: Google Ads authentication is now integrated with main authentication
+import { setupGoogleAdsAuth } from "./googleAdsAuth";
 import { AIRecommendationService } from "./services/aiRecommendationService";
 import { CampaignService } from "./services/campaignService";
 import { MultiAIService } from "./services/multiAIService";
@@ -16,8 +16,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
   
-  // Note: Google Ads authentication is now integrated with main authentication
-  // No separate setup needed
+  // Google Ads OAuth setup
+  await setupGoogleAdsAuth(app);
 
   const aiService = new AIRecommendationService();
   const campaignService = new CampaignService();
@@ -26,7 +26,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // User management routes (admin only)
   app.get('/api/admin/users', isAdmin, async (req: any, res) => {
     try {
-      const users = await db
+      const allUsers = await db
         .select({
           id: users.id,
           username: users.username,
@@ -42,7 +42,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .from(users)
         .orderBy(desc(users.createdAt));
 
-      res.json(users);
+      res.json(allUsers);
     } catch (error) {
       console.error('Error fetching users:', error);
       res.status(500).json({ message: 'Failed to fetch users' });
