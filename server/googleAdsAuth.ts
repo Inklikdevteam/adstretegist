@@ -139,7 +139,7 @@ export async function setupGoogleAdsAuth(app: Express) {
       }
 
       await storage.createGoogleAdsAccount({
-        userId,
+        adminUserId: userId,
         customerId,
         customerName,
         refreshToken: tokens.refresh_token,
