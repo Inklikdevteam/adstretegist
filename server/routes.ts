@@ -134,39 +134,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: 'Cannot delete your own account' });
       }
 
-      // First, delete all user settings associated with this user
-      await db
-        .delete(userSettings)
-        .where(eq(userSettings.userId, userId));
+      // Use transaction to ensure all deletions happen atomically
+      const result = await db.transaction(async (tx) => {
+        console.log(`Starting cascade deletion for user ${userId}`);
+        
+        // Delete user settings
+        const deletedSettings = await tx
+          .delete(userSettings)
+          .where(eq(userSettings.userId, userId))
+          .returning({ id: userSettings.id });
+        console.log(`Deleted ${deletedSettings.length} user settings`);
 
-      // Delete any user-related data that might reference this user
-      // Delete campaigns created by this user
-      await db
-        .delete(campaigns)
-        .where(eq(campaigns.userId, userId));
+        // Delete campaigns created by this user
+        const deletedCampaigns = await tx
+          .delete(campaigns)
+          .where(eq(campaigns.userId, userId))
+          .returning({ id: campaigns.id });
+        console.log(`Deleted ${deletedCampaigns.length} campaigns`);
 
-      // Delete recommendations for this user
-      await db
-        .delete(recommendations)
-        .where(eq(recommendations.userId, userId));
+        // Delete recommendations for this user
+        const deletedRecommendations = await tx
+          .delete(recommendations)
+          .where(eq(recommendations.userId, userId))
+          .returning({ id: recommendations.id });
+        console.log(`Deleted ${deletedRecommendations.length} recommendations`);
 
-      // Delete audit logs for this user
-      await db
-        .delete(auditLogs)
-        .where(eq(auditLogs.userId, userId));
+        // Delete audit logs for this user
+        const deletedAudits = await tx
+          .delete(auditLogs)
+          .where(eq(auditLogs.userId, userId))
+          .returning({ id: auditLogs.id });
+        console.log(`Deleted ${deletedAudits.length} audit logs`);
 
-      // Finally, delete the user
-      const [deletedUser] = await db
-        .delete(users)
-        .where(eq(users.id, userId))
-        .returning({ username: users.username });
+        // Finally, delete the user
+        const [deletedUser] = await tx
+          .delete(users)
+          .where(eq(users.id, userId))
+          .returning({ username: users.username });
 
-      if (!deletedUser) {
+        console.log(`Deleted user: ${deletedUser?.username}`);
+        return deletedUser;
+      });
+
+      if (!result) {
         return res.status(404).json({ message: 'User not found' });
       }
 
       res.json({ 
-        message: `Sub-account "${deletedUser.username}" has been permanently deleted`
+        message: `Sub-account "${result.username}" has been permanently deleted`
       });
     } catch (error) {
       console.error('Error deleting user:', error);
