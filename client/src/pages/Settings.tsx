@@ -397,12 +397,17 @@ export default function Settings() {
             </CardContent>
           </Card>
 
-          {/* Google Ads Account Selection */}
+          {/* Google Ads Account Selection - Admin Only for Connection, View Only for Sub-Accounts */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <ExternalLink className="w-5 h-5" />
                 <span>Google Ads Account</span>
+                {user?.role === 'sub_account' && (
+                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full ml-2">
+                    View Only
+                  </span>
+                )}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -414,65 +419,87 @@ export default function Settings() {
               ) : accountsData?.hasConnection ? (
                 <div>
                   <h4 className="font-medium text-gray-900 mb-2">Active Accounts</h4>
-                  <p className="text-sm text-gray-600 mb-3">Choose which Google Ads accounts to display campaigns from</p>
+                  {user?.role === 'admin' ? (
+                    <p className="text-sm text-gray-600 mb-3">Choose which Google Ads accounts to display campaigns from</p>
+                  ) : (
+                    <p className="text-sm text-gray-600 mb-3">View Google Ads accounts connected by admin</p>
+                  )}
                   
-                  <div className="flex gap-2 mb-3">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={handleSelectAll}
-                      data-testid="button-select-all"
-                    >
-                      Select All
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={handleClearAll}
-                      data-testid="button-clear-all"
-                    >
-                      Clear All
-                    </Button>
-                    {hasChanges && (
+                  {/* Admin can modify account selection */}
+                  {user?.role === 'admin' && (
+                    <div className="flex gap-2 mb-3">
                       <Button 
-                        variant="default" 
+                        variant="outline" 
                         size="sm" 
-                        onClick={handleUpdateAccounts}
-                        disabled={isUpdating}
-                        data-testid="button-update-accounts"
-                        className="ml-auto"
+                        onClick={handleSelectAll}
+                        data-testid="button-select-all"
                       >
-                        {isUpdating ? (
-                          <>
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
-                            Updating...
-                          </>
-                        ) : (
-                          'Update'
-                        )}
+                        Select All
                       </Button>
-                    )}
-                  </div>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={handleClearAll}
+                        data-testid="button-clear-all"
+                      >
+                        Clear All
+                      </Button>
+                      {hasChanges && (
+                        <Button 
+                          variant="default" 
+                          size="sm" 
+                          onClick={handleUpdateAccounts}
+                          disabled={isUpdating}
+                          data-testid="button-update-accounts"
+                          className="ml-auto"
+                        >
+                          {isUpdating ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
+                              Updating...
+                            </>
+                          ) : (
+                            'Update'
+                          )}
+                        </Button>
+                      )}
+                    </div>
+                  )}
                   
                   <div className="space-y-3 max-h-60 overflow-y-auto border border-gray-200 rounded-lg p-3">
                     {accountsData?.accounts?.map((account: any) => (
                       <div key={account.id} className="flex items-center space-x-3 p-2 hover:bg-gray-50 rounded">
-                        <Checkbox
-                          id={`account-${account.id}`}
-                          checked={selectedAccounts.includes(account.id)}
-                          onCheckedChange={(checked) => handleAccountToggle(account.id, checked as boolean)}
-                          data-testid={`checkbox-account-${account.id}`}
-                          className="data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded-sm border-2 border-gray-300 w-5 h-5"
-                        />
+                        {user?.role === 'admin' ? (
+                          <Checkbox
+                            id={`account-${account.id}`}
+                            checked={selectedAccounts.includes(account.id)}
+                            onCheckedChange={(checked) => handleAccountToggle(account.id, checked as boolean)}
+                            data-testid={`checkbox-account-${account.id}`}
+                            className="data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded-sm border-2 border-gray-300 w-5 h-5"
+                          />
+                        ) : (
+                          <div className="w-5 h-5 flex items-center justify-center">
+                            {selectedAccounts.includes(account.id) ? (
+                              <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                            ) : (
+                              <div className="w-3 h-3 bg-gray-300 rounded-full"></div>
+                            )}
+                          </div>
+                        )}
                         <label 
-                          htmlFor={`account-${account.id}`} 
-                          className="text-sm font-medium text-gray-900 cursor-pointer flex-1"
+                          htmlFor={user?.role === 'admin' ? `account-${account.id}` : undefined} 
+                          className={`text-sm font-medium text-gray-900 flex-1 ${user?.role === 'admin' ? 'cursor-pointer' : ''}`}
                         >
                           {account.name}
                         </label>
                         <span className="text-xs text-gray-500">
                           ID: {account.id}
                         </span>
+                        {user?.role === 'sub_account' && selectedAccounts.includes(account.id) && (
+                          <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
+                            Active
+                          </span>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -493,7 +520,7 @@ export default function Settings() {
                     </p>
                   )}
                   
-                  {hasChanges && (
+                  {hasChanges && user?.role === 'admin' && (
                     <p className="text-xs text-orange-600 mt-2 font-medium">
                       Changes pending - click Update to apply
                     </p>
@@ -501,22 +528,41 @@ export default function Settings() {
                 </div>
               ) : (
                 <div>
-                  <h4 className="font-medium text-gray-900 mb-2">No Google Ads Connection</h4>
-                  <p className="text-sm text-gray-600 mb-3">Connect your Google Ads account to manage campaigns</p>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => {
-                      // Generate a state parameter to identify the user during OAuth callback
-                      const state = user?.id || 'unknown';
-                      console.log('Connecting Google Ads with user ID:', state, 'Full user:', user);
-                      // Redirect to Google Ads OAuth flow
-                      window.location.href = `/api/auth/google-ads-connect?state=${state}`;
-                    }}
-                    data-testid="button-connect-google-ads"
-                  >
-                    Connect Google Ads
-                  </Button>
+                  {user?.role === 'admin' ? (
+                    <>
+                      <h4 className="font-medium text-gray-900 mb-2">No Google Ads Connection</h4>
+                      <p className="text-sm text-gray-600 mb-3">Connect your Google Ads account to manage campaigns</p>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => {
+                          // Generate a state parameter to identify the user during OAuth callback
+                          const state = user?.id || 'unknown';
+                          console.log('Connecting Google Ads with user ID:', state, 'Full user:', user);
+                          // Redirect to Google Ads OAuth flow
+                          window.location.href = `/api/auth/google-ads-connect?state=${state}`;
+                        }}
+                        data-testid="button-connect-google-ads"
+                      >
+                        Connect Google Ads
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <h4 className="font-medium text-gray-900 mb-2">No Google Ads Connection</h4>
+                      <p className="text-sm text-gray-600 mb-3">Contact your admin to connect Google Ads accounts</p>
+                      <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <div className="flex items-center space-x-2">
+                          <ExternalLink className="w-4 h-4 text-blue-600" />
+                          <span className="text-sm font-medium text-blue-900">Access Restricted</span>
+                        </div>
+                        <p className="text-sm text-blue-700 mt-1">
+                          Only administrators can connect and manage Google Ads accounts. 
+                          You can view campaign data once the admin connects an account.
+                        </p>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
             </CardContent>
