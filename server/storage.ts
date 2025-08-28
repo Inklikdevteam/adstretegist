@@ -78,6 +78,13 @@ export class DatabaseStorage implements IStorage {
 
   async createUser(userData: Partial<User>): Promise<User> {
     try {
+      console.log('Creating user with data:', {
+        username: userData.username,
+        email: userData.email,
+        role: userData.role,
+        createdBy: userData.createdBy
+      });
+      
       const [newUser] = await db
         .insert(users)
         .values({
@@ -89,11 +96,11 @@ export class DatabaseStorage implements IStorage {
           role: userData.role || 'sub_account',
           isActive: userData.isActive ?? true,
           createdBy: userData.createdBy || null,
-          createdAt: new Date(),
-          updatedAt: new Date(),
+          // Don't set createdAt and updatedAt manually - let the database handle defaults
         })
         .returning();
       
+      console.log('Successfully created user:', { id: newUser.id, username: newUser.username });
       return newUser;
     } catch (error) {
       console.error('Error creating user:', error);
