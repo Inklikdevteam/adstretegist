@@ -961,7 +961,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       console.log(`Total connected accounts found: ${connectedAccounts.length}`);
-      console.log('Connected accounts details:', connectedAccounts.map(acc => ({ id: acc.id, adminUserId: acc.adminUserId, customerId: acc.customerId })));
+      
+      // For sub-accounts, filter to only show activated accounts from admin settings
+      if (user.role === 'sub_account') {
+        // Get the admin's selected accounts from their settings
+        const adminSettings = await db
+          .select()
+          .from(userSettings)
+          .where(eq(userSettings.userId, targetUserIds[0])); // First admin user
+          
+        if (adminSettings.length > 0) {
+          const selectedAccountIds = adminSettings[0].selectedGoogleAdsAccounts as string[];
+          console.log(`Admin selected account IDs:`, selectedAccountIds);
+          
+          // Filter connected accounts to only include selected ones
+          connectedAccounts = connectedAccounts.filter(account => 
+            selectedAccountIds.includes(account.customerId)
+          );
+          console.log(`Filtered to ${connectedAccounts.length} activated accounts for sub-account`);
+        }
+      }
+      
+      console.log('Final accounts to return:', connectedAccounts.map(acc => ({ id: acc.id, adminUserId: acc.adminUserId, customerId: acc.customerId })));
 
       if (connectedAccounts.length === 0) {
         return res.json({ accounts: [], hasConnection: false });
