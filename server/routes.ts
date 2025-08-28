@@ -912,6 +912,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Get available Google Ads accounts for selection
   app.get('/api/google-ads/available-accounts', isAuthenticated, async (req: any, res) => {
+    // Disable caching for this endpoint
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    res.set('Surrogate-Control', 'no-store');
+    
     try {
       const user = req.user;
       console.log(`=== /api/google-ads/available-accounts request for user: ${user?.username} (${user?.role}) ===`);
