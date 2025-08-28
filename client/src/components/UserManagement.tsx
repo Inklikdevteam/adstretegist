@@ -43,12 +43,12 @@ export default function UserManagement() {
 
   const createUserMutation = useMutation({
     mutationFn: async (userData: typeof newUser) => {
-      const response = await apiRequest("POST", "/api/auth/register", userData);
-      if (!response.ok) {
-        const error = await response.json();
+      try {
+        const data = await apiRequest("POST", "/api/auth/register", userData);
+        return data;
+      } catch (error: any) {
         throw new Error(error.message || "Failed to create user");
       }
-      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
@@ -76,11 +76,12 @@ export default function UserManagement() {
 
   const toggleUserStatusMutation = useMutation({
     mutationFn: async ({ userId, isActive }: { userId: string; isActive: boolean }) => {
-      const response = await apiRequest("PATCH", `/api/admin/users/${userId}/status`, { isActive });
-      if (!response.ok) {
-        throw new Error("Failed to update user status");
+      try {
+        const data = await apiRequest("PATCH", `/api/admin/users/${userId}/status`, { isActive });
+        return data;
+      } catch (error: any) {
+        throw new Error(error.message || "Failed to update user status");
       }
-      return response.json();
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
