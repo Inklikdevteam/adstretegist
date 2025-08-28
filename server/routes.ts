@@ -8,7 +8,7 @@ import { CampaignService } from "./services/campaignService";
 import { MultiAIService } from "./services/multiAIService";
 import { GoogleAdsService } from "./services/googleAdsService";
 import { insertCampaignSchema, insertUserSettingsSchema, campaigns, googleAdsAccounts, auditLogs, recommendations, userSettings, users } from "@shared/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
 import { db } from "./db";
 import { buildPrompt } from "./prompts/corePrompt";
 
@@ -921,11 +921,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const dbUserId = user.id.toString();
       
-      // Get the user's connected Google Ads accounts
+      // For sub-accounts, find admin users to get their connected Google Ads accounts
+      // For admin users, use their own connected accounts
+      let targetUserIds = [dbUserId]; // Default: current user
+      
+      if (user.role === 'sub_account') {
+        // Sub-accounts should see Google Ads accounts connected by any admin
+        const adminUsers = await db
+          .select({ id: users.id })
+          .from(users)
+          .where(eq(users.role, 'admin'));
+        
+        targetUserIds = adminUsers.map(admin => admin.id);
+        console.log(`Sub-account ${user.username} accessing Google Ads accounts from admins:`, targetUserIds);
+      }
+      
+      // Get connected Google Ads accounts (either current user's or admin's depending on role)
       const connectedAccounts = await db
         .select()
         .from(googleAdsAccounts)
-        .where(and(eq(googleAdsAccounts.adminUserId, dbUserId), eq(googleAdsAccounts.isActive, true)));
+        .where(
+          and(
+            // Look for accounts connected by target users (admin for sub-accounts, self for admins)
+            targetUserIds.length === 1 
+              ? eq(googleAdsAccounts.adminUserId, targetUserIds[0])
+              : sql`${googleAdsAccounts.adminUserId} = ANY(${targetUserIds})`,
+            eq(googleAdsAccounts.isActive, true)
+          )
+        );
 
       if (connectedAccounts.length === 0) {
         return res.json({ accounts: [], hasConnection: false });
