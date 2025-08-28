@@ -980,11 +980,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const selectedAccountIds = adminSettings[0].selectedGoogleAdsAccounts as string[];
           console.log(`Admin selected account IDs:`, selectedAccountIds);
           
-          // Filter connected accounts to only include selected ones
-          connectedAccounts = connectedAccounts.filter(account => 
-            selectedAccountIds.includes(account.customerId)
-          );
-          console.log(`Filtered to ${connectedAccounts.length} activated accounts for sub-account`);
+          // Don't filter connected accounts - instead, let the frontend show the selected accounts
+          // The connected account is the manager account, and the selected IDs are client accounts
+          console.log(`Sub-account will see manager account with filtered client accounts: ${selectedAccountIds.join(', ')}`);
         }
       }
       
