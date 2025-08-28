@@ -914,6 +914,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/google-ads/available-accounts', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user;
+      console.log(`=== /api/google-ads/available-accounts request for user: ${user?.username} (${user?.role}) ===`);
       
       if (!user) {
         return res.status(401).json({ message: "User not found" });
@@ -926,6 +927,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let targetUserIds = [dbUserId]; // Default: current user
       
       if (user.role === 'sub_account') {
+        console.log('This is a sub-account, looking for admin users...');
         // Sub-accounts should see Google Ads accounts connected by any admin
         const adminUsers = await db
           .select({ id: users.id })
@@ -934,35 +936,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         targetUserIds = adminUsers.map(admin => admin.id);
         console.log(`Sub-account ${user.username} accessing Google Ads accounts from admins:`, targetUserIds);
-      }
-      
-      // Get connected Google Ads accounts (either current user's or admin's depending on role)
-      let connectedAccounts;
-      if (targetUserIds.length === 1) {
-        connectedAccounts = await db
-          .select()
-          .from(googleAdsAccounts)
-          .where(
-            and(
-              eq(googleAdsAccounts.adminUserId, targetUserIds[0]),
-              eq(googleAdsAccounts.isActive, true)
-            )
-          );
       } else {
-        // For sub-accounts, look for accounts connected by any admin user
-        connectedAccounts = await db
+        console.log('This is an admin user, using their own accounts');
+      }
+      
+      // Get connected Google Ads accounts (simplified approach)
+      console.log('Querying for Google Ads accounts with targetUserIds:', targetUserIds);
+      
+      // Simple approach: just check each target user ID
+      let connectedAccounts = [];
+      for (const userId of targetUserIds) {
+        console.log(`Checking Google Ads accounts for user ID: ${userId}`);
+        const accounts = await db
           .select()
           .from(googleAdsAccounts)
           .where(
             and(
-              sql`${googleAdsAccounts.adminUserId} IN (${sql.join(targetUserIds.map(id => sql.literal(id)), sql`, `)})`,
+              eq(googleAdsAccounts.adminUserId, userId),
               eq(googleAdsAccounts.isActive, true)
             )
           );
+        console.log(`Found ${accounts.length} accounts for user ${userId}:`, accounts.map(acc => ({ id: acc.id, customerId: acc.customerId })));
+        connectedAccounts.push(...accounts);
       }
       
-      console.log(`Found ${connectedAccounts.length} connected Google Ads accounts for user ${user.username} (role: ${user.role})`);
-      console.log('Connected accounts:', connectedAccounts.map(acc => ({ id: acc.id, adminUserId: acc.adminUserId, customerId: acc.customerId })));
+      console.log(`Total connected accounts found: ${connectedAccounts.length}`);
+      console.log('Connected accounts details:', connectedAccounts.map(acc => ({ id: acc.id, adminUserId: acc.adminUserId, customerId: acc.customerId })));
 
       if (connectedAccounts.length === 0) {
         return res.json({ accounts: [], hasConnection: false });
