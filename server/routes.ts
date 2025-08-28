@@ -134,7 +134,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: 'Cannot delete your own account' });
       }
 
-      // Delete the user
+      // First, delete all user settings associated with this user
+      await db
+        .delete(userSettings)
+        .where(eq(userSettings.userId, userId));
+
+      // Delete any user-related data that might reference this user
+      // Delete campaigns created by this user
+      await db
+        .delete(campaigns)
+        .where(eq(campaigns.userId, userId));
+
+      // Delete recommendations for this user
+      await db
+        .delete(recommendations)
+        .where(eq(recommendations.userId, userId));
+
+      // Delete audit logs for this user
+      await db
+        .delete(auditLogs)
+        .where(eq(auditLogs.userId, userId));
+
+      // Finally, delete the user
       const [deletedUser] = await db
         .delete(users)
         .where(eq(users.id, userId))
