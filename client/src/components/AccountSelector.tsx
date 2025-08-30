@@ -23,15 +23,31 @@ export default function AccountSelector({ selectedAccounts, onAccountsChange, cl
     enabled: isAuthenticated,
   });
 
+  // Get current user info to check role
+  const { data: userInfo } = useQuery({
+    queryKey: ['/api/auth/user'],
+    enabled: isAuthenticated,
+  });
+
   // Get user settings to filter by active accounts
   const { data: userSettings, isLoading: isLoadingSettings } = useQuery({
     queryKey: ['/api/user/settings'],
     enabled: isAuthenticated,
   });
 
+  // Get admin settings if current user is a sub-account
+  const { data: adminSettings, isLoading: isLoadingAdminSettings } = useQuery({
+    queryKey: ['/api/admin/settings'],
+    enabled: isAuthenticated && userInfo?.role === 'sub_account',
+  });
+
   // Filter accounts to only show those marked as active in Settings
   const allAccounts = accountsData?.accounts || [];
-  const activeAccountIds = userSettings?.selectedGoogleAdsAccounts || [];
+  
+  // For sub-accounts, use admin's selected accounts; for admins, use their own
+  const activeAccountIds = userInfo?.role === 'sub_account' 
+    ? (adminSettings?.selectedGoogleAdsAccounts || [])
+    : (userSettings?.selectedGoogleAdsAccounts || []);
   
   // If no accounts are marked as active in Settings, show all accounts as fallback
   // Otherwise, only show the accounts marked as active
@@ -122,7 +138,7 @@ export default function AccountSelector({ selectedAccounts, onAccountsChange, cl
                   Clear All
                 </Button>
               </div>
-              {(accountsLoading || isLoadingSettings) ? (
+              {(accountsLoading || isLoadingSettings || isLoadingAdminSettings) ? (
                 <div className="p-4 text-center text-sm text-gray-500">
                   Loading accounts...
                 </div>

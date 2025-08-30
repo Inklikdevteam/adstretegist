@@ -500,6 +500,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to fetch user settings" });
     }
   });
+
+  // Get admin settings for sub-accounts
+  app.get('/api/admin/settings', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+
+      // Only sub-accounts can access this endpoint
+      if (user.role !== 'sub_account') {
+        return res.status(403).json({ message: "Access denied - sub-accounts only" });
+      }
+
+      // Find admin users
+      const adminUsers = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.role, 'admin'));
+
+      if (adminUsers.length === 0) {
+        return res.status(404).json({ message: "No admin users found" });
+      }
+
+      // Get the first admin's settings
+      const adminUserId = adminUsers[0].id;
+      const [adminSettings] = await db
+        .select()
+        .from(userSettings)
+        .where(eq(userSettings.userId, adminUserId));
+
+      if (!adminSettings) {
+        // Return default settings if admin hasn't configured anything
+        return res.json({
+          selectedGoogleAdsAccounts: [],
+          aiFrequency: 'daily',
+          confidenceThreshold: 70,
+          emailAlerts: true,
+          dailySummaries: false,
+          budgetAlerts: true
+        });
+      }
+
+      res.json(adminSettings);
+    } catch (error) {
+      console.error('Error fetching admin settings:', error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
   
   app.patch('/api/user/settings', isAuthenticated, async (req: any, res) => {
     try {
