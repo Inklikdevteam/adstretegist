@@ -504,16 +504,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get admin settings for sub-accounts
   app.get('/api/admin/settings', isAuthenticated, async (req: any, res) => {
     try {
+      console.log('=== /api/admin/settings called ===');
       const user = req.user;
+      console.log('User:', user);
       
       if (!user) {
+        console.log('No user found, returning 401');
         return res.status(401).json({ message: "User not found" });
       }
 
       // Only sub-accounts can access this endpoint
       if (user.role !== 'sub_account') {
+        console.log('User role is not sub_account:', user.role);
         return res.status(403).json({ message: "Access denied - sub-accounts only" });
       }
+      
+      console.log('Sub-account access confirmed, proceeding...');
 
       // Find admin users
       const adminUsers = await db
