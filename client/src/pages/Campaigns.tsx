@@ -25,11 +25,6 @@ export default function Campaigns() {
     enabled: isAuthenticated,
   });
 
-  // Get admin settings if current user is a sub-account
-  const { data: adminSettings } = useQuery({
-    queryKey: ['/api/admin/settings'],
-    enabled: isAuthenticated && !!userInfo && userInfo.role === 'sub_account',
-  });
 
   // Update user settings mutation
   const updateSettingsMutation = useMutation({
@@ -41,24 +36,27 @@ export default function Campaigns() {
 
   // Load account selection from user settings with proper fallback
   useEffect(() => {
-    // For sub-accounts, use admin settings; for admins, use their own settings
-    const settingsToUse = userInfo?.role === 'sub_account' ? adminSettings : userSettings;
-    
-    if (settingsToUse) {
+    // Sub-accounts start with empty selection (must manually select from admin's active accounts)
+    // Admins use their own saved settings
+    if (userInfo?.role === 'sub_account') {
+      // Sub-accounts always start with empty selection
+      setSelectedAccounts([]);
+    } else if (userSettings) {
+      // Admins use their own settings
       // If currentViewAccounts exists and is not empty, use it (temporary view filter)
-      if (settingsToUse.currentViewAccounts && settingsToUse.currentViewAccounts.length > 0) {
-        setSelectedAccounts(settingsToUse.currentViewAccounts);
+      if (userSettings.currentViewAccounts && userSettings.currentViewAccounts.length > 0) {
+        setSelectedAccounts(userSettings.currentViewAccounts);
       } 
       // Otherwise, use selectedGoogleAdsAccounts from Settings (master configuration)
-      else if (settingsToUse.selectedGoogleAdsAccounts && settingsToUse.selectedGoogleAdsAccounts.length > 0) {
-        setSelectedAccounts(settingsToUse.selectedGoogleAdsAccounts);
+      else if (userSettings.selectedGoogleAdsAccounts && userSettings.selectedGoogleAdsAccounts.length > 0) {
+        setSelectedAccounts(userSettings.selectedGoogleAdsAccounts);
       }
-      // If no accounts are configured in Settings, use empty array (will show all accounts)
+      // If no accounts are configured in Settings, use empty array
       else {
         setSelectedAccounts([]);
       }
     }
-  }, [userSettings, adminSettings, userInfo]);
+  }, [userSettings, userInfo]);
 
   // Save current view selection when it changes (NOT the active accounts config)
   const handleAccountsChange = async (newSelectedAccounts: string[]) => {
