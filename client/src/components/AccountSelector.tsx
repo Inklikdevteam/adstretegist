@@ -44,16 +44,28 @@ export default function AccountSelector({ selectedAccounts, onAccountsChange, cl
   // Filter accounts to only show those marked as active in Settings
   const allAccounts = accountsData?.accounts || [];
   
+  // Debug logging
+  console.log('AccountSelector Debug:', {
+    userRole: userInfo?.role,
+    userSettings: userSettings?.selectedGoogleAdsAccounts,
+    adminSettings: adminSettings?.selectedGoogleAdsAccounts,
+    allAccountsCount: allAccounts.length
+  });
+  
   // For sub-accounts, use admin's selected accounts; for admins, use their own
   const activeAccountIds = userInfo?.role === 'sub_account' 
     ? (adminSettings?.selectedGoogleAdsAccounts || [])
     : (userSettings?.selectedGoogleAdsAccounts || []);
+  
+  console.log('AccountSelector activeAccountIds:', activeAccountIds);
   
   // If no accounts are marked as active in Settings, show all accounts as fallback
   // Otherwise, only show the accounts marked as active
   const accounts = activeAccountIds.length > 0 
     ? allAccounts.filter((account: any) => activeAccountIds.includes(account.id))
     : allAccounts;
+    
+  console.log('AccountSelector final accounts count:', accounts.length);
 
   const handleAccountToggle = (accountId: string) => {
     const newSelectedAccounts = selectedAccounts.includes(accountId)
