@@ -37,14 +37,21 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  const server = await registerRoutes(app);
+  let server;
+  try {
+    server = await registerRoutes(app);
+  } catch (error) {
+    console.error('Error during route registration:', error);
+    process.exit(1);
+  }
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
 
+    console.error('Express error handler caught error:', err);
     res.status(status).json({ message });
-    throw err;
+    // Don't re-throw the error as it causes the process to crash
   });
 
   // importantly only setup vite in development and after
@@ -68,4 +75,7 @@ app.use((req, res, next) => {
   }, () => {
     log(`serving on port ${port}`);
   });
-})();
+})().catch((error) => {
+  console.error('Fatal error during server startup:', error);
+  process.exit(1);
+});
