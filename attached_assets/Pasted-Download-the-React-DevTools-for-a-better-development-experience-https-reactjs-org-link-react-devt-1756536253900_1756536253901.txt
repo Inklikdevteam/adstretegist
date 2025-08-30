@@ -1,0 +1,44 @@
+Download the React DevTools for a better development experience: https://reactjs.org/link/react-devtools
+App.tsx:20 Router: {isAuthenticated: false, isLoading: true}
+useAuth.ts:21 Auth Response: 200
+useAuth.ts:32 Auth Success: true {username: 'rishabh1', role: 'sub_account'}
+App.tsx:20 Router: {isAuthenticated: true, isLoading: false}
+AccountSelector.tsx:48 AccountSelector Debug: {userRole: 'sub_account', userSettings: undefined, adminSettings: undefined, adminSettingsRaw: undefined, allAccountsCount: 0}
+AccountSelector.tsx:61 AccountSelector activeAccountIds: []
+AccountSelector.tsx:69 AccountSelector final accounts count: 0
+App.tsx:20 Router: {isAuthenticated: true, isLoading: false}
+AccountSelector.tsx:48 AccountSelector Debug: {userRole: 'sub_account', userSettings: undefined, adminSettings: undefined, adminSettingsRaw: undefined, allAccountsCount: 0}
+AccountSelector.tsx:61 AccountSelector activeAccountIds: []
+AccountSelector.tsx:69 AccountSelector final accounts count: 0
+AccountSelector.tsx:48 AccountSelector Debug: {userRole: 'sub_account', userSettings: Array(0), adminSettings: undefined, adminSettingsRaw: undefined, allAccountsCount: 0}
+AccountSelector.tsx:61 AccountSelector activeAccountIds: []
+AccountSelector.tsx:69 AccountSelector final accounts count: 0
+AccountSelector.tsx:48 AccountSelector Debug: {userRole: 'sub_account', userSettings: Array(0), adminSettings: undefined, adminSettingsRaw: undefined, allAccountsCount: 0}
+AccountSelector.tsx:61 AccountSelector activeAccountIds: []
+AccountSelector.tsx:69 AccountSelector final accounts count: 0
+useAuth.ts:21 Auth Response: 200
+useAuth.ts:32 Auth Success: true {username: 'rishabh1', role: 'sub_account'}
+AccountSelector.tsx:48 AccountSelector Debug: {userRole: 'sub_account', userSettings: Array(0), adminSettings: undefined, adminSettingsRaw: undefined, allAccountsCount: 10}
+AccountSelector.tsx:61 AccountSelector activeAccountIds: []
+AccountSelector.tsx:69 AccountSelector final accounts count: 10
+AccountSelector.tsx:48 AccountSelector Debug: {userRole: 'sub_account', userSettings: Array(0), adminSettings: undefined, adminSettingsRaw: undefined, allAccountsCount: 10}
+AccountSelector.tsx:61 AccountSelector activeAccountIds: []
+AccountSelector.tsx:69 AccountSelector final accounts count: 10
+AccountSelector.tsx:48 AccountSelector Debug: {userRole: 'sub_account', userSettings: Array(0), adminSettings: undefined, adminSettingsRaw: undefined, allAccountsCount: 10}
+AccountSelector.tsx:61 AccountSelector activeAccountIds: []
+AccountSelector.tsx:69 AccountSelector final accounts count: 10
+AccountSelector.tsx:48 AccountSelector Debug: {userRole: 'sub_account', userSettings: Array(0), adminSettings: undefined, adminSettingsRaw: undefined, allAccountsCount: 10}
+AccountSelector.tsx:61 AccountSelector activeAccountIds: []
+AccountSelector.tsx:69 AccountSelector final accounts count: 10
+AccountSelector.tsx:48 AccountSelector Debug: {userRole: 'sub_account', userSettings: Array(0), adminSettings: undefined, adminSettingsRaw: undefined, allAccountsCount: 10}
+AccountSelector.tsx:61 AccountSelector activeAccountIds: []
+AccountSelector.tsx:69 AccountSelector final accounts count: 10
+AccountSelector.tsx:48 AccountSelector Debug: {userRole: 'sub_account', userSettings: Array(0), adminSettings: undefined, adminSettingsRaw: undefined, allAccountsCount: 10}
+AccountSelector.tsx:61 AccountSelector activeAccountIds: []
+AccountSelector.tsx:69 AccountSelector final accounts count: 10
+AccountSelector.tsx:48 AccountSelector Debug: {userRole: 'sub_account', userSettings: Array(0), adminSettings: undefined, adminSettingsRaw: undefined, allAccountsCount: 10}
+AccountSelector.tsx:61 AccountSelector activeAccountIds: []
+AccountSelector.tsx:69 AccountSelector final accounts count: 10
+AccountSelector.tsx:48 AccountSelector Debug: {userRole: 'sub_account', userSettings: Array(0), adminSettings: undefined, adminSettingsRaw: undefined, allAccountsCount: 10}
+AccountSelector.tsx:61 AccountSelector activeAccountIds: []
+AccountSelector.tsx:69 AccountSelector final accounts count: 10

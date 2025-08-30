@@ -38,7 +38,7 @@ export default function AccountSelector({ selectedAccounts, onAccountsChange, cl
   // Get admin settings if current user is a sub-account
   const { data: adminSettings, isLoading: isLoadingAdminSettings } = useQuery({
     queryKey: ['/api/admin/settings'],
-    enabled: isAuthenticated && userInfo?.role === 'sub_account',
+    enabled: isAuthenticated && !!userInfo && userInfo.role === 'sub_account',
   });
 
   // Filter accounts to only show those marked as active in Settings
