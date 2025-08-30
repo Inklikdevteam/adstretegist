@@ -521,16 +521,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .from(users)
         .where(eq(users.role, 'admin'));
 
+      console.log('Found admin users:', adminUsers);
+
       if (adminUsers.length === 0) {
         return res.status(404).json({ message: "No admin users found" });
       }
 
       // Get the first admin's settings
       const adminUserId = adminUsers[0].id;
+      console.log('Looking for settings for admin ID:', adminUserId);
+      
       const [adminSettings] = await db
         .select()
         .from(userSettings)
         .where(eq(userSettings.userId, adminUserId));
+        
+      console.log('Found admin settings:', adminSettings);
 
       if (!adminSettings) {
         // Return default settings if admin hasn't configured anything
