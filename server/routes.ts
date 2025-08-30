@@ -912,12 +912,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Get available Google Ads accounts for selection
   app.get('/api/google-ads/available-accounts', isAuthenticated, async (req: any, res) => {
-    // Disable caching for this endpoint
-    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-    res.set('Pragma', 'no-cache');
-    res.set('Expires', '0');
-    res.set('Surrogate-Control', 'no-store');
-    
     try {
       const user = req.user;
       console.log(`=== /api/google-ads/available-accounts request for user: ${user?.username} (${user?.role}) ===`);
@@ -980,9 +974,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const selectedAccountIds = adminSettings[0].selectedGoogleAdsAccounts as string[];
           console.log(`Admin selected account IDs:`, selectedAccountIds);
           
-          // Don't filter connected accounts - instead, let the frontend show the selected accounts
-          // The connected account is the manager account, and the selected IDs are client accounts
-          console.log(`Sub-account will see manager account with filtered client accounts: ${selectedAccountIds.join(', ')}`);
+          // Filter connected accounts to only include selected ones
+          connectedAccounts = connectedAccounts.filter(account => 
+            selectedAccountIds.includes(account.customerId)
+          );
+          console.log(`Filtered to ${connectedAccounts.length} activated accounts for sub-account`);
         }
       }
       

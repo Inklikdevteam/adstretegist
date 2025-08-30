@@ -27,7 +27,6 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(userData: Partial<User>): Promise<User>;
-  upsertUser(userData: Partial<User>): Promise<User>;
   updateUserLastLogin(id: string): Promise<void>;
   
   // Google Ads account operations (admin-only)
@@ -105,44 +104,6 @@ export class DatabaseStorage implements IStorage {
       return newUser;
     } catch (error) {
       console.error('Error creating user:', error);
-      throw error;
-    }
-  }
-
-  async upsertUser(userData: Partial<User>): Promise<User> {
-    try {
-      if (userData.id) {
-        // Try to find existing user by ID first
-        const existingUser = await this.getUser(userData.id);
-        if (existingUser) {
-          // Update existing user
-          const [updatedUser] = await db
-            .update(users)
-            .set({ 
-              email: userData.email || existingUser.email,
-              firstName: userData.firstName || existingUser.firstName,
-              lastName: userData.lastName || existingUser.lastName,
-              profileImageUrl: userData.profileImageUrl || existingUser.profileImageUrl,
-              updatedAt: new Date()
-            })
-            .where(eq(users.id, userData.id))
-            .returning();
-          return updatedUser;
-        }
-      }
-      
-      // Create new user if not found or no ID provided
-      // Generate a username from email or use a default pattern
-      const username = userData.email?.split('@')[0] || `user_${Date.now()}`;
-      const password = userData.password || 'oauth-user'; // Placeholder for OAuth users
-      
-      return await this.createUser({
-        ...userData,
-        username,
-        password
-      });
-    } catch (error) {
-      console.error('Error upserting user:', error);
       throw error;
     }
   }
