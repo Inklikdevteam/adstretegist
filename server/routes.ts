@@ -962,24 +962,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`Total connected accounts found: ${connectedAccounts.length}`);
       
-      // For sub-accounts, filter to only show activated accounts from admin settings
+      // For sub-accounts, they should see the manager account but with restricted child account access
       if (user.role === 'sub_account') {
-        // Get the admin's selected accounts from their settings
-        const adminSettings = await db
-          .select()
-          .from(userSettings)
-          .where(eq(userSettings.userId, targetUserIds[0])); // First admin user
-          
-        if (adminSettings.length > 0) {
-          const selectedAccountIds = adminSettings[0].selectedGoogleAdsAccounts as string[];
-          console.log(`Admin selected account IDs:`, selectedAccountIds);
-          
-          // Filter connected accounts to only include selected ones
-          connectedAccounts = connectedAccounts.filter(account => 
-            selectedAccountIds.includes(account.customerId)
-          );
-          console.log(`Filtered to ${connectedAccounts.length} activated accounts for sub-account`);
-        }
+        console.log(`Sub-account will see admin's connected accounts, but data will be filtered by admin's selections`);
+        // Sub-accounts see all connected accounts from admin
+        // The filtering happens at the campaign data level, not account connection level
       }
       
       console.log('Final accounts to return:', connectedAccounts.map(acc => ({ id: acc.id, adminUserId: acc.adminUserId, customerId: acc.customerId })));

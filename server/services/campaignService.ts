@@ -1,5 +1,5 @@
 import { db } from "../db";
-import { campaigns, users, googleAdsAccounts, auditLogs, recommendations, type Campaign, type InsertCampaign } from "@shared/schema";
+import { campaigns, users, googleAdsAccounts, auditLogs, recommendations, userSettings, type Campaign, type InsertCampaign } from "@shared/schema";
 import { eq, and } from "drizzle-orm";
 import { GoogleAdsService } from "./googleAdsService";
 
@@ -51,15 +51,50 @@ export class CampaignService {
   async getUserCampaigns(userId: string, selectedAccountIds?: string[]): Promise<Campaign[]> {
     console.log('CampaignService getUserCampaigns for userId:', userId, 'selectedAccounts:', selectedAccountIds);
     
-    // First check if user has connected Google Ads accounts
+    // Get user details to determine if this is a sub-account
+    const [user] = await db.select().from(users).where(eq(users.id, userId));
+    if (!user) {
+      console.log('User not found');
+      return [];
+    }
+    
+    let targetUserId = userId;
+    let effectiveSelectedAccountIds = selectedAccountIds;
+    
+    // For sub-accounts, get admin's connected accounts and selected accounts
+    if (user.role === 'sub_account') {
+      console.log('Sub-account detected, finding admin users...');
+      const adminUsers = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.role, 'admin'));
+      
+      if (adminUsers.length > 0) {
+        targetUserId = adminUsers[0].id; // Use first admin
+        console.log(`Sub-account ${user.username} will use admin ${targetUserId}'s connected accounts`);
+        
+        // Get admin's selected accounts from settings instead of sub-account's
+        const adminSettings = await db
+          .select()
+          .from(userSettings)
+          .where(eq(userSettings.userId, targetUserId));
+          
+        if (adminSettings.length > 0) {
+          effectiveSelectedAccountIds = adminSettings[0].selectedGoogleAdsAccounts as string[];
+          console.log(`Using admin's selected accounts:`, effectiveSelectedAccountIds);
+        }
+      }
+    }
+    
+    // Check if target user has connected Google Ads accounts
     const connectedAccounts = await db
       .select()
       .from(googleAdsAccounts)
-      .where(and(eq(googleAdsAccounts.adminUserId, userId), eq(googleAdsAccounts.isActive, true)));
+      .where(and(eq(googleAdsAccounts.adminUserId, targetUserId), eq(googleAdsAccounts.isActive, true)));
     
     if (connectedAccounts.length > 0) {
       // User has connected Google Ads - fetch real campaigns
-      return await this.fetchRealCampaigns(userId, connectedAccounts, selectedAccountIds);
+      return await this.fetchRealCampaigns(userId, connectedAccounts, effectiveSelectedAccountIds);
     }
     
     // No connected accounts - check for existing campaigns or create samples
@@ -80,15 +115,50 @@ export class CampaignService {
   async getPerformanceCampaigns(userId: string, selectedAccountIds?: string[], dateFrom?: Date, dateTo?: Date): Promise<Campaign[]> {
     console.log('CampaignService getPerformanceCampaigns for userId:', userId, 'selectedAccounts:', selectedAccountIds, 'dateRange:', { dateFrom, dateTo });
     
-    // First check if user has connected Google Ads accounts
+    // Get user details to determine if this is a sub-account
+    const [user] = await db.select().from(users).where(eq(users.id, userId));
+    if (!user) {
+      console.log('User not found');
+      return [];
+    }
+    
+    let targetUserId = userId;
+    let effectiveSelectedAccountIds = selectedAccountIds;
+    
+    // For sub-accounts, get admin's connected accounts and selected accounts
+    if (user.role === 'sub_account') {
+      console.log('Sub-account detected for performance data, finding admin users...');
+      const adminUsers = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.role, 'admin'));
+      
+      if (adminUsers.length > 0) {
+        targetUserId = adminUsers[0].id; // Use first admin
+        console.log(`Sub-account ${user.username} will use admin ${targetUserId}'s connected accounts for performance data`);
+        
+        // Get admin's selected accounts from settings instead of sub-account's
+        const adminSettings = await db
+          .select()
+          .from(userSettings)
+          .where(eq(userSettings.userId, targetUserId));
+          
+        if (adminSettings.length > 0) {
+          effectiveSelectedAccountIds = adminSettings[0].selectedGoogleAdsAccounts as string[];
+          console.log(`Using admin's selected accounts for performance:`, effectiveSelectedAccountIds);
+        }
+      }
+    }
+    
+    // Check if target user has connected Google Ads accounts
     const connectedAccounts = await db
       .select()
       .from(googleAdsAccounts)
-      .where(and(eq(googleAdsAccounts.adminUserId, userId), eq(googleAdsAccounts.isActive, true)));
+      .where(and(eq(googleAdsAccounts.adminUserId, targetUserId), eq(googleAdsAccounts.isActive, true)));
     
     if (connectedAccounts.length > 0) {
       // User has connected Google Ads - fetch real campaigns with date range
-      return await this.fetchRealCampaignsWithDateRange(userId, connectedAccounts, selectedAccountIds, dateFrom, dateTo);
+      return await this.fetchRealCampaignsWithDateRange(userId, connectedAccounts, effectiveSelectedAccountIds, dateFrom, dateTo);
     }
     
     // No connected accounts - return regular campaigns
