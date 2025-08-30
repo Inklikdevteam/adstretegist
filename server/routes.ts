@@ -504,22 +504,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get admin settings for sub-accounts
   app.get('/api/admin/settings', isAuthenticated, async (req: any, res) => {
     try {
-      console.log('=== /api/admin/settings called ===');
       const user = req.user;
-      console.log('User:', user);
       
       if (!user) {
-        console.log('No user found, returning 401');
         return res.status(401).json({ message: "User not found" });
       }
 
       // Only sub-accounts can access this endpoint
       if (user.role !== 'sub_account') {
-        console.log('User role is not sub_account:', user.role);
         return res.status(403).json({ message: "Access denied - sub-accounts only" });
       }
-      
-      console.log('Sub-account access confirmed, proceeding...');
 
       // Find admin users
       const adminUsers = await db
@@ -527,22 +521,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .from(users)
         .where(eq(users.role, 'admin'));
 
-      console.log('Found admin users:', adminUsers);
-
       if (adminUsers.length === 0) {
         return res.status(404).json({ message: "No admin users found" });
       }
 
       // Get the first admin's settings
       const adminUserId = adminUsers[0].id;
-      console.log('Looking for settings for admin ID:', adminUserId);
-      
       const [adminSettings] = await db
         .select()
         .from(userSettings)
         .where(eq(userSettings.userId, adminUserId));
-        
-      console.log('Found admin settings:', adminSettings);
 
       if (!adminSettings) {
         // Return default settings if admin hasn't configured anything
@@ -556,7 +544,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      console.log('Admin settings response:', adminSettings);
       res.json(adminSettings);
     } catch (error) {
       console.error('Error fetching admin settings:', error);

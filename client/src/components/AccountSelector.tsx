@@ -36,50 +36,24 @@ export default function AccountSelector({ selectedAccounts, onAccountsChange, cl
   });
 
   // Get admin settings if current user is a sub-account
-  const { data: adminSettings, isLoading: isLoadingAdminSettings, error: adminSettingsError } = useQuery({
+  const { data: adminSettings, isLoading: isLoadingAdminSettings } = useQuery({
     queryKey: ['/api/admin/settings'],
     enabled: isAuthenticated && !!userInfo && userInfo.role === 'sub_account',
-    queryFn: async () => {
-      console.log('Fetching admin settings...');
-      const response = await fetch('/api/admin/settings', {
-        credentials: 'include',
-      });
-      console.log('Admin settings response status:', response.status);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const data = await response.json();
-      console.log('Admin settings data received:', data);
-      return data;
-    }
   });
 
   // Filter accounts to only show those marked as active in Settings
   const allAccounts = accountsData?.accounts || [];
-  
-  // Debug logging
-  console.log('AccountSelector Debug:', {
-    userRole: userInfo?.role,
-    userSettings: userSettings?.selectedGoogleAdsAccounts,
-    adminSettings: adminSettings?.selectedGoogleAdsAccounts,
-    adminSettingsRaw: adminSettings,
-    allAccountsCount: allAccounts.length
-  });
   
   // For sub-accounts, use admin's selected accounts; for admins, use their own
   const activeAccountIds = userInfo?.role === 'sub_account' 
     ? (adminSettings?.selectedGoogleAdsAccounts || [])
     : (userSettings?.selectedGoogleAdsAccounts || []);
   
-  console.log('AccountSelector activeAccountIds:', activeAccountIds);
-  
   // If no accounts are marked as active in Settings, show all accounts as fallback
   // Otherwise, only show the accounts marked as active
   const accounts = activeAccountIds.length > 0 
     ? allAccounts.filter((account: any) => activeAccountIds.includes(account.id))
     : allAccounts;
-    
-  console.log('AccountSelector final accounts count:', accounts.length);
 
   const handleAccountToggle = (accountId: string) => {
     const newSelectedAccounts = selectedAccounts.includes(accountId)

@@ -13,10 +13,22 @@ export default function Campaigns() {
   const { isAuthenticated, isLoading } = useAuth();
   const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
 
+  // Get current user info to check role
+  const { data: userInfo } = useQuery({
+    queryKey: ['/api/auth/user'],
+    enabled: isAuthenticated,
+  });
+
   // Fetch user settings to get saved account selection
   const { data: userSettings, isLoading: isLoadingSettings } = useQuery({
     queryKey: ['/api/user/settings'],
     enabled: isAuthenticated,
+  });
+
+  // Get admin settings if current user is a sub-account
+  const { data: adminSettings } = useQuery({
+    queryKey: ['/api/admin/settings'],
+    enabled: isAuthenticated && !!userInfo && userInfo.role === 'sub_account',
   });
 
   // Update user settings mutation
@@ -29,21 +41,24 @@ export default function Campaigns() {
 
   // Load account selection from user settings with proper fallback
   useEffect(() => {
-    if (userSettings) {
+    // For sub-accounts, use admin settings; for admins, use their own settings
+    const settingsToUse = userInfo?.role === 'sub_account' ? adminSettings : userSettings;
+    
+    if (settingsToUse) {
       // If currentViewAccounts exists and is not empty, use it (temporary view filter)
-      if (userSettings.currentViewAccounts && userSettings.currentViewAccounts.length > 0) {
-        setSelectedAccounts(userSettings.currentViewAccounts);
+      if (settingsToUse.currentViewAccounts && settingsToUse.currentViewAccounts.length > 0) {
+        setSelectedAccounts(settingsToUse.currentViewAccounts);
       } 
       // Otherwise, use selectedGoogleAdsAccounts from Settings (master configuration)
-      else if (userSettings.selectedGoogleAdsAccounts && userSettings.selectedGoogleAdsAccounts.length > 0) {
-        setSelectedAccounts(userSettings.selectedGoogleAdsAccounts);
+      else if (settingsToUse.selectedGoogleAdsAccounts && settingsToUse.selectedGoogleAdsAccounts.length > 0) {
+        setSelectedAccounts(settingsToUse.selectedGoogleAdsAccounts);
       }
       // If no accounts are configured in Settings, use empty array (will show all accounts)
       else {
         setSelectedAccounts([]);
       }
     }
-  }, [userSettings]);
+  }, [userSettings, adminSettings, userInfo]);
 
   // Save current view selection when it changes (NOT the active accounts config)
   const handleAccountsChange = async (newSelectedAccounts: string[]) => {
