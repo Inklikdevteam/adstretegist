@@ -49,6 +49,7 @@ export default function AccountSelector({ selectedAccounts, onAccountsChange, cl
     userRole: userInfo?.role,
     userSettings: userSettings?.selectedGoogleAdsAccounts,
     adminSettings: adminSettings?.selectedGoogleAdsAccounts,
+    adminSettingsRaw: adminSettings,
     allAccountsCount: allAccounts.length
   });
   

@@ -544,6 +544,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      console.log('Admin settings response:', adminSettings);
       res.json(adminSettings);
     } catch (error) {
       console.error('Error fetching admin settings:', error);
