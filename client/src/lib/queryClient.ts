@@ -31,21 +31,7 @@ export const getQueryFn: <T>(options: {
   async ({ queryKey }) => {
     let url = queryKey.join("/") as string;
     
-    // Add selected accounts parameter from user settings (fallback to localStorage)
-    if (url === "/api/campaigns" || url === "/api/dashboard/summary" || url === "/api/recommendations") {
-      // Note: This is a simplified approach. In production, you'd want to cache settings to avoid API calls on every query
-      const selectedAccountsString = localStorage.getItem('selectedGoogleAdsAccounts');
-      if (selectedAccountsString) {
-        try {
-          const selectedAccounts = JSON.parse(selectedAccountsString);
-          if (Array.isArray(selectedAccounts) && selectedAccounts.length > 0) {
-            url += `?selectedAccounts=${encodeURIComponent(JSON.stringify(selectedAccounts))}`;
-          }
-        } catch (e) {
-          // Invalid JSON, ignore
-        }
-      }
-    }
+    // Account selection is now handled properly by individual components
     
     const res = await fetch(url, {
       credentials: "include",
