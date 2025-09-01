@@ -85,7 +85,10 @@ export default function Dashboard() {
 
   const { data: dashboardSummary, isLoading: summaryLoading } = useQuery<any>({
     queryKey: ["/api/dashboard/summary", selectedAccounts],
-    queryFn: () => apiRequest("GET", `/api/dashboard/summary?selectedAccounts=${encodeURIComponent(JSON.stringify(selectedAccounts))}`),
+    queryFn: () => {
+      console.log('Dashboard Summary - selectedAccounts:', selectedAccounts);
+      return apiRequest("GET", `/api/dashboard/summary?selectedAccounts=${encodeURIComponent(JSON.stringify(selectedAccounts))}`);
+    },
     enabled: isAuthenticated,
   });
 
