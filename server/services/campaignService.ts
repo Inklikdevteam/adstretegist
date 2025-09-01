@@ -73,15 +73,28 @@ export class CampaignService {
         targetUserId = adminUsers[0].id; // Use first admin
         console.log(`Sub-account ${user.username} will use admin ${targetUserId}'s connected accounts`);
         
-        // Get admin's selected accounts from settings instead of sub-account's
+        // Get admin's approved accounts (scope restriction)
         const adminSettings = await db
           .select()
           .from(userSettings)
           .where(eq(userSettings.userId, targetUserId));
           
         if (adminSettings.length > 0) {
-          effectiveSelectedAccountIds = adminSettings[0].selectedGoogleAdsAccounts as string[];
-          console.log(`Using admin's selected accounts:`, effectiveSelectedAccountIds);
+          const adminApprovedAccounts = adminSettings[0].selectedGoogleAdsAccounts as string[];
+          console.log(`Admin's approved accounts:`, adminApprovedAccounts);
+          
+          // If sub-account provided specific selection, validate it's within admin's scope
+          if (selectedAccountIds && selectedAccountIds.length > 0) {
+            // Filter sub-account's selection to only include admin-approved accounts
+            effectiveSelectedAccountIds = selectedAccountIds.filter(accountId => 
+              adminApprovedAccounts?.includes(accountId)
+            );
+            console.log(`Sub-account filtered selection:`, effectiveSelectedAccountIds);
+          } else {
+            // Sub-account selected nothing - return empty array (show no data)
+            effectiveSelectedAccountIds = [];
+            console.log(`Sub-account selected no accounts - showing no data`);
+          }
         }
       }
     }
@@ -137,15 +150,28 @@ export class CampaignService {
         targetUserId = adminUsers[0].id; // Use first admin
         console.log(`Sub-account ${user.username} will use admin ${targetUserId}'s connected accounts for performance data`);
         
-        // Get admin's selected accounts from settings instead of sub-account's
+        // Get admin's approved accounts (scope restriction)
         const adminSettings = await db
           .select()
           .from(userSettings)
           .where(eq(userSettings.userId, targetUserId));
           
         if (adminSettings.length > 0) {
-          effectiveSelectedAccountIds = adminSettings[0].selectedGoogleAdsAccounts as string[];
-          console.log(`Using admin's selected accounts for performance:`, effectiveSelectedAccountIds);
+          const adminApprovedAccounts = adminSettings[0].selectedGoogleAdsAccounts as string[];
+          console.log(`Admin's approved accounts for performance:`, adminApprovedAccounts);
+          
+          // If sub-account provided specific selection, validate it's within admin's scope
+          if (selectedAccountIds && selectedAccountIds.length > 0) {
+            // Filter sub-account's selection to only include admin-approved accounts
+            effectiveSelectedAccountIds = selectedAccountIds.filter(accountId => 
+              adminApprovedAccounts?.includes(accountId)
+            );
+            console.log(`Sub-account performance filtered selection:`, effectiveSelectedAccountIds);
+          } else {
+            // Sub-account selected nothing - return empty array (show no data)
+            effectiveSelectedAccountIds = [];
+            console.log(`Sub-account selected no accounts for performance - showing no data`);
+          }
         }
       }
     }
