@@ -23,6 +23,12 @@ export default function Dashboard() {
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
 
+  // Get current user info to check role
+  const { data: userInfo } = useQuery({
+    queryKey: ['/api/auth/user'],
+    enabled: isAuthenticated,
+  });
+
   // Fetch user settings to get saved account selection
   const { data: userSettings, isLoading: isLoadingSettings } = useQuery({
     queryKey: ['/api/user/settings'],
@@ -39,7 +45,13 @@ export default function Dashboard() {
 
   // Load account selection from user settings with proper fallback
   useEffect(() => {
-    if (userSettings) {
+    // Sub-accounts start with empty selection (must manually select from admin's active accounts)
+    // Admins use their own saved settings
+    if (userInfo?.role === 'sub_account') {
+      // Sub-accounts always start with empty selection
+      setSelectedAccounts([]);
+    } else if (userSettings) {
+      // Admins use their own settings
       // If currentViewAccounts exists and is not empty, use it (temporary view filter)
       if (userSettings.currentViewAccounts && userSettings.currentViewAccounts.length > 0) {
         setSelectedAccounts(userSettings.currentViewAccounts);
@@ -48,12 +60,12 @@ export default function Dashboard() {
       else if (userSettings.selectedGoogleAdsAccounts && userSettings.selectedGoogleAdsAccounts.length > 0) {
         setSelectedAccounts(userSettings.selectedGoogleAdsAccounts);
       }
-      // If no accounts are configured in Settings, use empty array (will show all accounts)
+      // If no accounts are configured in Settings, use empty array
       else {
         setSelectedAccounts([]);
       }
     }
-  }, [userSettings]);
+  }, [userSettings, userInfo]);
 
   // Save current view selection when it changes (NOT the active accounts config)
   const handleAccountsChange = async (newSelectedAccounts: string[]) => {
