@@ -220,6 +220,12 @@ export class CampaignService {
 
       const realCampaigns = await googleAdsService.getCampaignsWithDateRange(selectedAccountIds, dateFrom, dateTo);
       
+      // If selectedAccountIds is empty, return empty array (don't show any campaigns)
+      if (selectedAccountIds && selectedAccountIds.length === 0) {
+        console.log('No accounts selected for date range - returning empty campaign list');
+        return [];
+      }
+      
       // Filter only active/enabled campaigns (status 2 = ENABLED in Google Ads API)
       const activeCampaigns = realCampaigns.filter(campaign => 
         campaign.status && (campaign.status === 2 || campaign.status === 'ENABLED' || campaign.status.toString().toUpperCase() === 'ENABLED')
@@ -325,6 +331,12 @@ export class CampaignService {
       });
 
       const realCampaigns = await googleAdsService.getCampaigns(selectedAccountIds);
+      
+      // If selectedAccountIds is empty, return empty array (don't show any campaigns)
+      if (selectedAccountIds && selectedAccountIds.length === 0) {
+        console.log('No accounts selected - returning empty campaign list');
+        return [];
+      }
       
       // Filter only active/enabled campaigns (status 2 = ENABLED in Google Ads API)
       const activeCampaigns = realCampaigns.filter(campaign => 
