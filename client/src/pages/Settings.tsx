@@ -216,7 +216,7 @@ export default function Settings() {
         status: response.status,
         ok: response.ok,
         statusText: response.statusText,
-        headers: Object.fromEntries(response.headers.entries())
+        headers: response.headers ? Object.fromEntries(response.headers.entries()) : 'undefined'
       });
       
       // Get the response text first to debug
