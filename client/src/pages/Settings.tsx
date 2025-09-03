@@ -211,59 +211,29 @@ export default function Settings() {
     setIsSyncing(true);
     try {
       console.log('🔄 Starting data sync...');
-      const response = await apiRequest('POST', '/api/sync/initial');
-      console.log('📡 Sync response:', {
-        status: response.status,
-        ok: response.ok,
-        statusText: response.statusText,
-        headers: response.headers ? Object.fromEntries(response.headers.entries()) : 'undefined'
-      });
+      const result = await apiRequest('POST', '/api/sync/initial');
+      console.log('✅ Sync result:', result);
       
-      // Get the response text first to debug
-      const responseText = await response.text();
-      console.log('📄 Raw response text:', responseText);
-      
-      if (response.ok) {
-        let result;
+      // apiRequest returns parsed JSON directly, not Response object
+      if (result.success === true) {
+        toast({
+          title: "Data Sync Completed",
+          description: `Successfully synced data for ${result.syncedUsers || 0} accounts. Campaign data is now up to date.`,
+        });
+        
+        // Invalidate relevant queries to refresh data
         try {
-          result = JSON.parse(responseText);
-          console.log('✅ Parsed result:', result);
-        } catch (parseError) {
-          console.error('❌ JSON parse error:', parseError);
-          throw new Error('Invalid JSON response from server');
+          await queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
+          await queryClient.invalidateQueries({ queryKey: ["/api/recommendations"] });
+          await queryClient.invalidateQueries({ queryKey: ["/api/dashboard/summary"] });
+          console.log('🔄 Query invalidation completed');
+        } catch (invalidateError) {
+          console.error('⚠️ Error invalidating queries:', invalidateError);
+          // Don't fail the whole sync for query invalidation errors
         }
-        
-        // Check if the result has the expected structure
-        if (result.success === true) {
-          toast({
-            title: "Data Sync Completed",
-            description: `Successfully synced data for ${result.syncedUsers || 0} accounts. Campaign data is now up to date.`,
-          });
-          
-          // Invalidate relevant queries to refresh data (with error handling)
-          try {
-            await queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
-            await queryClient.invalidateQueries({ queryKey: ["/api/recommendations"] });
-            await queryClient.invalidateQueries({ queryKey: ["/api/dashboard/summary"] });
-            console.log('🔄 Query invalidation completed');
-          } catch (invalidateError) {
-            console.error('⚠️ Error invalidating queries:', invalidateError);
-            // Don't fail the whole sync for query invalidation errors
-          }
-        } else {
-          // Server returned success=false
-          throw new Error(result.message || 'Sync failed on server');
-        }
-        
       } else {
-        let errorMessage = 'Failed to sync data';
-        try {
-          const errorData = JSON.parse(responseText);
-          errorMessage = errorData.message || errorMessage;
-        } catch (jsonError) {
-          console.error('❌ Error parsing error response JSON:', jsonError);
-        }
-        throw new Error(errorMessage);
+        // Server returned success=false
+        throw new Error(result.message || 'Sync failed on server');
       }
     } catch (error: any) {
       console.error('❌ Error syncing data:', error);
