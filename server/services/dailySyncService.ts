@@ -260,9 +260,33 @@ export class DailySyncService {
   /**
    * Manual trigger for daily sync (for testing or manual refresh)
    */
-  async triggerManualSync(): Promise<{ success: boolean; message: string; syncedUsers: number }> {
+  async triggerManualSync(): Promise<{ success: boolean; message: string; syncedUsers: number; syncedAccounts?: number; syncedCampaigns?: number }> {
     try {
       const adminUsers = await this.getAdminUsersWithGoogleAds();
+      
+      // Track sync statistics
+      let totalAccounts = 0;
+      let totalCampaigns = 0;
+      
+      for (const adminUser of adminUsers) {
+        // Get user's selected accounts to count them
+        const userSettingsData = await db
+          .select()
+          .from(userSettings)
+          .where(eq(userSettings.userId, adminUser.userId))
+          .limit(1);
+
+        const selectedAccounts = userSettingsData[0]?.selectedGoogleAdsAccounts || [];
+        totalAccounts += selectedAccounts.length;
+        
+        // Count campaigns in database for this user
+        const userCampaigns = await db
+          .select()
+          .from(campaigns)
+          .where(eq(campaigns.userId, adminUser.userId));
+        totalCampaigns += userCampaigns.length;
+      }
+      
       await this.performDailySync();
       
       // Log successful sync
@@ -272,6 +296,8 @@ export class DailySyncService {
         performedBy: 'system',
         details: JSON.stringify({
           syncedUsers: adminUsers.length,
+          syncedAccounts: totalAccounts,
+          syncedCampaigns: totalCampaigns,
           timestamp: new Date().toISOString(),
           trigger: 'manual'
         }),
@@ -280,8 +306,10 @@ export class DailySyncService {
 
       return {
         success: true,
-        message: `Successfully synced data for ${adminUsers.length} admin users`,
-        syncedUsers: adminUsers.length
+        message: `Successfully synced ${totalCampaigns} campaigns from ${totalAccounts} Google Ads accounts`,
+        syncedUsers: adminUsers.length,
+        syncedAccounts: totalAccounts,
+        syncedCampaigns: totalCampaigns
       };
     } catch (error) {
       return {

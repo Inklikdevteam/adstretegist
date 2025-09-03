@@ -217,8 +217,10 @@ export default function Settings() {
       // apiRequest returns parsed JSON directly, not Response object
       if (result.success === true) {
         toast({
-          title: "Data Sync Completed",
-          description: `Successfully synced data for ${result.syncedUsers || 0} accounts. Campaign data is now up to date.`,
+          title: "Data Sync Completed", 
+          description: result.syncedCampaigns && result.syncedAccounts 
+            ? `Successfully synced ${result.syncedCampaigns} campaigns from ${result.syncedAccounts} Google Ads accounts. Campaign data is now up to date.`
+            : `Successfully synced campaign data. Campaign data is now up to date.`,
         });
         
         // Invalidate relevant queries to refresh data
