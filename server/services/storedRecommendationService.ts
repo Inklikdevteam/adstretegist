@@ -66,7 +66,7 @@ export class StoredRecommendationService {
     let campaignConditions = [eq(campaigns.userId, targetUserId)];
     
     if (effectiveSelectedAccountIds && effectiveSelectedAccountIds.length > 0) {
-      campaignConditions.push(inArray(campaigns.accountId, effectiveSelectedAccountIds));
+      campaignConditions.push(inArray(campaigns.googleAdsAccountId, effectiveSelectedAccountIds));
     }
     
     const userCampaigns = await db
@@ -94,7 +94,7 @@ export class StoredRecommendationService {
         campaignName: campaigns.name,
         campaignType: campaigns.type,
         campaignStatus: campaigns.status,
-        accountId: campaigns.accountId
+        accountId: campaigns.googleAdsAccountId
       })
       .from(recommendations)
       .innerJoin(campaigns, eq(recommendations.campaignId, campaigns.id))

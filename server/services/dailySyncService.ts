@@ -125,7 +125,7 @@ export class DailySyncService {
         .from(campaigns)
         .where(
           and(
-            eq(campaigns.googleAdsId, gaCampaign.id),
+            eq(campaigns.googleAdsCampaignId, gaCampaign.id),
             eq(campaigns.userId, userId)
           )
         )
@@ -160,8 +160,8 @@ export class DailySyncService {
           .insert(campaigns)
           .values({
             userId: userId,
-            googleAdsId: gaCampaign.id,
-            accountId: gaCampaign.accountId,
+            googleAdsCampaignId: gaCampaign.id,
+            googleAdsAccountId: gaCampaign.accountId,
             name: gaCampaign.name,
             status: gaCampaign.status,
             type: gaCampaign.type,

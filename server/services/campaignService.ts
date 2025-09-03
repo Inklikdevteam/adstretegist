@@ -61,7 +61,7 @@ export class CampaignService {
     
     // Filter by selected accounts if provided
     if (effectiveSelectedAccountIds && effectiveSelectedAccountIds.length > 0) {
-      queryConditions.push(inArray(campaigns.accountId, effectiveSelectedAccountIds));
+      queryConditions.push(inArray(campaigns.googleAdsAccountId, effectiveSelectedAccountIds));
     }
     
     const storedCampaigns = await db
