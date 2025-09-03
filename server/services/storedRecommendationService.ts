@@ -1,5 +1,5 @@
 import { db } from "../db";
-import { recommendations, campaigns, users, userSettings, type Campaign } from "@shared/schema";
+import { recommendations, campaigns, users, userSettings, googleAdsAccounts, type Campaign } from "@shared/schema";
 import { eq, and, desc, gte, sql, inArray } from "drizzle-orm";
 import { MultiAIService } from "./multiAIService";
 import { buildPrompt } from "../prompts/corePrompt";
@@ -66,7 +66,25 @@ export class StoredRecommendationService {
     let campaignConditions = [eq(campaigns.userId, targetUserId)];
     
     if (effectiveSelectedAccountIds && effectiveSelectedAccountIds.length > 0) {
-      campaignConditions.push(inArray(campaigns.googleAdsAccountId, effectiveSelectedAccountIds));
+      // Convert Google Ads customer IDs to database UUIDs
+      const accountMappings = await db
+        .select({ id: googleAdsAccounts.id, customerId: googleAdsAccounts.customerId })
+        .from(googleAdsAccounts)
+        .where(and(
+          eq(googleAdsAccounts.adminUserId, targetUserId),
+          inArray(googleAdsAccounts.customerId, effectiveSelectedAccountIds)
+        ));
+      
+      const accountUUIDs = accountMappings.map(mapping => mapping.id);
+      console.log(`DEBUG: Mapped customer IDs ${effectiveSelectedAccountIds} to UUIDs ${accountUUIDs}`);
+      
+      if (accountUUIDs.length > 0) {
+        campaignConditions.push(inArray(campaigns.googleAdsAccountId, accountUUIDs));
+      } else {
+        // No matching accounts found, return empty
+        console.log('No matching account UUIDs found for selected customer IDs');
+        return [];
+      }
     }
     
     const userCampaigns = await db
