@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Settings as SettingsIcon, User, Bell, Shield, HelpCircle, ExternalLink, Edit, Save, X, AlertTriangle, Unplug } from "lucide-react";
+import { Settings as SettingsIcon, User, Bell, Shield, HelpCircle, ExternalLink, Edit, Save, X, AlertTriangle, Unplug, RefreshCw, Database } from "lucide-react";
 import UserManagement from "@/components/UserManagement";
 
 export default function Settings() {
@@ -24,6 +24,7 @@ export default function Settings() {
   const [isSaving, setIsSaving] = useState(false);
   const [showDisconnectDialog, setShowDisconnectDialog] = useState(false);
   const [isDisconnecting, setIsDisconnecting] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   
   // AI Preferences state
   const [frequency, setFrequency] = useState('daily');
@@ -203,6 +204,40 @@ export default function Settings() {
   const handleDisconnectGoogleAds = () => {
     setIsDisconnecting(true);
     disconnectGoogleAdsMutation.mutate();
+  };
+
+  // Handle manual data sync
+  const handleDataSync = async () => {
+    setIsSyncing(true);
+    try {
+      const response = await apiRequest('POST', '/api/sync/initial');
+      
+      if (response.ok) {
+        const result = await response.json();
+        toast({
+          title: "Data Sync Completed",
+          description: `Successfully synced data for ${result.syncedUsers} accounts. Campaign data is now up to date.`,
+        });
+        
+        // Invalidate relevant queries to refresh data
+        queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/recommendations"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/dashboard/summary"] });
+        
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to sync data');
+      }
+    } catch (error: any) {
+      console.error('Error syncing data:', error);
+      toast({
+        title: "Data Sync Failed",
+        description: error.message || "Failed to sync campaign data. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   const hasChanges = JSON.stringify(selectedAccounts.sort()) !== JSON.stringify(appliedAccounts.sort());
@@ -803,6 +838,47 @@ export default function Settings() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Data Sync - Admin Only */}
+          {user?.role === 'admin' && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Database className="w-5 h-5" />
+                  <span>Data Synchronization</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-medium text-gray-900">Manual Data Sync</h4>
+                    <p className="text-sm text-gray-600">Pull latest campaign data from Google Ads API into database</p>
+                  </div>
+                  <Button 
+                    onClick={handleDataSync}
+                    disabled={isSyncing}
+                    variant="outline"
+                    data-testid="button-sync-data"
+                  >
+                    {isSyncing ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                        Syncing...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                        Sync Now
+                      </>
+                    )}
+                  </Button>
+                </div>
+                <div className="text-xs text-gray-500">
+                  Automatic sync runs daily at 1:00 AM. Use this button for immediate data refresh.
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* User Management - Admin Only */}
           {user?.role === 'admin' && (

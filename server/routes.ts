@@ -1181,6 +1181,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Initial data pull for authenticated users (temporary endpoint for setup)
+  app.post('/api/sync/initial', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+      
+      console.log(`Initial sync triggered by user: ${user.username}`);
+      const result = await schedulerService.triggerManualSync();
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Error triggering initial sync:", error);
+      res.status(500).json({ message: "Failed to trigger initial sync", error: error.message });
+    }
+  });
+
   // New AI Chat Endpoints for better conversation handling
   
   // General chat query endpoint
