@@ -210,19 +210,29 @@ export default function Settings() {
   const handleDataSync = async () => {
     setIsSyncing(true);
     try {
+      console.log('Starting data sync...');
       const response = await apiRequest('POST', '/api/sync/initial');
+      console.log('Sync response received:', response.status, response.ok);
       
       if (response.ok) {
         const result = await response.json();
+        console.log('Sync result:', result);
+        
         toast({
           title: "Data Sync Completed",
           description: `Successfully synced data for ${result.syncedUsers} accounts. Campaign data is now up to date.`,
         });
         
-        // Invalidate relevant queries to refresh data
-        queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/recommendations"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/dashboard/summary"] });
+        // Invalidate relevant queries to refresh data (with error handling)
+        try {
+          await queryClient.invalidateQueries({ queryKey: ["/api/campaigns"] });
+          await queryClient.invalidateQueries({ queryKey: ["/api/recommendations"] });
+          await queryClient.invalidateQueries({ queryKey: ["/api/dashboard/summary"] });
+          console.log('Query invalidation completed');
+        } catch (invalidateError) {
+          console.error('Error invalidating queries:', invalidateError);
+          // Don't fail the whole sync for query invalidation errors
+        }
         
       } else {
         let errorMessage = 'Failed to sync data';
