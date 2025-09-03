@@ -142,11 +142,13 @@ export default function CampaignCard({ campaign, onUpdate }: CampaignCardProps) 
   const generateAIRecommendations = async () => {
     setIsLoadingAI(true);
     try {
-      // Try all three AI providers for comprehensive analysis
+      // Try all three AI providers for comprehensive analysis - continue even if some fail
       const providers = ['OpenAI', 'Anthropic', 'Perplexity'];
       const recommendations = [];
+      let successfulProviders = 0;
 
-      for (const provider of providers) {
+      // Run all providers concurrently with individual error handling
+      const providerPromises = providers.map(async (provider) => {
         try {
           const response = await apiRequest("POST", "/api/recommendations/generate-with-provider", {
             campaignId: campaign.id,
@@ -155,26 +157,46 @@ export default function CampaignCard({ campaign, onUpdate }: CampaignCardProps) 
           });
 
           if (response?.content) {
-            recommendations.push({
+            return {
               provider,
               content: response.content,
               confidence: response.confidence || 85,
               model: response.model || provider
-            });
+            };
           }
         } catch (error) {
-          console.error(`Error getting ${provider} recommendations:`, error);
-          console.error(`Full error details for ${provider}:`, JSON.stringify(error, null, 2));
+          console.warn(`${provider} provider temporarily unavailable:`, error.message);
+          // Return null instead of throwing to continue with other providers
+          return null;
         }
-      }
+      });
+
+      // Wait for all providers to complete (or fail)
+      const results = await Promise.all(providerPromises);
+      
+      // Filter out failed providers and add successful ones
+      results.forEach(result => {
+        if (result) {
+          recommendations.push(result);
+          successfulProviders++;
+        }
+      });
 
       if (recommendations.length === 0) {
         // Fallback - generate simple recommendations based on campaign data
         recommendations.push({
-          provider: 'AI Analysis',
+          provider: 'Smart Analysis',
           content: generateBasicRecommendations(campaign),
           confidence: 75,
-          model: 'Smart Analysis'
+          model: 'Internal Analysis'
+        });
+      }
+
+      // Show success message with provider info
+      if (successfulProviders > 0) {
+        toast({
+          title: "AI Recommendations Generated",
+          description: `Successfully analyzed with ${successfulProviders} AI provider${successfulProviders > 1 ? 's' : ''}.`,
         });
       }
 

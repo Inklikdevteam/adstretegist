@@ -1,0 +1,41 @@
+queryClient.ts:15  POST https://e41a1a2d-288d-4b9d-9c81-c2755a0dbc7f-00-35vxhqzw2q8xe.worf.replit.dev/api/recommendations/generate-with-provider 500 (Internal Server Error)
+apiRequest @ queryClient.ts:15
+generateAIRecommendations @ CampaignCard.tsx:151
+await in generateAIRecommendations
+callCallback2 @ chunk-RPCDYKBN.js?v=74113126:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=74113126:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=74113126:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-RPCDYKBN.js?v=74113126:3736
+executeDispatch @ chunk-RPCDYKBN.js?v=74113126:7014
+processDispatchQueueItemsInOrder @ chunk-RPCDYKBN.js?v=74113126:7034
+processDispatchQueue @ chunk-RPCDYKBN.js?v=74113126:7043
+dispatchEventsForPlugins @ chunk-RPCDYKBN.js?v=74113126:7051
+(anonymous) @ chunk-RPCDYKBN.js?v=74113126:7174
+batchedUpdates$1 @ chunk-RPCDYKBN.js?v=74113126:18913
+batchedUpdates @ chunk-RPCDYKBN.js?v=74113126:3579
+dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=74113126:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=74113126:5478
+dispatchEvent @ chunk-RPCDYKBN.js?v=74113126:5472
+dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=74113126:5449Understand this error
+CampaignCard.tsx:166 Error getting Perplexity recommendations: Error: 500: {"message":"Failed to generate recommendation"}
+    at throwIfResNotOk (queryClient.ts:6:11)
+    at async apiRequest (queryClient.ts:22:3)
+    at async generateAIRecommendations (CampaignCard.tsx:151:28)
+generateAIRecommendations @ CampaignCard.tsx:166
+await in generateAIRecommendations
+callCallback2 @ chunk-RPCDYKBN.js?v=74113126:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=74113126:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=74113126:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-RPCDYKBN.js?v=74113126:3736
+executeDispatch @ chunk-RPCDYKBN.js?v=74113126:7014
+processDispatchQueueItemsInOrder @ chunk-RPCDYKBN.js?v=74113126:7034
+processDispatchQueue @ chunk-RPCDYKBN.js?v=74113126:7043
+dispatchEventsForPlugins @ chunk-RPCDYKBN.js?v=74113126:7051
+(anonymous) @ chunk-RPCDYKBN.js?v=74113126:7174
+batchedUpdates$1 @ chunk-RPCDYKBN.js?v=74113126:18913
+batchedUpdates @ chunk-RPCDYKBN.js?v=74113126:3579
+dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=74113126:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=74113126:5478
+dispatchEvent @ chunk-RPCDYKBN.js?v=74113126:5472
+dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=74113126:5449Understand this error
+CampaignCard.tsx:167 Full error details for Perplexity: {}

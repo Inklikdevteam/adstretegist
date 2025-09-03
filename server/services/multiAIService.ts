@@ -202,47 +202,60 @@ Goal: ${campaign.goalDescription || 'No specific goal set'}`;
   private async generatePerplexity(prompt: string): Promise<AIResponse> {
     if (!this.perplexity) throw new Error('Perplexity not available');
 
-    const response = await fetch(this.perplexity.baseUrl, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${this.perplexity.apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
+    try {
+      const response = await fetch('https://api.perplexity.ai/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.perplexity.apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'llama-3.1-sonar-small-128k-online',
+          messages: [
+            {
+              role: 'system',
+              content: 'You are an expert Google Ads strategist specializing in the Indian market. Always use INR (₹) currency, never USD ($). Analyze campaign data and provide actionable optimization recommendations in a structured format.'
+            },
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          max_tokens: 1500,
+          temperature: 0.2,
+          top_p: 0.9,
+          stream: false
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Perplexity API Error Details:', {
+          status: response.status,
+          statusText: response.statusText,
+          body: errorText
+        });
+        throw new Error(`Perplexity API error: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const content = data.choices?.[0]?.message?.content || '';
+      
+      if (!content) {
+        throw new Error('No content received from Perplexity API');
+      }
+      
+      return {
+        content,
+        provider: 'Perplexity',
         model: 'llama-3.1-sonar-small-128k-online',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are an expert Google Ads strategist specializing in the Indian market. Always use INR (₹) currency, never USD ($). Analyze campaign data and provide optimization recommendations.'
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        max_tokens: 2000,
-        temperature: 0.7,
-        top_p: 0.9,
-        stream: false,
-        return_images: false,
-        return_related_questions: false
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Perplexity API error: ${response.statusText}`);
+        confidence: this.extractConfidence(content),
+        reasoning: content
+      };
+    } catch (error) {
+      console.error('Perplexity API call failed:', error);
+      throw error;
     }
-
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content || '';
-    
-    return {
-      content,
-      provider: 'Perplexity',
-      model: 'llama-3.1-sonar-small-128k-online',
-      confidence: this.extractConfidence(content),
-      reasoning: content
-    };
   }
 
   private extractConfidence(content: string): number {
