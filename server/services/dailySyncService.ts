@@ -140,17 +140,16 @@ export class DailySyncService {
             status: gaCampaign.status,
             type: gaCampaign.type,
             dailyBudget: gaCampaign.budget ?? 0,
-            impressions: gaCampaign.impressions,
-            clicks: gaCampaign.clicks,
-            conversions: gaCampaign.conversions,
-            conversionsValue: gaCampaign.conversionsValue,
-            cost: gaCampaign.cost,
-            ctr: gaCampaign.ctr,
-            avgCpc: gaCampaign.avgCpc,
-            conversionRate: gaCampaign.conversionRate,
+            impressions7d: gaCampaign.impressions || 0,
+            clicks7d: gaCampaign.clicks || 0,
+            conversions7d: gaCampaign.conversions || 0,
+            conversionValue7d: gaCampaign.conversionsValue || 0,
+            spend7d: gaCampaign.cost || 0,
+            ctr7d: gaCampaign.ctr || 0,
+            avgCpc7d: gaCampaign.avgCpc || 0,
+            conversionRate7d: gaCampaign.conversionRate || 0,
             actualCpa: gaCampaign.actualCpa ?? null,
             actualRoas: gaCampaign.actualRoas ?? null,
-            lastSyncAt: new Date(),
             updatedAt: new Date()
           })
           .where(eq(campaigns.id, existingCampaign[0].id));
@@ -166,17 +165,16 @@ export class DailySyncService {
             status: gaCampaign.status,
             type: gaCampaign.type,
             dailyBudget: gaCampaign.budget ?? 0,
-            impressions: gaCampaign.impressions,
-            clicks: gaCampaign.clicks,
-            conversions: gaCampaign.conversions,
-            conversionsValue: gaCampaign.conversionsValue,
-            cost: gaCampaign.cost,
-            ctr: gaCampaign.ctr,
-            avgCpc: gaCampaign.avgCpc,
-            conversionRate: gaCampaign.conversionRate,
+            impressions7d: gaCampaign.impressions || 0,
+            clicks7d: gaCampaign.clicks || 0,
+            conversions7d: gaCampaign.conversions || 0,
+            conversionValue7d: gaCampaign.conversionsValue || 0,
+            spend7d: gaCampaign.cost || 0,
+            ctr7d: gaCampaign.ctr || 0,
+            avgCpc7d: gaCampaign.avgCpc || 0,
+            conversionRate7d: gaCampaign.conversionRate || 0,
             actualCpa: gaCampaign.actualCpa ?? null,
-            actualRoas: gaCampaign.actualRoas ?? null,
-            lastSyncAt: new Date()
+            actualRoas: gaCampaign.actualRoas ?? null
           });
       }
     }
