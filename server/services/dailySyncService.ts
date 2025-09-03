@@ -207,6 +207,7 @@ export class DailySyncService {
       await db.insert(auditLogs).values({
         userId: userId,
         action: `daily_sync_error_${syncType}`,
+        performedBy: 'system',
         details: {
           error: error.message,
           timestamp: new Date().toISOString(),
@@ -264,6 +265,7 @@ export class DailySyncService {
       await db.insert(auditLogs).values({
         userId: 'system',
         action: 'daily_sync_completed',
+        performedBy: 'system',
         details: {
           syncedUsers: adminUsers.length,
           timestamp: new Date().toISOString(),
