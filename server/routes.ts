@@ -591,14 +591,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const dbUserId = user.id.toString();
       const selectedAccountsParam = req.query.selectedAccounts;
-      let selectedAccounts: string[] = [];
+      let selectedAccounts: string[] | undefined = undefined;
+      
+      console.log('🔍 DEBUG: Recommendations route - selectedAccountsParam received:', selectedAccountsParam);
       
       if (selectedAccountsParam) {
         try {
           selectedAccounts = JSON.parse(decodeURIComponent(selectedAccountsParam as string));
+          console.log('🔍 DEBUG: Parsed selectedAccounts for recommendations:', selectedAccounts);
         } catch (e) {
-          console.log('Failed to parse selectedAccounts:', e);
+          console.log('❌ Failed to parse selectedAccounts:', e);
         }
+      } else {
+        console.log('⚠️ DEBUG: No selectedAccountsParam received for recommendations - using undefined');
       }
 
       // Use stored recommendation service for efficient data retrieval

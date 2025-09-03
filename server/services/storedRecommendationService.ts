@@ -56,8 +56,8 @@ export class StoredRecommendationService {
       }
     }
     
-    // If no accounts selected, return empty array
-    if (effectiveSelectedAccountIds && effectiveSelectedAccountIds.length === 0) {
+    // If explicitly empty selection (not undefined), return empty array
+    if (effectiveSelectedAccountIds !== undefined && effectiveSelectedAccountIds.length === 0) {
       console.log('No accounts selected for recommendations - returning empty list');
       return [];
     }
