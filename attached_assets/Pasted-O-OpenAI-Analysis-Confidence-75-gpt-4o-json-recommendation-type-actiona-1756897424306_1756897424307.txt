@@ -1,0 +1,143 @@
+O
+OpenAI Analysis
+Confidence: 75% • gpt-4o
+
+```json
+
+[
+
+{
+
+"recommendation_type": "actionable",
+
+"priority": "high",
+
+"title": "Budget Reallocation for 'IncredibleGifts - PMax_19_11_23_All_Prods_main'",
+
+"description": "Reallocate the daily budget to optimize spend efficiency and boost conversions.",
+
+"reasoning": "Campaign 'IncredibleGifts - PMax_19_11_23_All_Prods_main' is spending ₹9,500 daily with a CPA of ₹496.22. By reallocating the budget towards more productive segments, we can improve conversion rates and reduce CPA.",
+
+"confidence": 85,
+
+"potential_savings": "₹500",
+
+"action_data": {
+
+"campaign_id": "PMax_19_11_23_All_Prods_main",
+
+"action_type": "budget_adjustment",
+
+"details": {
+
+"implementation_steps": [
+
+"Step 1: Analyze geographic performance to identify top-performing regions.",
+
+"Step 2: Increase budget allocation by 10% for top 3 regions.",
+
+"Step 3: Decrease budget allocation by 10% for underperforming regions."
+
+],
+
+"monitoring_plan": "Track regional conversion rates and CPA daily for 7 days.",
+
+"success_criteria": "Aim to reduce CPA by ~10% within a week."
+
+}
+
+}
+
+},
+
+{
+
+"recommendation_type": "actionable",
+
+"priority": "medium",
+
+"title": "Negative Keyword Addition for 'IncredibleGifts - PMax_19_11_23_All_Prods_main'",
+
+"description": "Add specific negative keywords to prevent irrelevant traffic and reduce wasted spend.",
+
+"reasoning": "By refining keyword targeting, the campaign can focus on more relevant search queries, improving ROAS and reducing CPA.",
+
+"confidence": 80,
+
+"potential_savings": "₹300",
+
+"action_data": {
+
+"campaign_id": "PMax_19_11_23_All_Prods_main",
+
+"action_type": "keyword_modification",
+
+"details": {
+
+"implementation_steps": [
+
+"Step 1: Navigate to the Keywords tab in the Google Ads dashboard.",
+
+"Step 2: Add these negative keywords: ['free', 'cheap', 'discount']",
+
+"Step 3: Save changes and monitor the impact."
+
+],
+
+"monitoring_plan": "Track changes in CTR and conversion rates for 5 days post-implementation.",
+
+"success_criteria": "Achieve a 5% improvement in ROAS."
+
+}
+
+}
+
+},
+
+{
+
+"recommendation_type": "actionable",
+
+"priority": "low",
+
+"title": "Ad Schedule Optimization for 'IncredibleGifts - PMax_19_11_23_All_Prods_main'",
+
+"description": "Optimize ad scheduling to align with peak performance times.",
+
+"reasoning": "Adjusting ad schedules to match peak conversion hours can enhance the efficiency of ad spend and improve overall performance.",
+
+"confidence": 75,
+
+"potential_savings": "₹200",
+
+"action_data": {
+
+"campaign_id": "PMax_19_11_23_All_Prods_main",
+
+"action_type": "time_of_day_adjustment",
+
+"details": {
+
+"implementation_steps": [
+
+"Step 1: Review historical performance data to identify peak conversion hours.",
+
+"Step 2: Adjust ad scheduling to increase visibility during peak hours.",
+
+"Step 3: Decrease ad visibility during off-peak hours."
+
+],
+
+"monitoring_plan": "Monitor conversion rates and CPA during adjusted hours for the next 10 days.",
+
+"success_criteria": "Increase in conversion rate by 3% during peak hours."
+
+}
+
+}
+
+}
+
+]
+
+```
