@@ -505,8 +505,8 @@ export default function Dashboard() {
             <div className="px-6 py-4 border-b border-gray-200">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-gray-900">Recent Activity & Audit Trail</h3>
-                <Button variant="ghost" size="sm" onClick={() => setShowAuditModal(true)}>
-                  View All →
+                <Button variant="outline" size="sm" onClick={() => setShowAuditModal(true)} className="bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200">
+                  View Complete History →
                 </Button>
               </div>
             </div>
@@ -525,7 +525,7 @@ export default function Dashboard() {
                 </div>
               ) : auditTrail.length > 0 ? (
                 <div className="space-y-4">
-                  {auditTrail.slice(0, 5).map((entry: any) => (
+                  {auditTrail.slice(0, 10).map((entry: any) => (
                     <div key={entry.id} className="flex items-start space-x-4 pb-4 border-b border-gray-100 last:border-b-0 last:pb-0">
                       <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
                         <div className="w-2 h-2 bg-green-600 rounded-full"></div>

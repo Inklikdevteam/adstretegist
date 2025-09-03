@@ -197,7 +197,7 @@ export class AIRecommendationService {
     }
   }
 
-  async getAuditTrail(userId: string, limit: number = 10) {
+  async getAuditTrail(userId: string, limit: number = 100) {
     return await db
       .select()
       .from(auditLogs)
