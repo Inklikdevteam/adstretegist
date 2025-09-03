@@ -1,6 +1,6 @@
 import { db } from "../db";
 import { recommendations, campaigns, users, userSettings, type Campaign } from "@shared/schema";
-import { eq, and, desc, gte, sql } from "drizzle-orm";
+import { eq, and, desc, gte, sql, inArray } from "drizzle-orm";
 import { MultiAIService } from "./multiAIService";
 import { buildPrompt } from "../prompts/corePrompt";
 
@@ -68,7 +68,7 @@ export class StoredRecommendationService {
     if (effectiveSelectedAccountIds && effectiveSelectedAccountIds.length > 0) {
       campaignQuery = campaignQuery.where(and(
         eq(campaigns.userId, targetUserId),
-        sql`${campaigns.accountId} = ANY(${effectiveSelectedAccountIds})`
+        inArray(campaigns.accountId, effectiveSelectedAccountIds)
       ));
     }
     
@@ -100,7 +100,7 @@ export class StoredRecommendationService {
       .innerJoin(campaigns, eq(recommendations.campaignId, campaigns.id))
       .where(and(
         eq(recommendations.userId, targetUserId),
-        sql`${recommendations.campaignId} = ANY(${campaignIds})`
+        inArray(recommendations.campaignId, campaignIds)
       ))
       .orderBy(desc(recommendations.createdAt))
       .limit(50); // Limit to most recent 50 recommendations

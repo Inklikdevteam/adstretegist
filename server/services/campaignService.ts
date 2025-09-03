@@ -1,6 +1,6 @@
 import { db } from "../db";
 import { campaigns, users, googleAdsAccounts, auditLogs, recommendations, userSettings, type Campaign, type InsertCampaign } from "@shared/schema";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, sql, inArray } from "drizzle-orm";
 import { GoogleAdsService } from "./googleAdsService";
 
 export class CampaignService {
@@ -64,7 +64,7 @@ export class CampaignService {
       query = query.where(and(
         eq(campaigns.userId, targetUserId),
         // Add account filtering condition
-        sql`${campaigns.accountId} = ANY(${effectiveSelectedAccountIds})`
+        inArray(campaigns.accountId, effectiveSelectedAccountIds)
       ));
     }
     
