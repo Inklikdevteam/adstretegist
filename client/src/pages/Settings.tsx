@@ -225,8 +225,15 @@ export default function Settings() {
         queryClient.invalidateQueries({ queryKey: ["/api/dashboard/summary"] });
         
       } else {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to sync data');
+        let errorMessage = 'Failed to sync data';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch (jsonError) {
+          // If response is not JSON, use default error message
+          console.error('Error parsing response JSON:', jsonError);
+        }
+        throw new Error(errorMessage);
       }
     } catch (error: any) {
       console.error('Error syncing data:', error);
