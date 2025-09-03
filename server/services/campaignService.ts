@@ -1,9 +1,90 @@
 import { db } from "../db";
 import { campaigns, users, googleAdsAccounts, auditLogs, recommendations, userSettings, type Campaign, type InsertCampaign } from "@shared/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { GoogleAdsService } from "./googleAdsService";
 
 export class CampaignService {
+  /**
+   * Get campaigns from stored data (primary method for daily operations)
+   */
+  async getUserCampaignsFromStorage(userId: string, selectedAccountIds?: string[]): Promise<Campaign[]> {
+    console.log('CampaignService getUserCampaignsFromStorage for userId:', userId, 'selectedAccounts:', selectedAccountIds);
+    
+    // Get user details to determine if this is a sub-account
+    const [user] = await db.select().from(users).where(eq(users.id, userId));
+    if (!user) {
+      console.log('User not found');
+      return [];
+    }
+    
+    let targetUserId = userId;
+    let effectiveSelectedAccountIds = selectedAccountIds;
+    
+    // For sub-accounts, get admin's connected accounts and apply filtering
+    if (user.role === 'sub_account') {
+      const adminUsers = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.role, 'admin'));
+      
+      if (adminUsers.length > 0) {
+        targetUserId = adminUsers[0].id;
+        
+        // Get admin's approved accounts
+        const adminSettings = await db
+          .select()
+          .from(userSettings)
+          .where(eq(userSettings.userId, targetUserId));
+          
+        if (adminSettings.length > 0) {
+          const adminApprovedAccounts = adminSettings[0].selectedGoogleAdsAccounts as string[];
+          
+          if (selectedAccountIds && selectedAccountIds.length > 0) {
+            effectiveSelectedAccountIds = selectedAccountIds.filter(accountId => 
+              adminApprovedAccounts?.includes(accountId)
+            );
+          } else {
+            effectiveSelectedAccountIds = [];
+          }
+        }
+      }
+    }
+    
+    // If no accounts selected, return empty array
+    if (effectiveSelectedAccountIds && effectiveSelectedAccountIds.length === 0) {
+      console.log('No accounts selected for storage query - returning empty campaign list');
+      return [];
+    }
+    
+    // Query stored campaigns from database
+    let query = db.select().from(campaigns).where(eq(campaigns.userId, targetUserId));
+    
+    // Filter by selected accounts if provided
+    if (effectiveSelectedAccountIds && effectiveSelectedAccountIds.length > 0) {
+      query = query.where(and(
+        eq(campaigns.userId, targetUserId),
+        // Add account filtering condition
+        sql`${campaigns.accountId} = ANY(${effectiveSelectedAccountIds})`
+      ));
+    }
+    
+    const storedCampaigns = await query;
+    console.log(`Found ${storedCampaigns.length} campaigns in storage for user ${user.username}`);
+    
+    // Check if data is recent (within last 25 hours to allow for daily sync variance)
+    const twentyFiveHoursAgo = new Date(Date.now() - 25 * 60 * 60 * 1000);
+    const hasRecentData = storedCampaigns.some(campaign => 
+      campaign.lastSyncAt && campaign.lastSyncAt > twentyFiveHoursAgo
+    );
+    
+    if (!hasRecentData && storedCampaigns.length === 0) {
+      console.log('No recent stored data found, falling back to real-time fetch...');
+      // Fallback to real-time fetch for initial data
+      return await this.getUserCampaigns(userId, selectedAccountIds);
+    }
+    
+    return storedCampaigns;
+  }
   // Helper method to clean currency values for database insertion
   private parseCurrencyValue(value: string | number): number {
     if (typeof value === 'number') return value;

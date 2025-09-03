@@ -7,6 +7,9 @@ import { AIRecommendationService } from "./services/aiRecommendationService";
 import { CampaignService } from "./services/campaignService";
 import { MultiAIService } from "./services/multiAIService";
 import { GoogleAdsService } from "./services/googleAdsService";
+import { DailySyncService } from "./services/dailySyncService";
+import { schedulerService } from "./services/schedulerService";
+import { StoredRecommendationService } from "./services/storedRecommendationService";
 import { insertCampaignSchema, insertUserSettingsSchema, campaigns, googleAdsAccounts, auditLogs, recommendations, userSettings, users } from "@shared/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { db } from "./db";
@@ -22,6 +25,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const aiService = new AIRecommendationService();
   const campaignService = new CampaignService();
   const multiAIService = new MultiAIService();
+  const dailySyncService = new DailySyncService();
+  const storedRecommendationService = new StoredRecommendationService();
 
   // User management routes (admin only)
   app.get('/api/admin/users', isAdmin, async (req: any, res) => {
@@ -365,7 +370,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      let campaigns = await campaignService.getUserCampaigns(dbUserId, selectedAccounts);
+      // Use stored data first (primary method for daily operations)
+      let campaigns = await campaignService.getUserCampaignsFromStorage(dbUserId, selectedAccounts);
       
       // Filter to only show active campaigns
       const activeCampaigns = campaigns.filter(campaign => 
@@ -595,62 +601,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Get user campaigns first to filter recommendations
-      const userCampaigns = await new CampaignService().getUserCampaigns(dbUserId, selectedAccounts.length > 0 ? selectedAccounts : undefined);
-      const campaignIds = userCampaigns.map(c => c.id);
-
-      if (campaignIds.length === 0) {
-        return res.json([]);
-      }
-
-      // Get recommendations with campaign names and metrics, filtered by selected campaigns
-      const userRecommendations = await db
-        .select({
-          id: recommendations.id,
-          userId: recommendations.userId,
-          campaignId: recommendations.campaignId,
-          campaignName: campaigns.name,
-          type: recommendations.type,
-          priority: recommendations.priority,
-          title: recommendations.title,
-          description: recommendations.description,
-          reasoning: recommendations.reasoning,
-          aiModel: recommendations.aiModel,
-          confidence: recommendations.confidence,
-          status: recommendations.status,
-          potentialSavings: recommendations.potentialSavings,
-          actionData: recommendations.actionData,
-          createdAt: recommendations.createdAt,
-          appliedAt: recommendations.appliedAt,
-          // Campaign metrics for display in recommendation cards (all parameters like campaign cards)
-          campaignSpend7d: campaigns.spend7d,
-          campaignConversions7d: campaigns.conversions7d,
-          campaignActualCpa: campaigns.actualCpa,
-          campaignActualRoas: campaigns.actualRoas,
-          campaignDailyBudget: campaigns.dailyBudget,
-          campaignTargetCpa: campaigns.targetCpa,
-          campaignTargetRoas: campaigns.targetRoas,
-          campaignType: campaigns.type,
-          campaignStatus: campaigns.status,
-          // Additional metrics now stored in database
-          campaignImpressions7d: campaigns.impressions7d,
-          campaignClicks7d: campaigns.clicks7d,
-          campaignCtr7d: campaigns.ctr7d,
-          campaignConversionValue7d: campaigns.conversionValue7d,
-          campaignAvgCpc7d: campaigns.avgCpc7d,
-          campaignConversionRate7d: campaigns.conversionRate7d,
-        })
-        .from(recommendations)
-        .leftJoin(campaigns, eq(recommendations.campaignId, campaigns.id))
-        .where(eq(recommendations.userId, dbUserId))
-        .orderBy(desc(recommendations.createdAt));
-
-      // Filter results by campaign IDs if specific accounts are selected
-      const filteredRecommendations = selectedAccounts.length > 0 
-        ? userRecommendations.filter(rec => campaignIds.includes(rec.campaignId))
-        : userRecommendations;
-
-      res.json(filteredRecommendations);
+      // Use stored recommendation service for efficient data retrieval
+      const userRecommendations = await storedRecommendationService.getUserRecommendations(dbUserId, selectedAccounts);
+      res.json(userRecommendations);
     } catch (error) {
       console.error("Error fetching recommendations:", error);
       res.status(500).json({ message: "Failed to fetch recommendations" });
@@ -1194,6 +1147,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error disconnecting Google Ads integration:", error);
       res.status(500).json({ message: "Failed to disconnect Google Ads integration", error: error.message });
+    }
+  });
+
+  // Daily Sync Management Routes (Admin Only)
+  
+  // Get sync status and last run information
+  app.get('/api/sync/status', isAdmin, async (req: any, res) => {
+    try {
+      const syncStatus = await dailySyncService.getSyncStatus();
+      const schedulerStatus = schedulerService.getStatus();
+      
+      res.json({
+        ...syncStatus,
+        scheduler: schedulerStatus
+      });
+    } catch (error) {
+      console.error("Error getting sync status:", error);
+      res.status(500).json({ message: "Failed to get sync status", error: error.message });
+    }
+  });
+
+  // Manually trigger daily sync
+  app.post('/api/sync/trigger', isAdmin, async (req: any, res) => {
+    try {
+      console.log(`Manual sync triggered by admin user: ${req.user.username}`);
+      const result = await schedulerService.triggerManualSync();
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Error triggering manual sync:", error);
+      res.status(500).json({ message: "Failed to trigger sync", error: error.message });
     }
   });
 
