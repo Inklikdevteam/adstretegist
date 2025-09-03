@@ -1,6 +1,6 @@
 import { db } from "../db";
 import { recommendations, auditLogs, campaigns, type Recommendation, type InsertRecommendation, type InsertAuditLog } from "@shared/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, or } from "drizzle-orm";
 import { analyzeCampaignPerformance, generateDailySummary } from "../openai";
 import { CampaignService } from "./campaignService";
 
@@ -198,10 +198,11 @@ export class AIRecommendationService {
   }
 
   async getAuditTrail(userId: string, limit: number = 100) {
+    // Include both user-specific activities AND system-level activities
     return await db
       .select()
       .from(auditLogs)
-      .where(eq(auditLogs.userId, userId))
+      .where(or(eq(auditLogs.userId, userId), eq(auditLogs.userId, 'system')))
       .orderBy(desc(auditLogs.createdAt))
       .limit(limit);
   }
