@@ -354,8 +354,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const dbUserId = user.id.toString();
-      console.log('Campaigns for user:', { userId: user.id, dbUserId, userEmail: user.email });
-      
       const selectedAccountsParam = req.query.selectedAccounts as string;
       let selectedAccounts: string[] = [];
       
@@ -366,6 +364,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log('Invalid selectedAccounts parameter:', selectedAccountsParam);
         }
       }
+      
+      console.log('Campaigns for user:', { userId: user.id, dbUserId, userEmail: user.email, selectedAccountsParam, selectedAccounts });
       
       let campaigns = await campaignService.getUserCampaigns(dbUserId, selectedAccounts);
       
