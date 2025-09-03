@@ -67,10 +67,11 @@ export class GoogleAdsService {
       const clientAccounts = await this.getClientAccounts();
       
       if (clientAccounts.length > 0) {
-        // This is a manager account - get campaigns from all client accounts
+        // This is a manager account - only fetch from selected accounts
+        // If no accounts selected, return empty array (show no campaigns)
         const accountsToFetch = selectedAccountIds && selectedAccountIds.length > 0
           ? clientAccounts.filter(acc => selectedAccountIds.includes(acc.id))
-          : clientAccounts;
+          : [];
           
         console.log(`Performance: Manager account detected. Fetching campaigns from ${accountsToFetch.length} client accounts...`);
         const allCampaigns: GoogleAdsCampaign[] = [];
@@ -235,10 +236,11 @@ export class GoogleAdsService {
       const clientAccounts = await this.getClientAccounts();
       
       if (clientAccounts.length > 0) {
-        // This is a manager account - get campaigns from all client accounts
+        // This is a manager account - only fetch from selected accounts
+        // If no accounts selected, return empty array (show no campaigns)
         const accountsToFetch = selectedAccountIds && selectedAccountIds.length > 0
           ? clientAccounts.filter(acc => selectedAccountIds.includes(acc.id))
-          : clientAccounts;
+          : [];
           
         console.log(`Manager account detected. Fetching campaigns from ${accountsToFetch.length} client accounts...`);
         if (selectedAccountIds && selectedAccountIds.length > 0) {

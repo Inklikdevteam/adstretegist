@@ -365,8 +365,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      console.log('Campaigns for user:', { userId: user.id, dbUserId, userEmail: user.email, selectedAccountsParam, selectedAccounts });
-      
       let campaigns = await campaignService.getUserCampaigns(dbUserId, selectedAccounts);
       
       // Filter to only show active campaigns
