@@ -45,12 +45,17 @@ export default function Dashboard() {
 
   // Load account selection from user settings with proper fallback
   useEffect(() => {
-    // Sub-accounts start with empty selection (must manually select from admin's active accounts)
-    // Admins use their own saved settings
-    if (userInfo?.role === 'sub_account') {
-      // Sub-accounts always start with empty selection
-      setSelectedAccounts([]);
-    } else if (userSettings) {
+    // Only initialize once when user data and settings are first loaded
+    if (!userInfo || !userSettings) return;
+    
+    if (userInfo.role === 'sub_account') {
+      // Sub-accounts: Use saved currentViewAccounts or start with empty selection
+      if (userSettings.currentViewAccounts && userSettings.currentViewAccounts.length > 0) {
+        setSelectedAccounts(userSettings.currentViewAccounts);
+      } else {
+        setSelectedAccounts([]);
+      }
+    } else {
       // Admins use their own settings
       // If currentViewAccounts exists and is not empty, use it (temporary view filter)
       if (userSettings.currentViewAccounts && userSettings.currentViewAccounts.length > 0) {
@@ -65,7 +70,7 @@ export default function Dashboard() {
         setSelectedAccounts([]);
       }
     }
-  }, [userSettings, userInfo]);
+  }, [userInfo, userSettings]);
 
   // Save current view selection when it changes (NOT the active accounts config)
   const handleAccountsChange = async (newSelectedAccounts: string[]) => {
