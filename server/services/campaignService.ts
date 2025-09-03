@@ -57,18 +57,17 @@ export class CampaignService {
     }
     
     // Query stored campaigns from database
-    let query = db.select().from(campaigns).where(eq(campaigns.userId, targetUserId));
+    let queryConditions = [eq(campaigns.userId, targetUserId)];
     
     // Filter by selected accounts if provided
     if (effectiveSelectedAccountIds && effectiveSelectedAccountIds.length > 0) {
-      query = query.where(and(
-        eq(campaigns.userId, targetUserId),
-        // Add account filtering condition
-        inArray(campaigns.accountId, effectiveSelectedAccountIds)
-      ));
+      queryConditions.push(inArray(campaigns.accountId, effectiveSelectedAccountIds));
     }
     
-    const storedCampaigns = await query;
+    const storedCampaigns = await db
+      .select()
+      .from(campaigns)
+      .where(and(...queryConditions));
     console.log(`Found ${storedCampaigns.length} campaigns in storage for user ${user.username}`);
     
     // Check if data is recent (within last 25 hours to allow for daily sync variance)

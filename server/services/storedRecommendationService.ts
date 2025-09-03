@@ -63,16 +63,16 @@ export class StoredRecommendationService {
     }
     
     // Get campaigns that match the selected accounts
-    let campaignQuery = db.select().from(campaigns).where(eq(campaigns.userId, targetUserId));
+    let campaignConditions = [eq(campaigns.userId, targetUserId)];
     
     if (effectiveSelectedAccountIds && effectiveSelectedAccountIds.length > 0) {
-      campaignQuery = campaignQuery.where(and(
-        eq(campaigns.userId, targetUserId),
-        inArray(campaigns.accountId, effectiveSelectedAccountIds)
-      ));
+      campaignConditions.push(inArray(campaigns.accountId, effectiveSelectedAccountIds));
     }
     
-    const userCampaigns = await campaignQuery;
+    const userCampaigns = await db
+      .select()
+      .from(campaigns)
+      .where(and(...campaignConditions));
     const campaignIds = userCampaigns.map(c => c.id);
     
     if (campaignIds.length === 0) {
