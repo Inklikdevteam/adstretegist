@@ -181,7 +181,7 @@ export class StoredRecommendationService {
       - Conversions: ${campaign.conversions || 0}
       - Total Spend: ₹${campaign.cost?.toLocaleString() || 0}
       - CTR: ${((campaign.ctr || 0) * 100).toFixed(2)}%
-      - Avg CPC: ₹${campaign.avgCpc?.toFixed(2) || 0}
+      - Avg CPC: ₹${campaign.avgCpc ? Number(campaign.avgCpc).toFixed(2) : 0}
       - Conversion Rate: ${((campaign.conversionRate || 0) * 100).toFixed(2)}%
       - Actual CPA: ${campaign.actualCpa ? '₹' + Number(campaign.actualCpa).toFixed(2) : 'Not calculated'}
       - Actual ROAS: ${campaign.actualRoas ? Number(campaign.actualRoas).toFixed(2) + 'x' : 'Not calculated'}

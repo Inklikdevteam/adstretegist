@@ -31,7 +31,8 @@ export class DailySyncService {
 
       for (const adminUser of adminUsers) {
         await this.syncUserCampaigns(adminUser);
-        await this.generateAIRecommendations(adminUser);
+        // Temporarily disabled AI recommendations to fix sync issues
+        // await this.generateAIRecommendations(adminUser);
       }
 
       console.log('=== DAILY SYNC COMPLETED ===', new Date().toISOString());
