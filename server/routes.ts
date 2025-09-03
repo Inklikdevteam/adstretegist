@@ -1097,6 +1097,106 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Disconnect all Google Ads accounts for admin user
+  app.post('/api/google-ads/disconnect-all', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.user;
+      
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+
+      // Only admins can disconnect Google Ads integration
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: "Only administrators can disconnect Google Ads integration" });
+      }
+
+      const dbUserId = user.id.toString();
+      console.log(`Admin ${user.username} (${dbUserId}) requesting to disconnect all Google Ads accounts`);
+      
+      // Get all active Google Ads accounts for this admin
+      const accounts = await db
+        .select()
+        .from(googleAdsAccounts)
+        .where(
+          and(
+            eq(googleAdsAccounts.adminUserId, dbUserId),
+            eq(googleAdsAccounts.isActive, true)
+          )
+        );
+
+      if (accounts.length === 0) {
+        return res.status(404).json({ message: 'No active Google Ads accounts found to disconnect' });
+      }
+
+      console.log(`Found ${accounts.length} Google Ads accounts to disconnect`);
+
+      // Optional: Revoke refresh tokens with Google before deleting
+      // This is a security best practice but not strictly required
+      try {
+        const { OAuth2Client } = await import('google-auth-library');
+        const oauth2Client = new OAuth2Client(
+          process.env.GOOGLE_OAUTH_CLIENT_ID,
+          process.env.GOOGLE_OAUTH_CLIENT_SECRET
+        );
+
+        for (const account of accounts) {
+          if (account.refreshToken) {
+            try {
+              await oauth2Client.revokeToken(account.refreshToken);
+              console.log(`Revoked refresh token for account ${account.customerId}`);
+            } catch (revokeError) {
+              console.warn(`Failed to revoke token for account ${account.customerId}:`, revokeError);
+              // Continue with deletion even if revocation fails
+            }
+          }
+        }
+      } catch (oauthError) {
+        console.warn('Failed to revoke tokens with Google:', oauthError);
+        // Continue with database cleanup even if token revocation fails
+      }
+
+      // Delete all Google Ads accounts for this admin
+      const deletedAccounts = await db
+        .delete(googleAdsAccounts)
+        .where(eq(googleAdsAccounts.adminUserId, dbUserId))
+        .returning();
+
+      console.log(`Successfully disconnected ${deletedAccounts.length} Google Ads accounts`);
+
+      // Clear all campaigns for this user since they're no longer connected to Google Ads
+      const userCampaigns = await db.select({ id: campaigns.id }).from(campaigns).where(eq(campaigns.userId, dbUserId));
+      const campaignIds = userCampaigns.map(c => c.id);
+
+      // Clean up related data (audit logs and recommendations)
+      for (const campaignId of campaignIds) {
+        await db.delete(auditLogs).where(eq(auditLogs.campaignId, campaignId));
+        await db.delete(recommendations).where(eq(recommendations.campaignId, campaignId));
+      }
+      
+      // Delete campaigns
+      await db.delete(campaigns).where(eq(campaigns.userId, dbUserId));
+
+      // Clear Google Ads account selections from user settings
+      await db
+        .update(userSettings)
+        .set({
+          selectedGoogleAdsAccounts: [],
+          currentViewAccounts: [],
+          updatedAt: new Date()
+        })
+        .where(eq(userSettings.userId, dbUserId));
+
+      res.json({
+        message: `Successfully disconnected ${deletedAccounts.length} Google Ads accounts and cleared all related data`,
+        disconnectedAccounts: deletedAccounts.length
+      });
+    } catch (error) {
+      console.error("Error disconnecting Google Ads integration:", error);
+      res.status(500).json({ message: "Failed to disconnect Google Ads integration", error: error.message });
+    }
+  });
+
   // New AI Chat Endpoints for better conversation handling
   
   // General chat query endpoint

@@ -7,11 +7,12 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import Sidebar from "@/components/Sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Settings as SettingsIcon, User, Bell, Shield, HelpCircle, ExternalLink, Edit, Save, X } from "lucide-react";
+import { Settings as SettingsIcon, User, Bell, Shield, HelpCircle, ExternalLink, Edit, Save, X, AlertTriangle, Unplug } from "lucide-react";
 import UserManagement from "@/components/UserManagement";
 
 export default function Settings() {
@@ -21,6 +22,8 @@ export default function Settings() {
   const [appliedAccounts, setAppliedAccounts] = useState<string[]>([]);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [showDisconnectDialog, setShowDisconnectDialog] = useState(false);
+  const [isDisconnecting, setIsDisconnecting] = useState(false);
   
   // AI Preferences state
   const [frequency, setFrequency] = useState('daily');
@@ -80,6 +83,32 @@ export default function Settings() {
     mutationFn: (settings: any) => apiRequest('PATCH', '/api/user/settings', settings),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/user/settings'] });
+    }
+  });
+
+  // Disconnect Google Ads mutation
+  const disconnectGoogleAdsMutation = useMutation({
+    mutationFn: () => apiRequest('POST', '/api/google-ads/disconnect-all'),
+    onSuccess: () => {
+      toast({
+        title: "Google Ads Disconnected",
+        description: "Successfully disconnected from Google Ads. All campaign data has been cleared.",
+      });
+      // Refresh queries to update UI
+      queryClient.invalidateQueries({ queryKey: ['/api/google-ads/available-accounts'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/user/settings'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/campaigns'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/summary'] });
+      setShowDisconnectDialog(false);
+      setIsDisconnecting(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Disconnection Failed",
+        description: error.message || "Failed to disconnect Google Ads integration. Please try again.",
+        variant: "destructive",
+      });
+      setIsDisconnecting(false);
     }
   });
 
@@ -169,6 +198,11 @@ export default function Settings() {
     } finally {
       setIsUpdating(false);
     }
+  };
+
+  const handleDisconnectGoogleAds = () => {
+    setIsDisconnecting(true);
+    disconnectGoogleAdsMutation.mutate();
   };
 
   const hasChanges = JSON.stringify(selectedAccounts.sort()) !== JSON.stringify(appliedAccounts.sort());
@@ -418,7 +452,21 @@ export default function Settings() {
                 </div>
               ) : accountsData?.hasConnection ? (
                 <div>
-                  <h4 className="font-medium text-gray-900 mb-2">Active Accounts</h4>
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-medium text-gray-900">Active Accounts</h4>
+                    {user?.role === 'admin' && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowDisconnectDialog(true)}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                        data-testid="button-disconnect-google-ads"
+                      >
+                        <Unplug className="w-4 h-4 mr-2" />
+                        Disconnect
+                      </Button>
+                    )}
+                  </div>
                   {user?.role === 'admin' ? (
                     <p className="text-sm text-gray-600 mb-3">Choose which Google Ads accounts to display campaigns from</p>
                   ) : (
@@ -780,6 +828,56 @@ export default function Settings() {
           </div>
         </div>
       </main>
+
+      {/* Disconnect Confirmation Dialog */}
+      <AlertDialog open={showDisconnectDialog} onOpenChange={setShowDisconnectDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center space-x-2">
+              <AlertTriangle className="w-5 h-5 text-red-600" />
+              <span>Disconnect Google Ads Integration</span>
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>
+                This will permanently disconnect your Google Ads integration and:
+              </p>
+              <ul className="list-disc list-inside ml-4 space-y-1 text-sm">
+                <li>Remove all connected Google Ads accounts</li>
+                <li>Delete all campaign data and performance metrics</li>
+                <li>Clear all AI recommendations and audit logs</li>
+                <li>Reset account selection settings</li>
+                <li>Revoke API access tokens with Google</li>
+              </ul>
+              <p className="text-red-600 font-medium">
+                This action cannot be undone. You'll need to reconnect and re-import your campaigns if you want to use Google Ads features again.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDisconnecting}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDisconnectGoogleAds}
+              disabled={isDisconnecting}
+              className="bg-red-600 hover:bg-red-700 text-white"
+              data-testid="button-confirm-disconnect"
+            >
+              {isDisconnecting ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
+                  Disconnecting...
+                </>
+              ) : (
+                <>
+                  <Unplug className="w-4 h-4 mr-2" />
+                  Disconnect Google Ads
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
