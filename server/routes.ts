@@ -362,12 +362,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const selectedAccountsParam = req.query.selectedAccounts as string;
       let selectedAccounts: string[] = [];
       
+      console.log('🔍 DEBUG: Campaigns route - selectedAccountsParam received:', selectedAccountsParam);
+      
       if (selectedAccountsParam) {
         try {
           selectedAccounts = JSON.parse(selectedAccountsParam);
+          console.log('🔍 DEBUG: Parsed selectedAccounts:', selectedAccounts);
         } catch (e) {
-          console.log('Invalid selectedAccounts parameter:', selectedAccountsParam);
+          console.log('❌ Invalid selectedAccounts parameter:', selectedAccountsParam);
         }
+      } else {
+        console.log('⚠️ DEBUG: No selectedAccountsParam received - using empty array');
       }
       
       // Use stored data first (primary method for daily operations)
