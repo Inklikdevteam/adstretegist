@@ -148,8 +148,8 @@ export class DailySyncService {
             ctr: gaCampaign.ctr,
             avgCpc: gaCampaign.avgCpc,
             conversionRate: gaCampaign.conversionRate,
-            actualCpa: gaCampaign.actualCpa || null,
-            actualRoas: gaCampaign.actualRoas || null,
+            actualCpa: gaCampaign.actualCpa ?? null,
+            actualRoas: gaCampaign.actualRoas ?? null,
             lastSyncAt: new Date(),
             updatedAt: new Date()
           })
@@ -174,8 +174,8 @@ export class DailySyncService {
             ctr: gaCampaign.ctr,
             avgCpc: gaCampaign.avgCpc,
             conversionRate: gaCampaign.conversionRate,
-            actualCpa: gaCampaign.actualCpa || null,
-            actualRoas: gaCampaign.actualRoas || null,
+            actualCpa: gaCampaign.actualCpa ?? null,
+            actualRoas: gaCampaign.actualRoas ?? null,
             lastSyncAt: new Date()
           });
       }
