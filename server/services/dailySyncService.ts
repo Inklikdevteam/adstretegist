@@ -118,23 +118,24 @@ export class DailySyncService {
    * Update campaigns in database with fresh Google Ads data
    */
   private async updateCampaignsInDatabase(userId: string, googleAdsCampaigns: any[]): Promise<void> {
-    for (const gaCampaign of googleAdsCampaigns) {
-      // Check if campaign already exists
-      const existingCampaign = await db
-        .select()
-        .from(campaigns)
-        .where(
-          and(
-            eq(campaigns.googleAdsCampaignId, gaCampaign.id),
-            eq(campaigns.userId, userId)
+    try {
+      for (const gaCampaign of googleAdsCampaigns) {
+        // Check if campaign already exists
+        const existingCampaign = await db
+          .select()
+          .from(campaigns)
+          .where(
+            and(
+              eq(campaigns.googleAdsCampaignId, gaCampaign.id),
+              eq(campaigns.userId, userId)
+            )
           )
-        )
-        .limit(1);
+          .limit(1);
 
-      if (existingCampaign.length > 0) {
-        // Update existing campaign with fresh data
-        await db
-          .update(campaigns)
+        if (existingCampaign.length > 0) {
+          // Update existing campaign with fresh data
+          await db
+            .update(campaigns)
           .set({
             name: gaCampaign.name,
             status: gaCampaign.status,
@@ -142,7 +143,7 @@ export class DailySyncService {
             dailyBudget: gaCampaign.budget ?? 0,
             impressions7d: gaCampaign.impressions || 0,
             clicks7d: gaCampaign.clicks || 0,
-            conversions7d: gaCampaign.conversions || 0,
+            conversions7d: Math.round(gaCampaign.conversions || 0),
             conversionValue7d: gaCampaign.conversionsValue || 0,
             spend7d: gaCampaign.cost || 0,
             ctr7d: gaCampaign.ctr || 0,
@@ -153,10 +154,10 @@ export class DailySyncService {
             updatedAt: new Date()
           })
           .where(eq(campaigns.id, existingCampaign[0].id));
-      } else {
-        // Create new campaign
-        await db
-          .insert(campaigns)
+        } else {
+          // Create new campaign
+          await db
+            .insert(campaigns)
           .values({
             userId: userId,
             googleAdsCampaignId: gaCampaign.id,
@@ -167,7 +168,7 @@ export class DailySyncService {
             dailyBudget: gaCampaign.budget ?? 0,
             impressions7d: gaCampaign.impressions || 0,
             clicks7d: gaCampaign.clicks || 0,
-            conversions7d: gaCampaign.conversions || 0,
+            conversions7d: Math.round(gaCampaign.conversions || 0),
             conversionValue7d: gaCampaign.conversionsValue || 0,
             spend7d: gaCampaign.cost || 0,
             ctr7d: gaCampaign.ctr || 0,
@@ -176,7 +177,11 @@ export class DailySyncService {
             actualCpa: gaCampaign.actualCpa ?? null,
             actualRoas: gaCampaign.actualRoas ?? null
           });
+        }
       }
+    } catch (error) {
+      console.error('❌ Database update failed:', error);
+      throw error; // Re-throw to propagate the error up
     }
   }
 
