@@ -139,7 +139,7 @@ export class DailySyncService {
             name: gaCampaign.name,
             status: gaCampaign.status,
             type: gaCampaign.type,
-            dailyBudget: gaCampaign.dailyBudget ?? 0,
+            dailyBudget: gaCampaign.budget ?? 0,
             impressions: gaCampaign.impressions,
             clicks: gaCampaign.clicks,
             conversions: gaCampaign.conversions,
@@ -165,7 +165,7 @@ export class DailySyncService {
             name: gaCampaign.name,
             status: gaCampaign.status,
             type: gaCampaign.type,
-            dailyBudget: gaCampaign.dailyBudget ?? 0,
+            dailyBudget: gaCampaign.budget ?? 0,
             impressions: gaCampaign.impressions,
             clicks: gaCampaign.clicks,
             conversions: gaCampaign.conversions,
@@ -209,11 +209,11 @@ export class DailySyncService {
         userId: userId,
         action: `daily_sync_error_${syncType}`,
         performedBy: 'system',
-        details: {
+        details: JSON.stringify({
           error: error.message,
           timestamp: new Date().toISOString(),
           syncType: syncType
-        },
+        }),
         timestamp: new Date()
       });
     } catch (logError) {
@@ -267,11 +267,11 @@ export class DailySyncService {
         userId: 'system',
         action: 'daily_sync_completed',
         performedBy: 'system',
-        details: {
+        details: JSON.stringify({
           syncedUsers: adminUsers.length,
           timestamp: new Date().toISOString(),
           trigger: 'manual'
-        },
+        }),
         timestamp: new Date()
       });
 
