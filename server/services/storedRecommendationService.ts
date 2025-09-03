@@ -66,23 +66,26 @@ export class StoredRecommendationService {
     let campaignConditions = [eq(campaigns.userId, targetUserId)];
     
     if (effectiveSelectedAccountIds && effectiveSelectedAccountIds.length > 0) {
-      // Convert Google Ads customer IDs to database UUIDs
-      const accountMappings = await db
+      // For manager accounts, campaigns are stored under the manager account UUID
+      // but frontend sends client account IDs. We need to find the manager account
+      // that has access to these client accounts.
+      
+      const adminAccounts = await db
         .select({ id: googleAdsAccounts.id, customerId: googleAdsAccounts.customerId })
         .from(googleAdsAccounts)
-        .where(and(
-          eq(googleAdsAccounts.adminUserId, targetUserId),
-          inArray(googleAdsAccounts.customerId, effectiveSelectedAccountIds)
-        ));
+        .where(eq(googleAdsAccounts.adminUserId, targetUserId));
       
-      const accountUUIDs = accountMappings.map(mapping => mapping.id);
-      console.log(`DEBUG: Mapped customer IDs ${effectiveSelectedAccountIds} to UUIDs ${accountUUIDs}`);
+      console.log(`DEBUG: User's connected accounts:`, adminAccounts);
+      console.log(`DEBUG: Looking for client accounts:`, effectiveSelectedAccountIds);
       
-      if (accountUUIDs.length > 0) {
-        campaignConditions.push(inArray(campaigns.googleAdsAccountId, accountUUIDs));
+      // Since we have a manager account setup, campaigns are stored under the manager account UUID
+      // Just use the admin's connected account UUID for filtering
+      if (adminAccounts.length > 0) {
+        const managerAccountUUID = adminAccounts[0].id;
+        console.log(`DEBUG: Using manager account UUID: ${managerAccountUUID}`);
+        campaignConditions.push(eq(campaigns.googleAdsAccountId, managerAccountUUID));
       } else {
-        // No matching accounts found, return empty
-        console.log('No matching account UUIDs found for selected customer IDs');
+        console.log('No connected accounts found for user');
         return [];
       }
     }
