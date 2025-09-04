@@ -51,7 +51,7 @@ export const queryClient = new QueryClient({
       queryFn: getQueryFn({ on401: "throw" }),
       refetchInterval: false,
       refetchOnWindowFocus: false,
-      staleTime: Infinity,
+      staleTime: 5 * 60 * 1000, // 5 minutes instead of Infinity to allow data refresh
       retry: false,
     },
     mutations: {
@@ -59,3 +59,9 @@ export const queryClient = new QueryClient({
     },
   },
 });
+
+// Helper function to invalidate all campaign-related queries
+export const invalidateCampaignData = () => {
+  queryClient.invalidateQueries({ queryKey: ['/api/campaigns'] });
+  queryClient.invalidateQueries({ queryKey: ['/api/dashboard'] });
+};

@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { ShoppingCart, Megaphone, RotateCcw, Calendar, TrendingUp, Brain, Sparkles, AlertCircle } from "lucide-react";
 import GoalSettingModal from "./GoalSettingModal";
 import { useState } from "react";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, invalidateCampaignData } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 interface CampaignCardProps {
@@ -380,7 +380,10 @@ export default function CampaignCard({ campaign, onUpdate }: CampaignCardProps) 
         isOpen={isGoalModalOpen}
         onClose={() => setIsGoalModalOpen(false)}
         campaign={campaign}
-        onSave={onUpdate}
+        onSave={() => {
+          invalidateCampaignData(); // Refresh all campaign data
+          onUpdate();
+        }}
       />
       
       <Dialog open={showDetails} onOpenChange={setShowDetails}>

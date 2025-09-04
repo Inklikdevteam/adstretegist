@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, invalidateCampaignData } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 
 interface GoalSettingModalProps {
@@ -64,6 +64,25 @@ export default function GoalSettingModal({
         }, 500);
         return;
       }
+      
+      // Check if it's a 404 error (campaign not found)
+      const errorMessage = (error as any)?.message || '';
+      if (errorMessage.includes('404') || errorMessage.includes('Campaign not found') || errorMessage.includes('not found')) {
+        toast({
+          title: "Data Outdated",
+          description: "Campaign data is outdated. Refreshing campaigns...",
+          variant: "destructive",
+        });
+        
+        // Invalidate cache and refresh data instead of full page reload
+        invalidateCampaignData();
+        
+        setTimeout(() => {
+          onClose(); // Close modal and let parent refresh
+        }, 1000);
+        return;
+      }
+      
       toast({
         title: "Error",
         description: "Failed to update goals. Please try again.",

@@ -11,7 +11,7 @@ import CampaignCard from "@/components/CampaignCard";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { RefreshCw, TrendingUp, Target, DollarSign, BarChart3, Activity, Clock } from "lucide-react";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, invalidateCampaignData } from "@/lib/queryClient";
 import { apiRequest } from "@/lib/queryClient";
 import { formatDistanceToNow } from "date-fns";
 
