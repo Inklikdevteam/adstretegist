@@ -1222,6 +1222,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Query is required' });
       }
 
+      // Get comprehensive account context
       let campaign = null;
       if (campaignId) {
         // Get specific campaign if provided
@@ -1231,37 +1232,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
         campaign = campaigns[0];
       }
 
-      // Build campaign metrics JSON
-      const metricsJson = campaign ? JSON.stringify({
-        name: campaign.name,
-        type: campaign.type,
-        status: campaign.status,
-        dailyBudget: campaign.dailyBudget,
-        spend7d: campaign.spend7d,
-        conversions7d: campaign.conversions7d,
-        actualCpa: campaign.actualCpa,
-        actualRoas: campaign.actualRoas,
-        targetCpa: campaign.targetCpa,
-        targetRoas: campaign.targetRoas,
-        goalDescription: campaign.goalDescription
-      }) : 'No specific campaign selected';
-
-      const goals = campaign ? `${campaign.targetCpa ? `Target CPA: ₹${campaign.targetCpa}` : ''} ${campaign.targetRoas ? `Target ROAS: ${campaign.targetRoas}x` : ''} ${campaign.goalDescription || ''}`.trim() || 'No specific goals set' : 'General optimization for Indian market';
+      // Get user settings for account preferences
+      const userSettings = await storage.getUserSettings(dbUserId);
       
-      const context = `User query: ${query}. ${campaign ? `Campaign context: ${campaign.name}` : `Portfolio analysis with ${campaigns.length} campaigns.`}`;
+      // Get connected Google Ads accounts information
+      const connectedAccounts = await storage.getGoogleAdsAccounts(dbUserId);
+      
+      // Calculate account-level performance summary
+      const allCampaigns = campaigns.length > 0 ? campaigns : await campaignService.getUserCampaignsFromStorage(dbUserId);
+      const accountSummary = {
+        totalCampaigns: allCampaigns.length,
+        totalSpend: allCampaigns.reduce((sum: number, c: any) => sum + (parseFloat(c.spend7d) || 0), 0),
+        totalConversions: allCampaigns.reduce((sum: number, c: any) => sum + (parseInt(c.conversions7d) || 0), 0),
+        totalConversionValue: allCampaigns.reduce((sum: number, c: any) => sum + (parseFloat(c.conversionValue7d) || 0), 0),
+        activeCampaigns: allCampaigns.filter((c: any) => c.status === 'active').length,
+        campaignTypes: [...new Set(allCampaigns.map((c: any) => c.type))]
+      };
 
-      const contextualPrompt = buildPrompt({
-        metrics_json: metricsJson,
-        goals: goals,
-        context: context,
-        role: 'manager',
-        mode: 'deep dive',
-        output_format: 'detailed reasoning'
-      });
+      // Build comprehensive account context
+      const accountContext = {
+        userProfile: {
+          role: user.role,
+          username: user.username,
+          settings: userSettings ? {
+            aiFrequency: userSettings.aiFrequency,
+            confidenceThreshold: userSettings.confidenceThreshold,
+            selectedAccounts: userSettings.selectedGoogleAdsAccounts
+          } : null
+        },
+        connectedAccounts: connectedAccounts.map(acc => ({
+          name: acc.customerName,
+          id: acc.customerId,
+          isActive: acc.isActive
+        })),
+        accountPerformance: accountSummary,
+        specificCampaign: campaign ? {
+          name: campaign.name,
+          type: campaign.type,
+          status: campaign.status,
+          dailyBudget: campaign.dailyBudget,
+          spend7d: campaign.spend7d,
+          conversions7d: campaign.conversions7d,
+          actualCpa: campaign.actualCpa,
+          actualRoas: campaign.actualRoas,
+          targetCpa: campaign.targetCpa,
+          targetRoas: campaign.targetRoas,
+          goalDescription: campaign.goalDescription
+        } : null
+      };
+
+      // Build enhanced contextual prompt for broader account questions
+      const enhancedPrompt = `You are an expert Google Ads strategist helping a user with their account. 
+
+ACCOUNT CONTEXT:
+${JSON.stringify(accountContext, null, 2)}
+
+USER QUERY: ${query}
+
+Instructions:
+- You can answer questions about campaigns, account performance, optimization strategies, industry best practices, Google Ads features, budgeting, bidding strategies, and general advertising advice
+- Use the account context to provide personalized, data-driven insights
+- Always use INR (₹) currency for financial data
+- Focus on actionable recommendations when relevant
+- If asking about specific campaigns, refer to the campaign data provided
+- For general questions, provide comprehensive advice based on best practices
+- Be conversational and helpful while maintaining expertise
+
+Please provide a comprehensive response to the user's query.`;
 
       // Generate response using the multiAI service
       const response = await multiAIService.generateSingle(
-        contextualPrompt,
+        enhancedPrompt,
         provider,
         campaign
       );
@@ -1270,7 +1311,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         response: response.content,
         provider: provider,
         confidence: response.confidence || 85,
-        campaignContext: campaign?.name || 'General analysis',
+        accountContext: {
+          totalCampaigns: accountSummary.totalCampaigns,
+          connectedAccounts: connectedAccounts.length,
+          specificCampaign: campaign?.name || null
+        },
         model: provider
       });
     } catch (error) {
@@ -1295,6 +1340,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Query is required' });
       }
 
+      // Get comprehensive account context (same as single query endpoint)
       let campaign = null;
       if (campaignId) {
         campaign = await campaignService.getCampaignById(campaignId, dbUserId);
@@ -1302,13 +1348,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
         campaign = campaigns[0];
       }
 
+      // Get user settings for account preferences
+      const userSettings = await storage.getUserSettings(dbUserId);
+      
+      // Get connected Google Ads accounts information
+      const connectedAccounts = await storage.getGoogleAdsAccounts(dbUserId);
+      
+      // Calculate account-level performance summary
+      const allCampaigns = campaigns.length > 0 ? campaigns : await campaignService.getUserCampaignsFromStorage(dbUserId);
+      const accountSummary = {
+        totalCampaigns: allCampaigns.length,
+        totalSpend: allCampaigns.reduce((sum: number, c: any) => sum + (parseFloat(c.spend7d) || 0), 0),
+        totalConversions: allCampaigns.reduce((sum: number, c: any) => sum + (parseInt(c.conversions7d) || 0), 0),
+        totalConversionValue: allCampaigns.reduce((sum: number, c: any) => sum + (parseFloat(c.conversionValue7d) || 0), 0),
+        activeCampaigns: allCampaigns.filter((c: any) => c.status === 'active').length,
+        campaignTypes: [...new Set(allCampaigns.map((c: any) => c.type))]
+      };
+
       if (!multiAIService.isAvailable()) {
         return res.status(503).json({ message: "Multi-AI service not available" });
       }
 
-      // Generate consensus with master prompt
+      // Build enhanced prompt for consensus with account context
+      const enhancedQuery = `User Query: ${query}
+
+Account Context Summary:
+- Total Campaigns: ${accountSummary.totalCampaigns}
+- Active Campaigns: ${accountSummary.activeCampaigns}  
+- Total 7-day Spend: ₹${accountSummary.totalSpend.toLocaleString()}
+- Total 7-day Conversions: ${accountSummary.totalConversions}
+- Campaign Types: ${accountSummary.campaignTypes.join(', ')}
+- Connected Accounts: ${connectedAccounts.length}
+
+Please provide comprehensive consensus analysis and recommendations considering the full account context.`;
+
+      // Generate consensus with enhanced prompt
       const consensus = await multiAIService.generateWithConsensus(
-        query,
+        enhancedQuery,
         campaign
       );
       
@@ -1317,6 +1393,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         consensus: consensus,
         provider: 'Multi-AI Consensus',
         confidence: consensus.confidence,
+        accountContext: {
+          totalCampaigns: accountSummary.totalCampaigns,
+          connectedAccounts: connectedAccounts.length,
+          specificCampaign: campaign?.name || null
+        },
         availableModels: multiAIService.getAvailableProviders()
       });
     } catch (error) {
