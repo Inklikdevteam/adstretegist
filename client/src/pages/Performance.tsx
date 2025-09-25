@@ -101,8 +101,9 @@ export default function Performance() {
   const summary = dashboardSummary || {};
   const totalSpend = summary.totalSpend || 0;
   const totalConversions = summary.totalConversions || 0;
+  const totalConversionValue = summary.totalConversionValue || 0;
   const avgCpa = totalConversions > 0 ? totalSpend / totalConversions : 0;
-  const roas = 4.2;
+  const roas = summary.roas || 0;
   const impressions = 125400;
   const clicks = 3200;
 

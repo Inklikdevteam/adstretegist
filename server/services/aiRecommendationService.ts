@@ -223,6 +223,10 @@ export class AIRecommendationService {
         })
       : pendingRecommendations;
     
+    const totalSpend = campaigns.reduce((sum, c) => sum + parseFloat(c.spend7d || '0'), 0);
+    const totalConversions = campaigns.reduce((sum, c) => sum + (c.conversions7d || 0), 0);
+    const totalConversionValue = campaigns.reduce((sum, c) => sum + parseFloat(c.conversionValue7d || '0'), 0);
+    
     const summary = {
       totalCampaigns: campaigns.length,
       activeCampaigns: campaigns.filter(c => c.status === 'active' || c.status === 'enabled').length,
@@ -231,8 +235,10 @@ export class AIRecommendationService {
         monitor: filteredRecommendations.filter(r => r.type === 'monitor').length,
         clarification: filteredRecommendations.filter(r => r.type === 'clarification').length
       },
-      totalSpend: campaigns.reduce((sum, c) => sum + parseFloat(c.spend7d || '0'), 0),
-      totalConversions: campaigns.reduce((sum, c) => sum + (c.conversions7d || 0), 0)
+      totalSpend,
+      totalConversions,
+      totalConversionValue,
+      roas: totalSpend > 0 ? totalConversionValue / totalSpend : 0
     };
 
     return summary;
@@ -251,6 +257,10 @@ export class AIRecommendationService {
         })
       : pendingRecommendations;
     
+    const totalSpend = campaigns.reduce((sum, c) => sum + parseFloat(c.spend7d || '0'), 0);
+    const totalConversions = campaigns.reduce((sum, c) => sum + (c.conversions7d || 0), 0);
+    const totalConversionValue = campaigns.reduce((sum, c) => sum + parseFloat(c.conversionValue7d || '0'), 0);
+    
     const summary = {
       totalCampaigns: campaigns.length,
       activeCampaigns: campaigns.filter(c => c.status === 'active' || c.status === 'enabled').length,
@@ -259,8 +269,10 @@ export class AIRecommendationService {
         monitor: filteredRecommendations.filter(r => r.type === 'monitor').length,
         clarification: filteredRecommendations.filter(r => r.type === 'clarification').length
       },
-      totalSpend: campaigns.reduce((sum, c) => sum + parseFloat(c.spend7d || '0'), 0),
-      totalConversions: campaigns.reduce((sum, c) => sum + (c.conversions7d || 0), 0)
+      totalSpend,
+      totalConversions,
+      totalConversionValue,
+      roas: totalSpend > 0 ? totalConversionValue / totalSpend : 0
     };
 
     return summary;

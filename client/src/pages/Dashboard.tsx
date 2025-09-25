@@ -286,8 +286,9 @@ export default function Dashboard() {
   const summary = dashboardSummary || {};
   const totalSpend = summary.totalSpend || 0;
   const totalConversions = summary.totalConversions || 0;
+  const totalConversionValue = summary.totalConversionValue || 0;
   const avgCpa = totalConversions > 0 ? totalSpend / totalConversions : 0;
-  const roas = 4.2; // This would be calculated from actual revenue data
+  const roas = summary.roas || 0;
 
   return (
     <div className="min-h-screen flex bg-gray-50">
