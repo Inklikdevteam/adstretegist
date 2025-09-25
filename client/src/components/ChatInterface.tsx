@@ -30,7 +30,7 @@ export default function ChatInterface({ campaigns = [], isOpen, onClose }: ChatI
     {
       id: '1',
       type: 'system',
-      content: 'Welcome to your AI Campaign Assistant! Ask me anything about your campaigns, performance, or optimization strategies. I can analyze your data and provide personalized recommendations.',
+      content: 'Welcome to your AI Google Ads Assistant! Ask me anything about your connected Google Ads accounts, campaigns, performance analysis, optimization strategies, budget management, or general advertising questions. I have access to your account data and can provide personalized insights.',
       timestamp: new Date(),
     }
   ]);
@@ -194,12 +194,16 @@ export default function ChatInterface({ campaigns = [], isOpen, onClose }: ChatI
   };
 
   const suggestedQueries = [
-    "How are my campaigns performing this week?",
-    "Which campaign needs the most attention?",
-    "Generate consensus recommendations for optimization",
-    "What's the best strategy to improve my ROAS?",
-    "Compare performance across all my campaigns",
-    "Should I increase or decrease my budgets?"
+    "How are my Google Ads accounts performing overall?",
+    "What's my total spend and ROAS across all campaigns?",
+    "Which campaigns need the most attention right now?",
+    "How can I optimize my budget allocation?",
+    "What are the best practices for my industry?",
+    "Compare my performance to Google Ads benchmarks",
+    "Should I expand to new campaign types?",
+    "What's causing my recent performance changes?",
+    "How can I improve my Quality Score?",
+    "What seasonal trends should I prepare for?"
   ];
 
   if (!isOpen) return null;
@@ -213,8 +217,8 @@ export default function ChatInterface({ campaigns = [], isOpen, onClose }: ChatI
               <Bot className="w-4 h-4 text-primary" />
             </div>
             <div>
-              <h3 className="font-semibold">AI Campaign Assistant</h3>
-              <p className="text-sm text-gray-500">Natural language campaign analysis</p>
+              <h3 className="font-semibold">AI Google Ads Assistant</h3>
+              <p className="text-sm text-gray-500">Ask anything about your account & campaigns</p>
             </div>
           </div>
           <div className="flex items-center space-x-2">
@@ -323,7 +327,7 @@ export default function ChatInterface({ campaigns = [], isOpen, onClose }: ChatI
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder="Ask me anything about your campaigns..."
+              placeholder="Ask me anything about your Google Ads account..."
               disabled={isLoading}
               className="flex-1"
             />
