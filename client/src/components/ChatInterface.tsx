@@ -85,18 +85,29 @@ export default function ChatInterface({ campaigns = [], isOpen, onClose }: ChatI
       
       // Look for campaign names mentioned in the input
       if (campaigns && campaigns.length > 0) {
-        // First try to find exact campaign name matches
-        targetCampaign = campaigns.find(c => {
-          const campaignName = c.name.toLowerCase();
-          const inputLower = input.toLowerCase();
-          // Check for exact name mentions or partial matches
-          return inputLower.includes(campaignName) || 
-                 campaignName.includes(inputLower.replace(/[^a-z0-9\s]/g, '').trim());
-        });
-
-        // If no exact match, try finding by keywords (incrediblegifts, pmax, etc.)
+        // Extract quoted campaign name if present
+        const quotedMatch = input.match(/"([^"]+)"|'([^']+)'/);
+        if (quotedMatch) {
+          const quotedName = (quotedMatch[1] || quotedMatch[2]).toLowerCase();
+          targetCampaign = campaigns.find(c => 
+            c.name.toLowerCase() === quotedName || 
+            c.name.toLowerCase().includes(quotedName) ||
+            quotedName.includes(c.name.toLowerCase())
+          );
+        }
+        
+        // If no quoted match, try exact campaign name matches
         if (!targetCampaign) {
-          const keywords = input.toLowerCase().match(/\b(?:incrediblegifts|pmax|sleep\s*spa|inklik|sanfort|ingrid|teenager|bina|frons|gsl)\b/g);
+          targetCampaign = campaigns.find(c => {
+            const campaignName = c.name.toLowerCase();
+            const inputLower = input.toLowerCase();
+            return inputLower.includes(campaignName);
+          });
+        }
+
+        // If still no match, try finding by keywords
+        if (!targetCampaign) {
+          const keywords = input.toLowerCase().match(/\b(?:incrediblegifts|pmax|sleep\s*spa|inklik|sanfort|ingrid|teenager|bina|frons|gsl|girlfriend|birthday)\b/g);
           if (keywords && keywords.length > 0) {
             targetCampaign = campaigns.find(c => {
               const campaignName = c.name.toLowerCase();
@@ -114,7 +125,7 @@ export default function ChatInterface({ campaigns = [], isOpen, onClose }: ChatI
           query: input,
           campaignId: targetCampaign?.id,
           provider: selectedProvider,
-          campaigns: campaigns.slice(0, 5) // Send top 5 campaigns for context
+          campaigns: campaigns // Send ALL campaigns for full context
         });
         
         const aiMessage: ChatMessage = {
@@ -137,7 +148,7 @@ export default function ChatInterface({ campaigns = [], isOpen, onClose }: ChatI
           query: input,
           campaignId: targetCampaign?.id,
           provider: selectedProvider,
-          campaigns: campaigns.slice(0, 10) // Send campaign context
+          campaigns: campaigns // Send ALL campaigns for full context
         });
         
         const aiMessage: ChatMessage = {

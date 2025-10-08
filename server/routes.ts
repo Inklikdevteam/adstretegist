@@ -1241,6 +1241,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Calculate account-level performance summary - always fetch all campaigns
       const allCampaigns = campaigns.length > 0 ? campaigns : await campaignService.getUserCampaignsFromStorage(dbUserId);
+      
+      console.log(`📊 Chat Query - Campaigns available: ${allCampaigns.length}`);
+      if (query.toLowerCase().includes('girlfriend') || query.toLowerCase().includes('gifts for girlfriend')) {
+        console.log(`🔍 Looking for "Girlfriend" campaign in ${allCampaigns.length} campaigns`);
+        const girlfriendCampaign = allCampaigns.find((c: any) => c.name.toLowerCase().includes('girlfriend'));
+        console.log(`Found girlfriend campaign:`, girlfriendCampaign ? girlfriendCampaign.name : 'NOT FOUND');
+      }
+      
       const accountSummary = {
         totalCampaigns: allCampaigns.length,
         totalSpend: allCampaigns.reduce((sum: number, c: any) => sum + (parseFloat(c.spend7d) || 0), 0),
