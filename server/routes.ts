@@ -1228,8 +1228,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Get specific campaign if provided
         campaign = await campaignService.getCampaignById(campaignId, dbUserId);
       } else if (campaigns.length > 0) {
-        // Use the first campaign from provided list as context
-        campaign = campaigns[0];
+        // Try to find campaign mentioned in the query
+        const queryLower = query.toLowerCase();
+        campaign = campaigns.find((c: any) => queryLower.includes(c.name.toLowerCase())) || campaigns[0];
       }
 
       // Get user settings for account preferences
@@ -1238,7 +1239,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get connected Google Ads accounts information
       const connectedAccounts = await storage.getGoogleAdsAccounts(dbUserId);
       
-      // Calculate account-level performance summary
+      // Calculate account-level performance summary - always fetch all campaigns
       const allCampaigns = campaigns.length > 0 ? campaigns : await campaignService.getUserCampaignsFromStorage(dbUserId);
       const accountSummary = {
         totalCampaigns: allCampaigns.length,
@@ -1249,7 +1250,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         campaignTypes: [...new Set(allCampaigns.map((c: any) => c.type))]
       };
 
-      // Build comprehensive account context
+      // Build comprehensive account context with ALL campaigns
       const accountContext = {
         userProfile: {
           role: user.role,
@@ -1266,6 +1267,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           isActive: acc.isActive
         })),
         accountPerformance: accountSummary,
+        allCampaigns: allCampaigns.map(c => ({
+          name: c.name,
+          type: c.type,
+          status: c.status,
+          dailyBudget: c.dailyBudget,
+          spend7d: c.spend7d,
+          conversions7d: c.conversions7d,
+          conversionValue7d: c.conversionValue7d,
+          actualCpa: c.actualCpa,
+          actualRoas: c.actualRoas,
+          targetCpa: c.targetCpa,
+          targetRoas: c.targetRoas
+        })),
         specificCampaign: campaign ? {
           name: campaign.name,
           type: campaign.type,
@@ -1273,6 +1287,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           dailyBudget: campaign.dailyBudget,
           spend7d: campaign.spend7d,
           conversions7d: campaign.conversions7d,
+          conversionValue7d: campaign.conversionValue7d,
           actualCpa: campaign.actualCpa,
           actualRoas: campaign.actualRoas,
           targetCpa: campaign.targetCpa,
@@ -1282,23 +1297,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       // Build enhanced contextual prompt for broader account questions
-      const enhancedPrompt = `You are an expert Google Ads strategist helping a user with their account. 
+      const enhancedPrompt = `You are an expert Google Ads strategist with DIRECT ACCESS to the user's Google Ads account data.
 
-ACCOUNT CONTEXT:
+CRITICAL INSTRUCTION: You have COMPLETE, REAL-TIME access to all campaign data shown below. This data comes DIRECTLY from their connected Google Ads account. You can see all metrics, performance data, and campaign details. NEVER claim you lack access or ask for manual data sharing.
+
+ACCOUNT CONTEXT WITH FULL DATA ACCESS:
 ${JSON.stringify(accountContext, null, 2)}
 
 USER QUERY: ${query}
 
-Instructions:
-- You can answer questions about campaigns, account performance, optimization strategies, industry best practices, Google Ads features, budgeting, bidding strategies, and general advertising advice
-- Use the account context to provide personalized, data-driven insights
-- Always use INR (₹) currency for financial data
-- Focus on actionable recommendations when relevant
-- If asking about specific campaigns, refer to the campaign data provided
-- For general questions, provide comprehensive advice based on best practices
-- Be conversational and helpful while maintaining expertise
+Instructions for Response:
+- YOU HAVE DIRECT ACCESS to all ${allCampaigns.length} campaigns listed in the "allCampaigns" array above
+- Each campaign includes: name, spend, conversions, conversion value, CPA, ROAS, budget, and status
+- For campaign-specific questions: Search the "allCampaigns" array by name and use its exact metrics
+- For account-wide questions: Aggregate data from accountPerformance summary
+- ALWAYS provide specific numbers, metrics, and data from the context above
+- Use INR (₹) currency format for all financial data
+- Give concrete, actionable recommendations based on actual performance metrics
+- If asked about a specific campaign, find it in "allCampaigns" or "specificCampaign" and provide its exact data
 
-Please provide a comprehensive response to the user's query.`;
+NEVER say you "don't have access" - you DO have all the data above. Analyze it and answer the question directly.`;
 
       // Generate response using the multiAI service
       const response = await multiAIService.generateSingle(
@@ -1370,17 +1388,31 @@ Please provide a comprehensive response to the user's query.`;
       }
 
       // Build enhanced prompt for consensus with account context
-      const enhancedQuery = `User Query: ${query}
+      const enhancedQuery = `You are expert Google Ads strategists with DIRECT ACCESS to the user's complete Google Ads account data.
 
-Account Context Summary:
+IMPORTANT: You have full access to all campaign performance data. This is REAL data from their connected account. Use it directly in your analysis - DO NOT ask for manual data sharing.
+
+User Query: ${query}
+
+Account Data Summary:
 - Total Campaigns: ${accountSummary.totalCampaigns}
 - Active Campaigns: ${accountSummary.activeCampaigns}  
 - Total 7-day Spend: ₹${accountSummary.totalSpend.toLocaleString()}
 - Total 7-day Conversions: ${accountSummary.totalConversions}
+- Total Conversion Value: ₹${accountSummary.totalConversionValue?.toLocaleString() || '0'}
 - Campaign Types: ${accountSummary.campaignTypes.join(', ')}
 - Connected Accounts: ${connectedAccounts.length}
 
-Please provide comprehensive consensus analysis and recommendations considering the full account context.`;
+All Campaigns List:
+${allCampaigns.slice(0, 20).map(c => `- ${c.name}: Spend ₹${c.spend7d}, ${c.conversions7d} conversions, ROAS ${c.actualRoas}x`).join('\n')}
+
+Instructions:
+- YOU HAVE DIRECT ACCESS to all campaign data shown above
+- Analyze the actual performance metrics provided
+- For specific campaign questions, reference the exact data from the campaigns list
+- Provide data-driven consensus recommendations
+
+Provide comprehensive consensus analysis using the real data above.`;
 
       // Generate consensus with enhanced prompt
       const consensus = await multiAIService.generateWithConsensus(
