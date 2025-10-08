@@ -1306,17 +1306,33 @@ ${JSON.stringify(accountContext, null, 2)}
 
 USER QUERY: ${query}
 
-Instructions for Response:
+Instructions for Response Format:
+- Write in PLAIN, CONVERSATIONAL LANGUAGE like you're talking to a colleague
+- DO NOT use ANY structured elements: NO JSON, code blocks, template-style responses, section headers, or labels
+- ABSOLUTELY FORBIDDEN: "Expected Outcome:", "Confidence Score:", "Action Type:", "Recommendation:", bold headers, numbered sections
+- Integrate metrics naturally into flowing sentences (e.g., "Your campaign spent ₹50,000 with a ROAS of 2.5x")
+- Give recommendations directly within your narrative - don't label them
+- Write in flowing paragraphs or simple bullet points - NO structured sections or categorizations
+- Keep it natural and conversational throughout
+
+Data Analysis Instructions:
 - YOU HAVE DIRECT ACCESS to all ${allCampaigns.length} campaigns listed in the "allCampaigns" array above
 - Each campaign includes: name, spend, conversions, conversion value, CPA, ROAS, budget, and status
-- For campaign-specific questions: Search the "allCampaigns" array by name and use its exact metrics
+- For campaign-specific questions: Find the campaign in "allCampaigns" by name and reference its exact metrics
 - For account-wide questions: Aggregate data from accountPerformance summary
-- ALWAYS provide specific numbers, metrics, and data from the context above
+- ALWAYS provide specific numbers from the actual data (e.g., "₹60,559 spend, 114 conversions, 2.4x ROAS")
 - Use INR (₹) currency format for all financial data
-- Give concrete, actionable recommendations based on actual performance metrics
-- If asked about a specific campaign, find it in "allCampaigns" or "specificCampaign" and provide its exact data
 
-NEVER say you "don't have access" - you DO have all the data above. Analyze it and answer the question directly.`;
+Example Good Response: "Your IncredibleGifts PMax campaign is performing well with a ROAS of 2.4x over the last 7 days. You've spent ₹60,559 and generated 114 conversions at a CPA of ₹531. Since it's exceeding your target, I'd increase the budget by 15% to capitalize on this momentum."
+
+Example Bad Responses to AVOID:
+- "Action Type: Analysis [JSON formatted data] {spend: 60559, conversions: 114}"
+- "Expected Outcome: Increased conversions..."
+- "Confidence Score: 85"
+- "**Recommendation:** Increase budget..."
+- Any response with section headers or structured labels
+
+NEVER say you "don't have access" - you DO have all the data above. Analyze it and answer in plain, helpful language.`;
 
       // Generate response using the multiAI service
       const response = await multiAIService.generateSingle(
@@ -1406,13 +1422,31 @@ Account Data Summary:
 All Campaigns List:
 ${allCampaigns.slice(0, 20).map(c => `- ${c.name}: Spend ₹${c.spend7d}, ${c.conversions7d} conversions, ROAS ${c.actualRoas}x`).join('\n')}
 
-Instructions:
+Response Format Instructions:
+- Write in PLAIN, CONVERSATIONAL LANGUAGE - talk like you're advising a colleague
+- DO NOT use ANY structured elements: NO JSON, code blocks, templates, action types, section headers, or labels
+- ABSOLUTELY FORBIDDEN: "Expected Outcome:", "Confidence Score:", "Action Type:", "Recommendation:", bold headers, numbered sections
+- Integrate metrics naturally into flowing sentences
+- Give recommendations directly in your narrative - don't label or categorize them
+- Use flowing paragraphs or simple bullet points - NO structured sections
+- Keep it natural and conversational throughout
+
+Data Analysis Instructions:
 - YOU HAVE DIRECT ACCESS to all campaign data shown above
 - Analyze the actual performance metrics provided
 - For specific campaign questions, reference the exact data from the campaigns list
-- Provide data-driven consensus recommendations
+- Provide data-driven consensus recommendations with real numbers
 
-Provide comprehensive consensus analysis using the real data above.`;
+Example Good Response: "Looking at your account, you've spent ₹100,000 across 6 campaigns with a solid overall ROAS of 2.3x. Your PMax campaign is your top performer with 114 conversions. You should shift 20% more budget there to capitalize on its strong performance."
+
+Example Bad Responses to AVOID:
+- "Action Type: Recommendation {data: {...}, analysis: {...}}"
+- "Expected Outcome: Increased conversions..."
+- "Confidence Score: 85"
+- "**Key Finding:** Your campaign..."
+- Any response with section headers or structured labels
+
+Provide comprehensive analysis using the real data above in natural, helpful language.`;
 
       // Generate consensus with enhanced prompt
       const consensus = await multiAIService.generateWithConsensus(

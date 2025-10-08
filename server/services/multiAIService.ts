@@ -162,7 +162,10 @@ Goal: ${campaign.goalDescription || 'No specific goal set'}`;
 
     const response = await this.openai.chat.completions.create({
       model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-      messages: [{ role: "user", content: prompt }],
+      messages: [
+        { role: "system", content: 'You are a Google Ads expert advisor. Write ONLY in plain, conversational language. NEVER use structured formatting, JSON, code blocks, section headers like "Expected Outcome:", "Confidence Score:", "Action Type:", or bold labels. Just talk naturally like you\'re advising a colleague.' },
+        { role: "user", content: prompt }
+      ],
       temperature: 0.7,
       max_tokens: 2000,
     });
@@ -184,6 +187,7 @@ Goal: ${campaign.goalDescription || 'No specific goal set'}`;
     const response = await this.anthropic.messages.create({
       model: DEFAULT_MODEL_STR, // "claude-sonnet-4-20250514"
       max_tokens: 2000,
+      system: 'You are a Google Ads expert advisor. Write ONLY in plain, conversational language. NEVER use structured formatting, JSON, code blocks, section headers like "Expected Outcome:", "Confidence Score:", "Action Type:", or bold labels. Just talk naturally like you\'re advising a colleague.',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.7,
     });
@@ -214,7 +218,7 @@ Goal: ${campaign.goalDescription || 'No specific goal set'}`;
           messages: [
             {
               role: 'system',
-              content: 'You are an expert Google Ads strategist specializing in the Indian market. Always use INR (₹) currency, never USD ($). Analyze campaign data and provide actionable optimization recommendations in a structured format.'
+              content: 'You are a Google Ads expert advisor specializing in the Indian market. Always use INR (₹) currency. Write ONLY in plain, conversational language. NEVER use structured formatting, JSON, code blocks, section headers like "Expected Outcome:", "Confidence Score:", "Action Type:", or bold labels. Just talk naturally like you\'re advising a colleague.'
             },
             {
               role: 'user',
