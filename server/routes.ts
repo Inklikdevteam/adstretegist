@@ -1232,7 +1232,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const selectedAccountIds = userSettingsData?.selectedGoogleAdsAccounts as string[] || undefined;
 
       // Fetch campaign data for the requested time period
-      const allCampaigns = await campaignService.getUserCampaignsPerformance(
+      const allCampaigns = await campaignService.getPerformanceCampaigns(
         dbUserId,
         selectedAccountIds,
         dateFrom,
@@ -1280,10 +1280,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 ACCOUNT DATA (Complete and Real-Time for ${timePeriod.label.toUpperCase()}):
 ${JSON.stringify(completeAccountData, null, 2)}
 
-IMPORTANT CONTEXT:
-- All data shown is for the time period: ${timePeriod.label}
-- When referring to metrics, specify this is for ${timePeriod.label}
-- Example: "Over the ${timePeriod.label}, your campaign spent ₹50,000..."
+MANDATORY TIME PERIOD REQUIREMENT:
+- ALL data shown is for: ${timePeriod.label}
+- You MUST explicitly mention "${timePeriod.label}" in your response
+- Start your response by referencing the time period
+- Examples: 
+  * "Over the ${timePeriod.label}, you spent..."
+  * "In the ${timePeriod.label}, your campaigns..."
+  * "Looking at the ${timePeriod.label}, I can see..."
 
 CRITICAL RESPONSE RULES:
 1. You have FULL ACCESS to all campaign data above - analyze it directly
@@ -1299,10 +1303,10 @@ CRITICAL RESPONSE RULES:
    - Any structured template formats
    - Any JSON or code-like formatting
 5. Instead, integrate all information naturally into conversational sentences
-6. Example good response: "Over the ${timePeriod.label}, your Girlfriend campaign performed really well with a ROAS of 4.2x. You spent ₹45,000 and got 89 conversions at ₹506 per conversion. I'd recommend increasing the budget by 15% since it's crushing your targets."
+6. Example PERFECT response: "Over the ${timePeriod.label}, your Girlfriend campaign performed really well with a ROAS of 4.2x. You spent ₹45,000 and got 89 conversions at ₹506 per conversion. I'd recommend increasing the budget by 15% since it's crushing your targets."
 7. Example BAD response: "Expected Outcome: Increased conversions... Confidence Score: 85"
 
-Write naturally and conversationally - like you're chatting with a friend about their ads performance.`;
+REMEMBER: Always start by mentioning the time period "${timePeriod.label}" explicitly in your response!`;
 
       // Generate AI response using raw prompt (bypass structured template)
       const aiResponse = await multiAIService.generateSingle(
