@@ -80,94 +80,24 @@ export default function ChatInterface({ campaigns = [], isOpen, onClose }: ChatI
     setIsLoading(true);
 
     try {
-      // Enhanced campaign detection with better pattern matching
-      let targetCampaign = null;
+      // Simple chat query - just send the question to the AI
+      const response = await apiRequest("POST", "/api/chat/query", {
+        query: input,
+        provider: selectedProvider
+      });
       
-      // Look for campaign names mentioned in the input
-      if (campaigns && campaigns.length > 0) {
-        // Extract quoted campaign name if present
-        const quotedMatch = input.match(/"([^"]+)"|'([^']+)'/);
-        if (quotedMatch) {
-          const quotedName = (quotedMatch[1] || quotedMatch[2]).toLowerCase();
-          targetCampaign = campaigns.find(c => 
-            c.name.toLowerCase() === quotedName || 
-            c.name.toLowerCase().includes(quotedName) ||
-            quotedName.includes(c.name.toLowerCase())
-          );
-        }
-        
-        // If no quoted match, try exact campaign name matches
-        if (!targetCampaign) {
-          targetCampaign = campaigns.find(c => {
-            const campaignName = c.name.toLowerCase();
-            const inputLower = input.toLowerCase();
-            return inputLower.includes(campaignName);
-          });
-        }
+      const aiMessage: ChatMessage = {
+        id: Date.now().toString() + '_ai',
+        type: 'ai',
+        content: response?.response || 'No response received',
+        timestamp: new Date(),
+        provider: response?.provider || selectedProvider,
+        confidence: response?.confidence || 0
+      };
+      
+      setMessages(prev => [...prev, aiMessage]);
 
-        // If still no match, try finding by keywords
-        if (!targetCampaign) {
-          const keywords = input.toLowerCase().match(/\b(?:incrediblegifts|pmax|sleep\s*spa|inklik|sanfort|ingrid|teenager|bina|frons|gsl|girlfriend|birthday)\b/g);
-          if (keywords && keywords.length > 0) {
-            targetCampaign = campaigns.find(c => {
-              const campaignName = c.name.toLowerCase();
-              return keywords.some(keyword => campaignName.includes(keyword.replace(/\s+/g, '')));
-            });
-          }
-        }
-      }
-
-      // Generate AI response using new general chat endpoint
-      let response;
-      if (input.toLowerCase().includes('consensus') || input.toLowerCase().includes('compare')) {
-        // Use consensus generation for comparison queries
-        response = await apiRequest("POST", "/api/chat/consensus", {
-          query: input,
-          campaignId: targetCampaign?.id,
-          provider: selectedProvider,
-          campaigns: campaigns // Send ALL campaigns for full context
-        });
-        
-        const aiMessage: ChatMessage = {
-          id: Date.now().toString() + '_ai',
-          type: 'ai',
-          content: response.response || response.consensus?.finalRecommendation || 'No recommendation received',
-          timestamp: new Date(),
-          provider: response.consensus?.models?.join(', ') || 'Consensus',
-          confidence: response.consensus?.confidence || response.confidence || 0,
-          context: {
-            agreementLevel: response.consensus?.agreementLevel || 0,
-            modelsUsed: response.consensus?.models?.length || 0
-          }
-        };
-        
-        setMessages(prev => [...prev, aiMessage]);
-      } else {
-        // Use general chat endpoint for all queries
-        response = await apiRequest("POST", "/api/chat/query", {
-          query: input,
-          campaignId: targetCampaign?.id,
-          provider: selectedProvider,
-          campaigns: campaigns // Send ALL campaigns for full context
-        });
-        
-        const aiMessage: ChatMessage = {
-          id: Date.now().toString() + '_ai',
-          type: 'ai',
-          content: response?.response || response?.content || 'No response received',
-          timestamp: new Date(),
-          provider: response?.provider || selectedProvider,
-          confidence: response?.confidence || 0,
-          context: {
-            model: response?.model || 'Unknown',
-            reasoning: response?.reasoning || 'No reasoning provided'
-          }
-        };
-        
-        setMessages(prev => [...prev, aiMessage]);
-      }
-
-      // Update available providers after each interaction
+      // Update available providers
       try {
         const providersResponse = await apiRequest("GET", "/api/ai/providers");
         setAvailableProviders(providersResponse.available || ['OpenAI']);

@@ -1204,9 +1204,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // New AI Chat Endpoints for better conversation handling
-  
-  // General chat query endpoint
+  // Simplified AI Chat Assistant Endpoint
   app.post('/api/chat/query', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user;
@@ -1216,149 +1214,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const dbUserId = user.id.toString();
-      const { query, campaignId, provider = 'OpenAI', campaigns = [] } = req.body;
+      const { query, provider = 'OpenAI' } = req.body;
       
       if (!query?.trim()) {
         return res.status(400).json({ message: 'Query is required' });
       }
 
-      // Get comprehensive account context
-      let campaign = null;
-      if (campaignId) {
-        // Get specific campaign if provided
-        campaign = await campaignService.getCampaignById(campaignId, dbUserId);
-      } else if (campaigns.length > 0) {
-        // Try to find campaign mentioned in the query
-        const queryLower = query.toLowerCase();
-        campaign = campaigns.find((c: any) => queryLower.includes(c.name.toLowerCase())) || campaigns[0];
-      }
-
-      // Get user settings for account preferences
-      const userSettings = await storage.getUserSettings(dbUserId);
-      
-      // Get connected Google Ads accounts information
+      // Get ALL campaign data from storage
+      const allCampaigns = await campaignService.getUserCampaignsFromStorage(dbUserId);
       const connectedAccounts = await storage.getGoogleAdsAccounts(dbUserId);
       
-      // Calculate account-level performance summary - always fetch all campaigns
-      const allCampaigns = campaigns.length > 0 ? campaigns : await campaignService.getUserCampaignsFromStorage(dbUserId);
-      
-      console.log(`📊 Chat Query - Campaigns available: ${allCampaigns.length}`);
-      if (query.toLowerCase().includes('girlfriend') || query.toLowerCase().includes('gifts for girlfriend')) {
-        console.log(`🔍 Looking for "Girlfriend" campaign in ${allCampaigns.length} campaigns`);
-        const girlfriendCampaign = allCampaigns.find((c: any) => c.name.toLowerCase().includes('girlfriend'));
-        console.log(`Found girlfriend campaign:`, girlfriendCampaign ? girlfriendCampaign.name : 'NOT FOUND');
-      }
-      
-      const accountSummary = {
-        totalCampaigns: allCampaigns.length,
-        totalSpend: allCampaigns.reduce((sum: number, c: any) => sum + (parseFloat(c.spend7d) || 0), 0),
-        totalConversions: allCampaigns.reduce((sum: number, c: any) => sum + (parseInt(c.conversions7d) || 0), 0),
-        totalConversionValue: allCampaigns.reduce((sum: number, c: any) => sum + (parseFloat(c.conversionValue7d) || 0), 0),
-        activeCampaigns: allCampaigns.filter((c: any) => c.status === 'active').length,
-        campaignTypes: [...new Set(allCampaigns.map((c: any) => c.type))]
-      };
+      console.log(`💬 Chat Query: "${query}" | Campaigns: ${allCampaigns.length}`);
 
-      // Build comprehensive account context with ALL campaigns
-      const accountContext = {
-        userProfile: {
-          role: user.role,
-          username: user.username,
-          settings: userSettings ? {
-            aiFrequency: userSettings.aiFrequency,
-            confidenceThreshold: userSettings.confidenceThreshold,
-            selectedAccounts: userSettings.selectedGoogleAdsAccounts
-          } : null
-        },
+      // Build complete account data
+      const completeAccountData = {
         connectedAccounts: connectedAccounts.map(acc => ({
           name: acc.customerName,
-          id: acc.customerId,
+          customerId: acc.customerId,
           isActive: acc.isActive
         })),
-        accountPerformance: accountSummary,
-        allCampaigns: allCampaigns.map(c => ({
+        totalCampaigns: allCampaigns.length,
+        totalSpend7d: allCampaigns.reduce((sum: number, c: any) => sum + (parseFloat(c.spend7d) || 0), 0),
+        totalConversions7d: allCampaigns.reduce((sum: number, c: any) => sum + (parseInt(c.conversions7d) || 0), 0),
+        totalConversionValue7d: allCampaigns.reduce((sum: number, c: any) => sum + (parseFloat(c.conversionValue7d) || 0), 0),
+        campaigns: allCampaigns.map(c => ({
           name: c.name,
           type: c.type,
           status: c.status,
-          dailyBudget: c.dailyBudget,
-          spend7d: c.spend7d,
-          conversions7d: c.conversions7d,
-          conversionValue7d: c.conversionValue7d,
-          actualCpa: c.actualCpa,
-          actualRoas: c.actualRoas,
-          targetCpa: c.targetCpa,
-          targetRoas: c.targetRoas
-        })),
-        specificCampaign: campaign ? {
-          name: campaign.name,
-          type: campaign.type,
-          status: campaign.status,
-          dailyBudget: campaign.dailyBudget,
-          spend7d: campaign.spend7d,
-          conversions7d: campaign.conversions7d,
-          conversionValue7d: campaign.conversionValue7d,
-          actualCpa: campaign.actualCpa,
-          actualRoas: campaign.actualRoas,
-          targetCpa: campaign.targetCpa,
-          targetRoas: campaign.targetRoas,
-          goalDescription: campaign.goalDescription
-        } : null
+          budget: c.dailyBudget,
+          spend_last_7_days: c.spend7d,
+          conversions_last_7_days: c.conversions7d,
+          conversion_value_last_7_days: c.conversionValue7d,
+          cost_per_acquisition: c.actualCpa,
+          return_on_ad_spend: c.actualRoas,
+          target_cpa: c.targetCpa,
+          target_roas: c.targetRoas
+        }))
       };
 
-      // Build enhanced contextual prompt for broader account questions
-      const enhancedPrompt = `You are an expert Google Ads strategist with DIRECT ACCESS to the user's Google Ads account data.
+      // Simple, clear system prompt
+      const systemPrompt = `You are a Google Ads expert assistant with complete access to the user's Google Ads account data.
 
-CRITICAL INSTRUCTION: You have COMPLETE, REAL-TIME access to all campaign data shown below. This data comes DIRECTLY from their connected Google Ads account. You can see all metrics, performance data, and campaign details. NEVER claim you lack access or ask for manual data sharing.
+ACCOUNT DATA (Complete and Real-Time):
+${JSON.stringify(completeAccountData, null, 2)}
 
-ACCOUNT CONTEXT WITH FULL DATA ACCESS:
-${JSON.stringify(accountContext, null, 2)}
+IMPORTANT INSTRUCTIONS:
+1. You have FULL ACCESS to all the campaign data above - use it to answer questions
+2. Answer in natural, conversational language like ChatGPT
+3. Provide specific metrics and numbers from the actual data
+4. Use INR (₹) for all currency values
+5. Be helpful, direct, and actionable
+6. NO structured formats, templates, or JSON in responses - just natural conversation`;
 
-USER QUERY: ${query}
-
-Instructions for Response Format:
-- Write in PLAIN, CONVERSATIONAL LANGUAGE like you're talking to a colleague
-- DO NOT use ANY structured elements: NO JSON, code blocks, template-style responses, section headers, or labels
-- ABSOLUTELY FORBIDDEN: "Expected Outcome:", "Confidence Score:", "Action Type:", "Recommendation:", bold headers, numbered sections
-- Integrate metrics naturally into flowing sentences (e.g., "Your campaign spent ₹50,000 with a ROAS of 2.5x")
-- Give recommendations directly within your narrative - don't label them
-- Write in flowing paragraphs or simple bullet points - NO structured sections or categorizations
-- Keep it natural and conversational throughout
-
-Data Analysis Instructions:
-- YOU HAVE DIRECT ACCESS to all ${allCampaigns.length} campaigns listed in the "allCampaigns" array above
-- Each campaign includes: name, spend, conversions, conversion value, CPA, ROAS, budget, and status
-- For campaign-specific questions: Find the campaign in "allCampaigns" by name and reference its exact metrics
-- For account-wide questions: Aggregate data from accountPerformance summary
-- ALWAYS provide specific numbers from the actual data (e.g., "₹60,559 spend, 114 conversions, 2.4x ROAS")
-- Use INR (₹) currency format for all financial data
-
-Example Good Response: "Your IncredibleGifts PMax campaign is performing well with a ROAS of 2.4x over the last 7 days. You've spent ₹60,559 and generated 114 conversions at a CPA of ₹531. Since it's exceeding your target, I'd increase the budget by 15% to capitalize on this momentum."
-
-Example Bad Responses to AVOID:
-- "Action Type: Analysis [JSON formatted data] {spend: 60559, conversions: 114}"
-- "Expected Outcome: Increased conversions..."
-- "Confidence Score: 85"
-- "**Recommendation:** Increase budget..."
-- Any response with section headers or structured labels
-
-NEVER say you "don't have access" - you DO have all the data above. Analyze it and answer in plain, helpful language.`;
-
-      // Generate response using the multiAI service
-      const response = await multiAIService.generateSingle(
-        enhancedPrompt,
+      // Generate AI response
+      const aiResponse = await multiAIService.generateSingle(
+        `${systemPrompt}\n\nUser Question: ${query}`,
         provider,
-        campaign
+        null
       );
       
       res.json({
-        response: response.content,
+        response: aiResponse.content,
         provider: provider,
-        confidence: response.confidence || 85,
-        accountContext: {
-          totalCampaigns: accountSummary.totalCampaigns,
-          connectedAccounts: connectedAccounts.length,
-          specificCampaign: campaign?.name || null
-        },
-        model: provider
+        confidence: aiResponse.confidence || 85
       });
     } catch (error) {
       console.error("Error processing chat query:", error);
