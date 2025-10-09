@@ -46,6 +46,11 @@ Preferred communication style: Simple, everyday language.
 - **Decision Engine**: Categorizes recommendations as actionable, monitor, or clarification needed
 - **Confidence Scoring**: Provides confidence levels for all AI recommendations
 - **Goal Intelligence**: Supports CPA, ROAS, and custom goal descriptions with natural language processing
+- **Chat Assistant**: ChatGPT-like conversational interface with full account access
+  - Dynamic time period detection (7 days, 30 days, yesterday, last week, last month, etc.)
+  - Fetches campaign data for requested time periods from Google Ads API
+  - Natural language responses without structured formatting
+  - Complete access to all campaign metrics and performance data
 
 ## API Design
 - **RESTful Endpoints**: Consistent API structure with proper HTTP methods
