@@ -1204,7 +1204,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Simplified AI Chat Assistant Endpoint
+  // Simplified AI Chat Assistant Endpoint with Dynamic Time Periods
   app.post('/api/chat/query', isAuthenticated, async (req: any, res) => {
     try {
       const user = req.user;
@@ -1220,43 +1220,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Query is required' });
       }
 
-      // Get ALL campaign data from storage
-      const allCampaigns = await campaignService.getUserCampaignsFromStorage(dbUserId);
+      // Parse time period from query
+      const { parseTimePeriod, getDateRange } = await import('./utils/timeParser');
+      const timePeriod = parseTimePeriod(query);
+      const { dateFrom, dateTo } = getDateRange(timePeriod.days);
+      
+      console.log(`💬 Chat Query: "${query}" | Time Period: ${timePeriod.label} (${timePeriod.days} days)`);
+
+      // Get user settings for selected accounts
+      const userSettingsData = await storage.getUserSettings(dbUserId);
+      const selectedAccountIds = userSettingsData?.selectedGoogleAdsAccounts as string[] || undefined;
+
+      // Fetch campaign data for the requested time period
+      const allCampaigns = await campaignService.getUserCampaignsPerformance(
+        dbUserId,
+        selectedAccountIds,
+        dateFrom,
+        dateTo
+      );
+      
       const connectedAccounts = await storage.getGoogleAdsAccounts(dbUserId);
       
-      console.log(`💬 Chat Query: "${query}" | Campaigns: ${allCampaigns.length}`);
+      console.log(`📊 Fetched ${allCampaigns.length} campaigns for ${timePeriod.label}`);
 
-      // Build complete account data
+      // Build complete account data with dynamic metrics
       const completeAccountData = {
+        timePeriod: timePeriod.label,
         connectedAccounts: connectedAccounts.map(acc => ({
           name: acc.customerName,
           customerId: acc.customerId,
           isActive: acc.isActive
         })),
         totalCampaigns: allCampaigns.length,
-        totalSpend7d: allCampaigns.reduce((sum: number, c: any) => sum + (parseFloat(c.spend7d) || 0), 0),
-        totalConversions7d: allCampaigns.reduce((sum: number, c: any) => sum + (parseInt(c.conversions7d) || 0), 0),
-        totalConversionValue7d: allCampaigns.reduce((sum: number, c: any) => sum + (parseFloat(c.conversionValue7d) || 0), 0),
+        totalSpend: allCampaigns.reduce((sum: number, c: any) => sum + (parseFloat(c.spend7d) || 0), 0),
+        totalConversions: allCampaigns.reduce((sum: number, c: any) => sum + (parseInt(c.conversions7d) || 0), 0),
+        totalConversionValue: allCampaigns.reduce((sum: number, c: any) => sum + (parseFloat(c.conversionValue7d) || 0), 0),
         campaigns: allCampaigns.map(c => ({
           name: c.name,
           type: c.type,
           status: c.status,
           budget: c.dailyBudget,
-          spend_last_7_days: c.spend7d,
-          conversions_last_7_days: c.conversions7d,
-          conversion_value_last_7_days: c.conversionValue7d,
+          spend: c.spend7d,
+          conversions: c.conversions7d,
+          conversion_value: c.conversionValue7d,
           cost_per_acquisition: c.actualCpa,
           return_on_ad_spend: c.actualRoas,
           target_cpa: c.targetCpa,
-          target_roas: c.targetRoas
+          target_roas: c.targetRoas,
+          impressions: c.impressions7d,
+          clicks: c.clicks7d,
+          ctr: c.ctr7d,
+          avg_cpc: c.avgCpc7d
         }))
       };
 
-      // Simple, clear system prompt
+      // Simple, clear system prompt with time period context
       const systemPrompt = `You are a friendly Google Ads expert assistant with complete access to the user's Google Ads account data. Answer questions naturally like you're having a conversation with a colleague.
 
-ACCOUNT DATA (Complete and Real-Time):
+ACCOUNT DATA (Complete and Real-Time for ${timePeriod.label.toUpperCase()}):
 ${JSON.stringify(completeAccountData, null, 2)}
+
+IMPORTANT CONTEXT:
+- All data shown is for the time period: ${timePeriod.label}
+- When referring to metrics, specify this is for ${timePeriod.label}
+- Example: "Over the ${timePeriod.label}, your campaign spent ₹50,000..."
 
 CRITICAL RESPONSE RULES:
 1. You have FULL ACCESS to all campaign data above - analyze it directly
@@ -1272,7 +1299,7 @@ CRITICAL RESPONSE RULES:
    - Any structured template formats
    - Any JSON or code-like formatting
 5. Instead, integrate all information naturally into conversational sentences
-6. Example good response: "Your Girlfriend campaign is performing really well with a ROAS of 4.2x. You've spent ₹45,000 and got 89 conversions at ₹506 per conversion. I'd recommend increasing the budget by 15% since it's crushing your targets."
+6. Example good response: "Over the ${timePeriod.label}, your Girlfriend campaign performed really well with a ROAS of 4.2x. You spent ₹45,000 and got 89 conversions at ₹506 per conversion. I'd recommend increasing the budget by 15% since it's crushing your targets."
 7. Example BAD response: "Expected Outcome: Increased conversions... Confidence Score: 85"
 
 Write naturally and conversationally - like you're chatting with a friend about their ads performance.`;
@@ -1288,7 +1315,8 @@ Write naturally and conversationally - like you're chatting with a friend about 
       res.json({
         response: aiResponse.content,
         provider: provider,
-        confidence: aiResponse.confidence || 85
+        confidence: aiResponse.confidence || 85,
+        timePeriod: timePeriod.label
       });
     } catch (error) {
       console.error("Error processing chat query:", error);
