@@ -71,39 +71,46 @@ export class MultiAIService {
     return this.getAvailableProviders().length > 0;
   }
 
-  async generateSingle(prompt: string, provider: string, campaign?: Campaign | null): Promise<AIResponse> {
-    // Build campaign metrics JSON
-    const metricsJson = campaign ? JSON.stringify({
-      name: campaign.name,
-      type: campaign.type,
-      dailyBudget: campaign.dailyBudget,
-      spend7d: campaign.spend7d,
-      conversions7d: campaign.conversions7d,
-      actualCpa: campaign.actualCpa,
-      actualRoas: campaign.actualRoas,
-      targetCpa: campaign.targetCpa,
-      targetRoas: campaign.targetRoas,
-      goalDescription: campaign.goalDescription
-    }) : 'No specific campaign selected';
-
-    const goals = campaign ? `${campaign.targetCpa ? `Target CPA: ₹${campaign.targetCpa}` : ''} ${campaign.targetRoas ? `Target ROAS: ${campaign.targetRoas}x` : ''} ${campaign.goalDescription || ''}`.trim() || 'No specific goals set' : 'General optimization for Indian market';
+  async generateSingle(prompt: string, provider: string, campaign?: Campaign | null, useRawPrompt: boolean = false): Promise<AIResponse> {
+    let finalPrompt: string;
     
-    const fullPrompt = buildPrompt({
-      metrics_json: metricsJson,
-      goals: goals,
-      context: `User query: ${prompt}`,
-      role: 'manager',
-      mode: 'quick ideas',
-      output_format: '3 bullet points'
-    });
+    if (useRawPrompt) {
+      // For chat assistant - use the prompt as-is without the structured template
+      finalPrompt = prompt;
+    } else {
+      // For recommendations - use the structured template
+      const metricsJson = campaign ? JSON.stringify({
+        name: campaign.name,
+        type: campaign.type,
+        dailyBudget: campaign.dailyBudget,
+        spend7d: campaign.spend7d,
+        conversions7d: campaign.conversions7d,
+        actualCpa: campaign.actualCpa,
+        actualRoas: campaign.actualRoas,
+        targetCpa: campaign.targetCpa,
+        targetRoas: campaign.targetRoas,
+        goalDescription: campaign.goalDescription
+      }) : 'No specific campaign selected';
+
+      const goals = campaign ? `${campaign.targetCpa ? `Target CPA: ₹${campaign.targetCpa}` : ''} ${campaign.targetRoas ? `Target ROAS: ${campaign.targetRoas}x` : ''} ${campaign.goalDescription || ''}`.trim() || 'No specific goals set' : 'General optimization for Indian market';
+      
+      finalPrompt = buildPrompt({
+        metrics_json: metricsJson,
+        goals: goals,
+        context: `User query: ${prompt}`,
+        role: 'manager',
+        mode: 'quick ideas',
+        output_format: '3 bullet points'
+      });
+    }
 
     switch (provider.toLowerCase()) {
       case 'openai':
-        return await this.generateOpenAI(fullPrompt);
+        return await this.generateOpenAI(finalPrompt);
       case 'anthropic':
-        return await this.generateAnthropic(fullPrompt);
+        return await this.generateAnthropic(finalPrompt);
       case 'perplexity':
-        return await this.generatePerplexity(fullPrompt);
+        return await this.generatePerplexity(finalPrompt);
       default:
         throw new Error(`Unsupported provider: ${provider}`);
     }
