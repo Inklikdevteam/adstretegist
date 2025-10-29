@@ -28,6 +28,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const dailySyncService = new DailySyncService();
   const storedRecommendationService = new StoredRecommendationService();
 
+  // Health check endpoint (no authentication required)
+  app.get('/api/health', async (req, res) => {
+    try {
+      // Check database connection
+      await db.execute(sql`SELECT 1`);
+      
+      res.json({
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        services: {
+          database: 'connected',
+          server: 'running'
+        }
+      });
+    } catch (error) {
+      res.status(503).json({
+        status: 'unhealthy',
+        timestamp: new Date().toISOString(),
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
   // User management routes (admin only)
   app.get('/api/admin/users', isAdmin, async (req: any, res) => {
     try {

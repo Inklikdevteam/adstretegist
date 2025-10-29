@@ -1,635 +1,334 @@
-# AdStrategist - Deployment Guide
+# AdStrategist Docker Deployment Guide
 
-## Overview
-
-This guide covers deploying the AdStrategist application to a production server. The application is designed to run on a single port serving both the API and frontend, making deployment straightforward.
+This guide will help you deploy the AI-powered Google Ads platform using Docker and PostgreSQL.
 
 ## Prerequisites
 
-### Server Requirements
-- **Node.js**: Version 18 or higher
-- **PostgreSQL**: Database server (or use Neon cloud database)
-- **Memory**: Minimum 2GB RAM (4GB+ recommended)
-- **Storage**: At least 10GB available space
-- **Network**: HTTPS support for Google OAuth
+### System Requirements
+- **Docker** 20.10+ and **Docker Compose** 2.0+
+- **Minimum 2GB RAM** (4GB+ recommended)
+- **10GB+ disk space**
+- **Linux/macOS/Windows** with Docker Desktop
 
-### Required Accounts & API Keys
-- **Google Cloud Console**: For Google Ads API and OAuth
-- **OpenAI API Key**: For GPT-4o integration
-- **Anthropic API Key**: For Claude integration (optional)
-- **Perplexity API Key**: For Perplexity integration (optional)
-- **Database**: PostgreSQL instance (Neon recommended)
+### Required API Keys & Credentials
 
-## Deployment Options
+#### 1. Google Ads API Setup
+1. **Google Cloud Console**: Create a project at https://console.cloud.google.com
+2. **Enable Google Ads API**: In APIs & Services > Library
+3. **Create OAuth 2.0 Credentials**:
+   - Go to APIs & Services > Credentials
+   - Create OAuth 2.0 Client ID (Web application)
+   - Add authorized redirect URI: `http://your-domain:5000/auth/google/callback`
+4. **Get Developer Token**: Apply at https://developers.google.com/google-ads/api/docs/first-call/dev-token
 
-### Option 1: VPS/Cloud Server (Recommended)
+#### 2. AI Provider API Keys (At least one required)
+- **OpenAI**: https://platform.openai.com/api-keys (Recommended)
+- **Anthropic**: https://console.anthropic.com/ (Optional)
+- **Perplexity**: https://www.perplexity.ai/settings/api (Optional)
 
-#### 1. Server Setup
+## Quick Start Deployment
 
-**Ubuntu/Debian Server:**
+### 1. Clone and Setup
 ```bash
-# Update system
-sudo apt update && sudo apt upgrade -y
-
-# Install Node.js 18+
-curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-sudo apt-get install -y nodejs
-
-# Install PM2 for process management
-sudo npm install -g pm2
-
-# Install Nginx for reverse proxy
-sudo apt install nginx -y
-
-# Install SSL certificate tool
-sudo apt install certbot python3-certbot-nginx -y
-```
-
-**CentOS/RHEL Server:**
-```bash
-# Update system
-sudo yum update -y
-
-# Install Node.js 18+
-curl -fsSL https://rpm.nodesource.com/setup_18.x | sudo bash -
-sudo yum install -y nodejs
-
-# Install PM2
-sudo npm install -g pm2
-
-# Install Nginx
-sudo yum install nginx -y
-
-# Install Certbot
-sudo yum install certbot python3-certbot-nginx -y
-```
-
-#### 2. Application Deployment
-
-```bash
-# Create application directory
-sudo mkdir -p /var/www/adstrategist
-sudo chown $USER:$USER /var/www/adstrategist
-cd /var/www/adstrategist
-
 # Clone your repository
-git clone <your-repository-url> .
+git clone <your-repo-url>
+cd adstrategist
 
-# Install dependencies
-npm install
-
-# Build the application
-npm run build
+# Copy environment template
+cp .env.example .env
 ```
 
-#### 3. Environment Configuration
+### 2. Configure Environment Variables
+Edit `.env` file with your credentials:
 
-Create production environment file:
-```bash
-# Create environment file
-nano .env.production
-```
-
-**Environment Variables (.env.production):**
 ```env
-# Server Configuration
-NODE_ENV=production
-PORT=5000
+# Database
+DB_PASSWORD=your_secure_database_password
 
-# Database Configuration
-DATABASE_URL=postgresql://username:password@host:port/database
+# Google Ads API (Required)
+GOOGLE_CLIENT_ID=your_google_oauth_client_id
+GOOGLE_CLIENT_SECRET=your_google_oauth_client_secret
+GOOGLE_DEVELOPER_TOKEN=your_google_ads_developer_token
 
-# Google Ads API Configuration
-GOOGLE_CLIENT_ID=your_google_client_id
-GOOGLE_CLIENT_SECRET=your_google_client_secret
-GOOGLE_DEVELOPER_TOKEN=your_google_developer_token
-
-# AI Provider API Keys
-OPENAI_API_KEY=your_openai_api_key
+# AI Providers (At least one required)
+OPENAI_API_KEY=sk-your_openai_api_key
 ANTHROPIC_API_KEY=your_anthropic_api_key
 PERPLEXITY_API_KEY=your_perplexity_api_key
 
-# Session Management
-SESSION_SECRET=your_very_secure_random_string_here
-
-# Optional: Logging
-LOG_LEVEL=info
+# Session Security
+SESSION_SECRET=your_super_secure_session_secret_change_this
 ```
 
-#### 4. Database Setup
-
-**If using Neon (Recommended):**
-1. Create account at [neon.tech](https://neon.tech)
-2. Create new database
-3. Copy connection string to `DATABASE_URL`
-
-**If using local PostgreSQL:**
+### 3. Deploy with One Command
 ```bash
-# Install PostgreSQL
-sudo apt install postgresql postgresql-contrib -y
+# Make deployment script executable
+chmod +x deploy.sh
 
-# Create database and user
-sudo -u postgres psql
-CREATE DATABASE adstrategist;
-CREATE USER adstrategist_user WITH PASSWORD 'secure_password';
-GRANT ALL PRIVILEGES ON DATABASE adstrategist TO adstrategist_user;
-\q
+# Deploy everything
+./deploy.sh
+```
+
+Your platform will be available at **http://localhost:5000**
+
+## Manual Deployment Steps
+
+If you prefer manual control:
+
+### 1. Build and Start Services
+```bash
+# Start PostgreSQL and app
+docker-compose up -d --build
+
+# Check status
+docker-compose ps
+```
+
+### 2. Initialize Database
+```bash
+# Wait for database to be ready
+sleep 10
 
 # Run database migrations
-npm run db:push
+docker-compose exec app npm run db:push
 ```
 
-#### 5. Process Management with PM2
-
-Create PM2 ecosystem file:
+### 3. Verify Deployment
 ```bash
-nano ecosystem.config.js
+# Check logs
+docker-compose logs -f app
+
+# Test the application
+curl http://localhost:5000/api/health
 ```
 
-**ecosystem.config.js:**
-```javascript
-module.exports = {
-  apps: [{
-    name: 'adstrategist',
-    script: 'dist/index.js',
-    instances: 'max',
-    exec_mode: 'cluster',
-    env: {
-      NODE_ENV: 'development'
-    },
-    env_production: {
-      NODE_ENV: 'production',
-      PORT: 5000
-    },
-    error_file: './logs/err.log',
-    out_file: './logs/out.log',
-    log_file: './logs/combined.log',
-    time: true,
-    max_memory_restart: '1G',
-    node_args: '--max_old_space_size=1024'
-  }]
-};
-```
+## Production Deployment
 
-Start the application:
+For production environments:
+
+### 1. Use Production Script
 ```bash
-# Create logs directory
-mkdir logs
-
-# Start with PM2
-pm2 start ecosystem.config.js --env production
-
-# Save PM2 configuration
-pm2 save
-
-# Setup PM2 to start on boot
-pm2 startup
+chmod +x production-deploy.sh
+./production-deploy.sh
 ```
 
-#### 6. Nginx Configuration
+### 2. Production Considerations
 
-Create Nginx configuration:
-```bash
-sudo nano /etc/nginx/sites-available/adstrategist
-```
+#### Security
+- **Change default passwords** in `.env`
+- **Use strong SESSION_SECRET** (32+ characters)
+- **Enable HTTPS** with reverse proxy (nginx/traefik)
+- **Firewall configuration** to restrict database access
 
-**Nginx Configuration:**
-```nginx
-server {
-    listen 80;
-    server_name your-domain.com www.your-domain.com;
-
-    # Redirect HTTP to HTTPS
-    return 301 https://$server_name$request_uri;
-}
-
-server {
-    listen 443 ssl http2;
-    server_name your-domain.com www.your-domain.com;
-
-    # SSL Configuration (will be added by Certbot)
-    ssl_certificate /etc/letsencrypt/live/your-domain.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/your-domain.com/privkey.pem;
-
-    # Security headers
-    add_header X-Frame-Options "SAMEORIGIN" always;
-    add_header X-XSS-Protection "1; mode=block" always;
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header Referrer-Policy "no-referrer-when-downgrade" always;
-    add_header Content-Security-Policy "default-src 'self' http: https: data: blob: 'unsafe-inline'" always;
-
-    # Gzip compression
-    gzip on;
-    gzip_vary on;
-    gzip_min_length 1024;
-    gzip_proxied expired no-cache no-store private must-revalidate auth;
-    gzip_types text/plain text/css text/xml text/javascript application/x-javascript application/xml+rss application/javascript;
-
-    # Proxy to Node.js application
-    location / {
-        proxy_pass http://localhost:5000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_cache_bypass $http_upgrade;
-        
-        # Timeout settings
-        proxy_connect_timeout 60s;
-        proxy_send_timeout 60s;
-        proxy_read_timeout 60s;
-    }
-
-    # Static file caching
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg)$ {
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-    }
-}
-```
-
-Enable the site:
-```bash
-# Enable the site
-sudo ln -s /etc/nginx/sites-available/adstrategist /etc/nginx/sites-enabled/
-
-# Test Nginx configuration
-sudo nginx -t
-
-# Start Nginx
-sudo systemctl start nginx
-sudo systemctl enable nginx
-```
-
-#### 7. SSL Certificate Setup
-
-```bash
-# Obtain SSL certificate
-sudo certbot --nginx -d your-domain.com -d www.your-domain.com
-
-# Test automatic renewal
-sudo certbot renew --dry-run
-```
-
-### Option 2: Docker Deployment
-
-#### 1. Create Dockerfile
-
-```dockerfile
-# Dockerfile
-FROM node:18-alpine AS builder
-
-WORKDIR /app
-
-# Copy package files
-COPY package*.json ./
-COPY tsconfig.json ./
-COPY vite.config.ts ./
-COPY tailwind.config.ts ./
-COPY postcss.config.js ./
-COPY components.json ./
-COPY drizzle.config.ts ./
-
-# Install dependencies
-RUN npm ci
-
-# Copy source code
-COPY client/ ./client/
-COPY server/ ./server/
-COPY shared/ ./shared/
-
-# Build application
-RUN npm run build
-
-# Production stage
-FROM node:18-alpine AS production
-
-WORKDIR /app
-
-# Copy package files
-COPY package*.json ./
-
-# Install production dependencies only
-RUN npm ci --only=production && npm cache clean --force
-
-# Copy built application
-COPY --from=builder /app/dist ./dist
-
-# Create non-root user
-RUN addgroup -g 1001 -S nodejs
-RUN adduser -S nodejs -u 1001
-
-# Change ownership
-RUN chown -R nodejs:nodejs /app
-USER nodejs
-
-EXPOSE 5000
-
-CMD ["node", "dist/index.js"]
-```
-
-#### 2. Docker Compose Setup
-
-```yaml
-# docker-compose.yml
-version: '3.8'
-
-services:
+#### Performance
+- **Resource allocation**:
+  ```yaml
+  # Add to docker-compose.yml services
   app:
-    build: .
-    ports:
-      - "5000:5000"
-    environment:
-      - NODE_ENV=production
-      - DATABASE_URL=${DATABASE_URL}
-      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
-      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
-      - GOOGLE_DEVELOPER_TOKEN=${GOOGLE_DEVELOPER_TOKEN}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-      - PERPLEXITY_API_KEY=${PERPLEXITY_API_KEY}
-      - SESSION_SECRET=${SESSION_SECRET}
-    restart: unless-stopped
-    depends_on:
-      - db
-    volumes:
-      - ./logs:/app/logs
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+  postgres:
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+  ```
 
-  db:
-    image: postgres:15-alpine
-    environment:
-      - POSTGRES_DB=adstrategist
-      - POSTGRES_USER=adstrategist_user
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    restart: unless-stopped
+#### Monitoring
+- **Health checks**: Built-in health endpoint at `/api/health`
+- **Logs**: `docker-compose logs -f`
+- **Database monitoring**: Connect with any PostgreSQL client
 
-  nginx:
-    image: nginx:alpine
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf
-      - ./ssl:/etc/ssl/certs
-    depends_on:
-      - app
-    restart: unless-stopped
+## Database Management
 
-volumes:
-  postgres_data:
+### Connection Details
+- **Host**: localhost (or your server IP)
+- **Port**: 5432
+- **Database**: adstrategist
+- **Username**: adstrategist_user
+- **Password**: (from your .env DB_PASSWORD)
+
+### Common Database Operations
+```bash
+# Connect to database
+docker-compose exec postgres psql -U adstrategist_user -d adstrategist
+
+# Backup database
+docker-compose exec postgres pg_dump -U adstrategist_user adstrategist > backup.sql
+
+# Restore database
+docker-compose exec -T postgres psql -U adstrategist_user -d adstrategist < backup.sql
+
+# View database logs
+docker-compose logs postgres
 ```
 
-#### 3. Deploy with Docker
+## Application Management
 
+### Service Control
 ```bash
-# Build and start services
+# Start services
 docker-compose up -d
+
+# Stop services
+docker-compose down
+
+# Restart specific service
+docker-compose restart app
 
 # View logs
 docker-compose logs -f app
 
-# Stop services
-docker-compose down
+# Scale application (multiple instances)
+docker-compose up -d --scale app=2
 ```
 
-### Option 3: Cloud Platform Deployment
-
-#### Heroku Deployment
-
-1. **Prepare for Heroku:**
+### Updates and Maintenance
 ```bash
-# Install Heroku CLI
-npm install -g heroku
-
-# Login to Heroku
-heroku login
-
-# Create Heroku app
-heroku create your-app-name
-```
-
-2. **Configure Environment:**
-```bash
-# Set environment variables
-heroku config:set NODE_ENV=production
-heroku config:set DATABASE_URL=your_database_url
-heroku config:set GOOGLE_CLIENT_ID=your_client_id
-heroku config:set GOOGLE_CLIENT_SECRET=your_client_secret
-heroku config:set GOOGLE_DEVELOPER_TOKEN=your_developer_token
-heroku config:set OPENAI_API_KEY=your_openai_key
-heroku config:set SESSION_SECRET=your_session_secret
-
-# Add PostgreSQL addon
-heroku addons:create heroku-postgresql:mini
-```
-
-3. **Deploy:**
-```bash
-# Deploy to Heroku
-git push heroku main
-
-# Run database migrations
-heroku run npm run db:push
-```
-
-#### Railway Deployment
-
-1. **Connect Repository:**
-   - Visit [railway.app](https://railway.app)
-   - Connect your GitHub repository
-   - Select the AdStrategist project
-
-2. **Configure Environment Variables:**
-   - Add all required environment variables in Railway dashboard
-   - Add PostgreSQL database service
-
-3. **Deploy:**
-   - Railway automatically deploys on git push
-   - Monitor deployment in Railway dashboard
-
-## Post-Deployment Configuration
-
-### 1. Google OAuth Setup
-
-1. **Google Cloud Console:**
-   - Go to [Google Cloud Console](https://console.cloud.google.com)
-   - Create new project or select existing
-   - Enable Google Ads API
-   - Create OAuth 2.0 credentials
-
-2. **Configure OAuth:**
-   - **Authorized JavaScript origins:** `https://your-domain.com`
-   - **Authorized redirect URIs:** `https://your-domain.com/auth/google/callback`
-
-### 2. Database Initialization
-
-```bash
-# Run database migrations
-npm run db:push
-
-# Create admin user (if needed)
-# This should be done through the application UI after deployment
-```
-
-### 3. Health Checks
-
-Create health check endpoints monitoring:
-```bash
-# Check application health
-curl https://your-domain.com/api/health
-
-# Check database connectivity
-curl https://your-domain.com/api/health/db
-
-# Monitor logs
-pm2 logs adstrategist
-```
-
-## Monitoring & Maintenance
-
-### 1. Application Monitoring
-
-**PM2 Monitoring:**
-```bash
-# Monitor processes
-pm2 monit
-
-# View logs
-pm2 logs
-
-# Restart application
-pm2 restart adstrategist
-
 # Update application
 git pull
-npm run build
-pm2 restart adstrategist
+docker-compose build --no-cache
+docker-compose up -d
+
+# Database migrations after updates
+docker-compose exec app npm run db:push
 ```
-
-### 2. Database Backups
-
-**Automated Backup Script:**
-```bash
-#!/bin/bash
-# backup.sh
-
-DATE=$(date +%Y%m%d_%H%M%S)
-BACKUP_DIR="/var/backups/adstrategist"
-DB_NAME="adstrategist"
-
-mkdir -p $BACKUP_DIR
-
-# Create database backup
-pg_dump $DATABASE_URL > $BACKUP_DIR/backup_$DATE.sql
-
-# Keep only last 7 days of backups
-find $BACKUP_DIR -name "backup_*.sql" -mtime +7 -delete
-
-echo "Backup completed: backup_$DATE.sql"
-```
-
-**Setup Cron Job:**
-```bash
-# Edit crontab
-crontab -e
-
-# Add daily backup at 2 AM
-0 2 * * * /path/to/backup.sh
-```
-
-### 3. SSL Certificate Renewal
-
-```bash
-# Auto-renewal is typically set up by certbot
-# Verify auto-renewal
-sudo systemctl status certbot.timer
-
-# Manual renewal if needed
-sudo certbot renew
-```
-
-### 4. Performance Monitoring
-
-**Setup monitoring tools:**
-- **Application Performance:** New Relic, DataDog, or Sentry
-- **Server Monitoring:** Prometheus + Grafana
-- **Uptime Monitoring:** Pingdom, UptimeRobot
-
-## Security Checklist
-
-- [ ] SSL certificate installed and configured
-- [ ] Environment variables secured (not in code)
-- [ ] Database access restricted
-- [ ] Firewall configured (only ports 80, 443, 22 open)
-- [ ] Regular security updates applied
-- [ ] Backup strategy implemented
-- [ ] Monitoring and alerting configured
-- [ ] Google OAuth properly configured
-- [ ] Session security configured
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **Application won't start:**
-   ```bash
-   # Check logs
-   pm2 logs adstrategist
-   
-   # Check environment variables
-   pm2 show adstrategist
-   ```
+#### 1. Database Connection Failed
+```bash
+# Check if PostgreSQL is running
+docker-compose ps postgres
 
-2. **Database connection issues:**
-   ```bash
-   # Test database connection
-   psql $DATABASE_URL
-   
-   # Check database migrations
-   npm run db:push
-   ```
+# Check database logs
+docker-compose logs postgres
 
-3. **Google OAuth errors:**
-   - Verify redirect URIs in Google Console
-   - Check HTTPS configuration
-   - Validate client ID and secret
+# Restart database
+docker-compose restart postgres
+```
 
-4. **Performance issues:**
-   ```bash
-   # Monitor resource usage
-   pm2 monit
-   
-   # Check server resources
-   htop
-   df -h
-   ```
+#### 2. Application Won't Start
+```bash
+# Check application logs
+docker-compose logs app
 
-### Log Locations
+# Verify environment variables
+docker-compose exec app env | grep -E "(DATABASE_URL|GOOGLE_|OPENAI_)"
 
-- **Application logs:** `/var/www/adstrategist/logs/`
-- **Nginx logs:** `/var/log/nginx/`
-- **System logs:** `/var/log/syslog`
-- **PM2 logs:** `~/.pm2/logs/`
+# Restart application
+docker-compose restart app
+```
 
-## Scaling Considerations
+#### 3. Google Ads API Issues
+- Verify OAuth redirect URI matches your domain
+- Check if Google Ads API is enabled in Google Cloud Console
+- Ensure developer token is approved (may take 24-48 hours)
+
+#### 4. AI Provider Errors
+- Verify API keys are correct and active
+- Check API quotas and billing
+- Ensure at least one AI provider is configured
+
+### Health Checks
+```bash
+# Application health
+curl http://localhost:5000/api/health
+
+# Database health
+docker-compose exec postgres pg_isready -U adstrategist_user
+
+# Check all services
+docker-compose ps
+```
+
+### Performance Monitoring
+```bash
+# Resource usage
+docker stats
+
+# Application metrics
+docker-compose exec app npm run check
+
+# Database performance
+docker-compose exec postgres psql -U adstrategist_user -d adstrategist -c "SELECT * FROM pg_stat_activity;"
+```
+
+## Backup and Recovery
+
+### Automated Backup Script
+Create `backup.sh`:
+```bash
+#!/bin/bash
+DATE=$(date +%Y%m%d_%H%M%S)
+docker-compose exec postgres pg_dump -U adstrategist_user adstrategist > "backup_${DATE}.sql"
+echo "Backup created: backup_${DATE}.sql"
+```
+
+### Recovery Process
+```bash
+# Stop application
+docker-compose stop app
+
+# Restore database
+docker-compose exec -T postgres psql -U adstrategist_user -d adstrategist < backup_file.sql
+
+# Start application
+docker-compose start app
+```
+
+## Scaling and Load Balancing
 
 ### Horizontal Scaling
-- Use load balancer (Nginx, HAProxy)
-- Multiple application instances
-- Shared session storage (Redis)
-- Database read replicas
+```bash
+# Run multiple app instances
+docker-compose up -d --scale app=3
+
+# Use nginx for load balancing
+# Create nginx.conf and add nginx service to docker-compose.yml
+```
 
 ### Vertical Scaling
-- Increase server resources
-- Optimize database queries
-- Implement caching strategies
-- CDN for static assets
+```yaml
+# Increase resources in docker-compose.yml
+services:
+  app:
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '2.0'
+```
+
+## Security Best Practices
+
+1. **Environment Variables**: Never commit `.env` to version control
+2. **Database Security**: Use strong passwords and limit network access
+3. **API Keys**: Rotate API keys regularly
+4. **Updates**: Keep Docker images and dependencies updated
+5. **Monitoring**: Set up alerts for failed deployments and errors
+6. **Backups**: Implement automated backup strategy
+7. **HTTPS**: Use reverse proxy with SSL certificates in production
+
+## Support and Maintenance
+
+### Regular Maintenance Tasks
+- **Weekly**: Check logs and performance metrics
+- **Monthly**: Update dependencies and Docker images  
+- **Quarterly**: Review and rotate API keys
+- **As needed**: Database optimization and cleanup
+
+### Getting Help
+- Check application logs: `docker-compose logs -f app`
+- Review database logs: `docker-compose logs postgres`
+- Monitor resource usage: `docker stats`
+- Test API endpoints: Use curl or Postman
 
 ---
 
-This deployment guide provides comprehensive instructions for deploying AdStrategist in various environments. Choose the option that best fits your infrastructure and requirements.
+Your AdStrategist platform is now ready for production use with Docker and PostgreSQL! 🚀
