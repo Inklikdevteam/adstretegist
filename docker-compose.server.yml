@@ -1,4 +1,5 @@
-version: '3.9'
+# Docker Compose file for AdStrategist production deployment
+# Version attribute is now obsolete in Docker Compose v2+
 
 services:
   # PostgreSQL Database - Latest LTS
@@ -96,8 +97,6 @@ services:
         delay: 5s
         max_attempts: 3
         window: 120s
-    volumes:
-      - /var/log/adstrategist:/app/logs
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
       interval: 30s
