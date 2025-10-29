@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# AdStrategist Server Deployment Script for Debian/Ubuntu
+# AdStrategist DietPi Server Deployment Script
 set -e
 
-echo "🚀 AdStrategist Server Deployment Starting..."
+echo "🚀 AdStrategist DietPi Deployment Starting..."
 echo "=============================================="
 
 # Color codes for output
@@ -42,13 +42,15 @@ if ! command -v sudo &> /dev/null; then
     exit 1
 fi
 
-print_info "Starting system update and dependency installation..."
+print_info "Detected DietPi system - using optimized installation..."
 
 # Update system packages
+print_info "Updating system packages..."
 sudo apt update && sudo apt upgrade -y
 print_status "System packages updated"
 
-# Install required packages (DietPi/Debian compatible)
+# Install required packages for DietPi
+print_info "Installing required packages..."
 sudo apt install -y \
     curl \
     wget \
@@ -65,33 +67,24 @@ sudo apt install -y \
     certbot \
     python3-certbot-nginx \
     bc \
-    jq
+    jq \
+    dirmngr
 
 print_status "Basic packages installed"
 
-# Install Docker
-print_info "Installing Docker..."
+# Install Docker for DietPi/Debian
+print_info "Installing Docker for DietPi..."
 if ! command -v docker &> /dev/null; then
-    # Detect OS for Docker installation
-    if [ -f /etc/os-release ]; then
-        . /etc/os-release
-        OS=$ID
-        VERSION_CODENAME=${VERSION_CODENAME:-$VERSION_ID}
-    fi
-    
-    # Add Docker's official GPG key
+    # Add Docker's official GPG key for Debian
     sudo install -m 0755 -d /etc/apt/keyrings
-    
-    # Use appropriate Docker repository based on OS
-    if [ "$OS" = "debian" ] || grep -q "DietPi" /etc/os-release 2>/dev/null; then
-        curl -fsSL https://download.docker.com/linux/debian/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-        echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian $VERSION_CODENAME stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-    else
-        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-        echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $VERSION_CODENAME stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-    fi
-    
+    curl -fsSL https://download.docker.com/linux/debian/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
     sudo chmod a+r /etc/apt/keyrings/docker.gpg
+    
+    # Get Debian version codename
+    DEBIAN_CODENAME=$(lsb_release -cs)
+    
+    # Add Docker repository for Debian
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian $DEBIAN_CODENAME stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
     
     # Install Docker
     sudo apt update
@@ -149,13 +142,52 @@ sudo mkdir -p /opt/adstrategist-backups
 sudo chown $USER:$USER /opt/adstrategist-backups
 print_status "Backup directory created"
 
-print_info "Server setup completed successfully!"
+# Create data directories
+sudo mkdir -p /opt/adstrategist-data/postgres /opt/adstrategist-data/redis
+sudo chown -R $USER:$USER /opt/adstrategist-data
+print_status "Data directories created"
+
+# DietPi specific optimizations
+print_info "Applying DietPi optimizations..."
+
+# Optimize memory usage for DietPi
+if [ -f /boot/dietpi.txt ]; then
+    print_info "Detected DietPi configuration file"
+    # Add any DietPi-specific optimizations here
+fi
+
+# Set up log rotation for Docker containers
+sudo tee /etc/logrotate.d/docker-containers > /dev/null << 'EOF'
+/var/lib/docker/containers/*/*.log {
+    rotate 7
+    daily
+    compress
+    size=1M
+    missingok
+    delaycompress
+    copytruncate
+}
+EOF
+
+print_status "Log rotation configured"
+
+print_info "DietPi server setup completed successfully!"
 print_warning "Please log out and log back in for Docker group changes to take effect."
 print_info "Next steps:"
-echo "1. Clone your repository to $APP_DIR"
-echo "2. Configure environment variables"
-echo "3. Run the application deployment script"
-echo "4. Configure SSL certificates"
+echo "1. Log out and back in: exit && ssh user@server"
+echo "2. Clone your repository to $APP_DIR"
+echo "3. Configure environment variables"
+echo "4. Run the application deployment script"
+echo "5. Configure SSL certificates"
 
 echo ""
-print_status "Server is ready for AdStrategist deployment!"
+print_status "DietPi server is ready for AdStrategist deployment!"
+
+# Display system information
+print_info "System Information:"
+echo "OS: $(cat /etc/os-release | grep PRETTY_NAME | cut -d'"' -f2)"
+echo "Kernel: $(uname -r)"
+echo "Architecture: $(uname -m)"
+echo "Memory: $(free -h | grep Mem | awk '{print $2}')"
+echo "Disk: $(df -h / | tail -1 | awk '{print $2}')"
+echo "Docker: $(docker --version 2>/dev/null || echo 'Not available yet - please log out and back in')"
